@@ -3,6 +3,8 @@ using Choco.Infrastructure;
 using Choco.Presentation;
 using Choco.Presentation.OpenApi;
 
+using Microsoft.AspNetCore.HttpLogging;
+
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
@@ -20,5 +22,6 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health").WithHttpLogging(HttpLoggingFields.None);
 
 app.Run();
