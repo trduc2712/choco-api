@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/Choco.Application.UnitTests/Choco.Application.UnitTests.csproj" />
+    <Project Path="tests/Choco.ArchitectureTests/Choco.ArchitectureTests.csproj" />
+    <Project Path="tests/Choco.Domain.UnitTests/Choco.Domain.UnitTests.csproj" />
+    <Project Path="tests/Choco.IntegrationTests/Choco.IntegrationTests.csproj" />
+    <Project Path="tests/Choco.SharedKernel.UnitTests/Choco.SharedKernel.UnitTests.csproj" />
+  </Folder>
+  <Project Path="Choco.Presentation/Choco.Presentation.csproj" Id="65798786-669f-4ab1-a936-c06a627447ab" />
+  <Project Path="Choco.Application/Choco.Application.csproj" Id="e31665a3-56f6-47c0-944e-ed045ca3064f" />
+  <Project Path="Choco.Contract/Choco.Contract.csproj" Id="237f0c99-62f0-424d-84d7-e9979910636b" />
+  <Project Path="Choco.Domain/Choco.Domain.csproj" Id="3dacfcf7-4619-42b6-ade3-b13af670714a" />
+  <Project Path="Choco.Infrastructure/Choco.Infrastructure.csproj" Id="dec4f81d-0e4c-43dd-a528-47922de5aa7c" />
+  <Project Path="Choco.SharedKernel/Choco.SharedKernel.csproj" />
+  <Project Path="build/_build.csproj">
+    <Build Project="false" />
+  </Project>
+</Solution>

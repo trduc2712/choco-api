@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(./build.ps1 --help *)",
+      "PowerShell(./build.ps1 Compile *)",
+      "PowerShell(./build.ps1 Test *)",
+      "PowerShell(./build.ps1 Format *)",
+      "PowerShell(./build.ps1 FormatCheck *)",
+      "PowerShell(./build.ps1 Check *)",
+      "Bash(./build.sh --help *)",
+      "Bash(./build.sh Compile *)",
+      "Bash(./build.sh Test *)",
+      "Bash(./build.sh Format *)",
+      "Bash(./build.sh FormatCheck *)",
+      "Bash(./build.sh Check *)"
+    ],
+    "deny": [
+      "PowerShell(./build.ps1 *DbReset*)",
+      "PowerShell(./build.ps1 *dbreset*)",
+      "Bash(./build.sh *DbReset*)",
+      "Bash(./build.sh *dbreset*)"
+    ]
+  }
+}

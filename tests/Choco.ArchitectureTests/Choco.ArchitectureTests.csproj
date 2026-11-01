@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TngTech.ArchUnitNET" />
+    <PackageReference Include="TngTech.ArchUnitNET.xUnitV3" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Choco.Presentation\Choco.Presentation.csproj" />
+    <ProjectReference Include="..\..\Choco.Application\Choco.Application.csproj" />
+    <ProjectReference Include="..\..\Choco.Contract\Choco.Contract.csproj" />
+    <ProjectReference Include="..\..\Choco.Domain\Choco.Domain.csproj" />
+    <ProjectReference Include="..\..\Choco.Infrastructure\Choco.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Choco.SharedKernel\Choco.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

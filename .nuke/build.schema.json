@@ -1,0 +1,164 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "BuildConfiguration": {
+      "type": "string",
+      "description": "",
+      "enum": [
+        "Debug",
+        "Release"
+      ]
+    },
+    "Host": {
+      "type": "string",
+      "enum": [
+        "AppVeyor",
+        "AzurePipelines",
+        "Bamboo",
+        "Bitbucket",
+        "Bitrise",
+        "GitHubActions",
+        "GitLab",
+        "Jenkins",
+        "Rider",
+        "SpaceAutomation",
+        "TeamCity",
+        "Terminal",
+        "TravisCI",
+        "VisualStudio",
+        "VSCode"
+      ]
+    },
+    "ExecutableTarget": {
+      "type": "string",
+      "enum": [
+        "Check",
+        "Compile",
+        "DbDown",
+        "DbReset",
+        "DbUp",
+        "Format",
+        "FormatCheck",
+        "MigrationAdd",
+        "MigrationApply",
+        "Restore",
+        "Run",
+        "Test",
+        "Watch"
+      ]
+    },
+    "TestKind": {
+      "type": "string",
+      "description": "",
+      "enum": [
+        "Unit",
+        "Architecture",
+        "Integration"
+      ]
+    },
+    "Verbosity": {
+      "type": "string",
+      "description": "",
+      "enum": [
+        "Verbose",
+        "Normal",
+        "Minimal",
+        "Quiet"
+      ]
+    },
+    "NukeBuild": {
+      "properties": {
+        "Continue": {
+          "type": "boolean",
+          "description": "Indicates to continue a previously failed build attempt"
+        },
+        "Help": {
+          "type": "boolean",
+          "description": "Shows the help text for this build assembly"
+        },
+        "Host": {
+          "description": "Host for execution. Default is 'automatic'",
+          "$ref": "#/definitions/Host"
+        },
+        "NoLogo": {
+          "type": "boolean",
+          "description": "Disables displaying the NUKE logo"
+        },
+        "Partition": {
+          "type": "string",
+          "description": "Partition to use on CI"
+        },
+        "Plan": {
+          "type": "boolean",
+          "description": "Shows the execution plan (HTML)"
+        },
+        "Profile": {
+          "type": "array",
+          "description": "Defines the profiles to load",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Root": {
+          "type": "string",
+          "description": "Root directory during build execution"
+        },
+        "Skip": {
+          "type": "array",
+          "description": "List of targets to be skipped. Empty list skips all dependencies",
+          "items": {
+            "$ref": "#/definitions/ExecutableTarget"
+          }
+        },
+        "Target": {
+          "type": "array",
+          "description": "List of targets to be invoked. Default is '{default_target}'",
+          "items": {
+            "$ref": "#/definitions/ExecutableTarget"
+          }
+        },
+        "Verbosity": {
+          "description": "Logging verbosity during build execution. Default is 'Normal'",
+          "$ref": "#/definitions/Verbosity"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "properties": {
+        "Configuration": {
+          "description": "Debug | Release. Default: Debug locally, Release on CI",
+          "$ref": "#/definitions/BuildConfiguration"
+        },
+        "MigrationName": {
+          "type": "string",
+          "description": "Migration name for MigrationAdd, e.g. AddProducts"
+        },
+        "TestClass": {
+          "type": "string",
+          "description": "xUnit class filter for Test, wildcards allowed, e.g. *MoneyTests"
+        },
+        "TestMethod": {
+          "type": "string",
+          "description": "xUnit method filter for Test, wildcards allowed, e.g. *Should_fail*"
+        },
+        "TestType": {
+          "type": "array",
+          "description": "Test kinds for Test: unit | architecture | integration, several allowed",
+          "items": {
+            "enum": [
+              "Architecture",
+              "Integration",
+              "Unit"
+            ],
+            "$ref": "#/definitions/TestKind"
+          }
+        }
+      }
+    },
+    {
+      "$ref": "#/definitions/NukeBuild"
+    }
+  ]
+}

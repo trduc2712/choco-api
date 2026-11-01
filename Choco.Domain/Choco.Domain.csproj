@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Choco.SharedKernel\Choco.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

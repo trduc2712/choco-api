@@ -1,0 +1,64 @@
+using System.Reflection;
+
+using Choco.SharedKernel.Results;
+
+using FluentValidation;
+using FluentValidation.Results;
+
+using MediatR;
+
+namespace Choco.Application.Abstractions.Behaviors;
+
+internal sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : notnull
+    where TResponse : Result
+{
+    private readonly IEnumerable<IValidator<TRequest>> _validators;
+
+    public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
+    {
+        _validators = validators;
+    }
+
+    public async Task<TResponse> Handle(
+        TRequest request,
+        RequestHandlerDelegate<TResponse> next,
+        CancellationToken cancellationToken)
+    {
+        if (!_validators.Any())
+        {
+            return await next(cancellationToken);
+        }
+
+        ValidationContext<TRequest> context = new(request);
+
+        ValidationResult[] validationResults = await Task.WhenAll(
+            _validators.Select(validator => validator.ValidateAsync(context, cancellationToken)));
+
+        Dictionary<string, string[]> errors = validationResults
+            .SelectMany(validationResult => validationResult.Errors)
+            .GroupBy(failure => failure.PropertyName)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(failure => failure.ErrorMessage).Distinct().ToArray());
+
+        if (errors.Count == 0)
+        {
+            return await next(cancellationToken);
+        }
+
+        return CreateFailure(new ValidationError(errors));
+    }
+
+    private static TResponse CreateFailure(Error error)
+    {
+        if (typeof(TResponse) == typeof(Result))
+        {
+            return (TResponse)Result.Failure(error);
+        }
+
+        MethodInfo failure = typeof(TResponse).GetMethod(nameof(Result.Failure), [typeof(Error)])!;
+
+        return (TResponse)failure.Invoke(null, [error])!;
+    }
+}
