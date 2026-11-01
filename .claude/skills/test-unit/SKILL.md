@@ -37,7 +37,7 @@ A unit test runs one unit of behavior through its public API, with real domain o
 
 14. Validators: test the real validator with `TestValidate`. Keep one valid command as a `static readonly` field and change one property per test with `with`. Assert a rejection with `ShouldHaveValidationErrorFor(...).Only()` and a pass with `ShouldNotHaveAnyValidationErrors()`. Take limits from entity constants and test both sides of each. Never mock a validator; use `InlineValidator<T>` when a stub is needed.
 15. Pipeline behaviors: call `Handle` directly with `next` as a lambda that takes the `CancellationToken`. Cover short-circuit (`next` not called, failure returned), pass-through (`next` called once, its result returned, asserted with `BeSameAs`), no validators, and errors merged from several validators. Leave proof that the behavior is registered to integration tests.
-16. Time: aggregate methods take a `DateTimeOffset` parameter; domain tests pass a fixed UTC instant on a whole second. A type that holds a `TimeProvider` is tested with a `FakeTimeProvider` set to a fixed instant. Test both sides of each time boundary.
+16. Time: an aggregate method whose rule depends on time takes a `DateTimeOffset now` parameter; domain tests pass a fixed UTC instant on a whole second. A type that holds a `TimeProvider` is tested with a `FakeTimeProvider` set to a fixed instant. Test both sides of each time boundary.
 
 ## Test Doubles
 

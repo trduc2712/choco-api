@@ -65,7 +65,7 @@ An integration test runs the API in-process through a `WebApplicationFactory`, a
     - valid token → success, with the token's `sub` reaching the current-user abstraction.
 21. Sign inbound webhooks with the provider's algorithm and a test secret, and send exactly the signed bytes. Give each test its own message id and timestamp. Cover a bad signature, a tampered body, missing headers, a timestamp outside the tolerance and a duplicate delivery of the same message id. Add out-of-order events once one entity has several event types.
 22. Replace outgoing HTTP at the primary handler of `IHttpClientFactory` with a stub handler or WireMock.Net. Assert the requests sent and that nothing else was sent. Remove or configure resilience handlers on purpose, so retries do not hide failures or slow the test.
-23. Run background work by calling the processor's single-batch method from the test. Assert that an outbox message is saved in the same transaction as the change that raised it. When waiting is unavoidable, poll with a timeout through one shared helper.
+23. Run background work by calling the processor's single-batch method from the test. When waiting is unavoidable, poll with a timeout through one shared helper.
 
 ## Assertions
 
