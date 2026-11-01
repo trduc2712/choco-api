@@ -34,6 +34,8 @@
       "enum": [
         "Check",
         "Compile",
+        "DbDocs",
+        "DbDocsCheck",
         "DbDown",
         "DbReset",
         "DbUp",

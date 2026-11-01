@@ -130,6 +130,7 @@ class Build : NukeBuild
     Target MigrationApply => _ => _
         .Description("Apply pending migrations to the database")
         .DependsOn(Compile)
+        .After(DbUp)
         .Executes(() => Ef("database update"));
 
     Target DbReset => _ => _
@@ -146,6 +147,20 @@ class Build : NukeBuild
             Ef("database update");
         });
 
+    Target DbDocs => _ => _
+        .Description("Generate docs/database from the local database")
+        .After(MigrationApply)
+        .Executes(() => Tbls("doc --rm-dist"));
+
+    Target DbDocsCheck => _ => _
+        .Description("Fail if docs/database is out of date or a table or column has no comment")
+        .After(MigrationApply, DbDocs)
+        .Executes(() =>
+        {
+            Tbls("diff");
+            Tbls("lint");
+        });
+
     string TestFilterArguments() => string.Join(' ',
         new[] { ("--filter-class", TestClass), ("--filter-method", TestMethod) }
             .Where(x => x.Item2 is not null)
@@ -154,4 +169,7 @@ class Build : NukeBuild
     void Ef(string command) => DotNet(
         $"ef {command:nq} --project {InfrastructureProject} --startup-project {ApiProject} --configuration {Configuration} --no-build",
         RootDirectory);
+
+    // tbls in the container does not pick up .tbls.yml on its own, so the config is passed explicitly.
+    void Tbls(string command) => Docker($"compose --progress quiet -f {ComposeFile} run --rm tbls {command:nq} --config .tbls.yml");
 }
