@@ -1,0 +1,13 @@
+*
+!global.json
+!Directory.Build.props
+!Directory.Packages.props
+!Choco.*
+Choco.slnx
+
+**/bin/
+**/obj/
+**/*.user
+**/*.tmp
+**/Properties/launchSettings.json
+**/appsettings.Development.json
