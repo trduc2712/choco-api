@@ -73,3 +73,26 @@ jobs:
           global-json-file: global.json
 
       - run: bash ./build.sh DbUp MigrationApply DbDocsCheck --no-logo
+
+  migrate-staging:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build, integration-tests, database-docs]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: staging
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - run: bash ./build.sh MigrationBundle --no-logo
+
+      # The bundle builds the API's service provider to create the DbContext, and reading
+      # DatabaseOptions there runs its validation, so the connection string goes in as config.
+      - run: ./artifacts/efbundle
+        env:
+          Database__ConnectionString: ${{ secrets.DATABASE_CONNECTION_STRING }}
