@@ -4,6 +4,11 @@
     <UserSecretsId>choco-api-presentation</UserSecretsId>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Choco.Application\Choco.Application.csproj" />
     <ProjectReference Include="..\Choco.Contract\Choco.Contract.csproj" />
