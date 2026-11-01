@@ -32,6 +32,7 @@ class Build : NukeBuild
     AbsolutePath InfrastructureProject => RootDirectory / "Choco.Infrastructure";
     AbsolutePath MigrationsDirectory => InfrastructureProject / "Persistence" / "Migrations";
     AbsolutePath TestResultsDirectory => RootDirectory / "artifacts" / "test-results";
+    AbsolutePath MigrationBundleFile => RootDirectory / "artifacts" / "efbundle";
 
     Target Restore => _ => _
         .Description("Restore NuGet packages and local dotnet tools")
@@ -132,6 +133,11 @@ class Build : NukeBuild
         .DependsOn(Compile)
         .After(DbUp)
         .Executes(() => Ef("database update"));
+
+    Target MigrationBundle => _ => _
+        .Description("Build a self-contained executable that applies pending migrations, at artifacts/efbundle")
+        .DependsOn(Compile)
+        .Executes(() => Ef($"migrations bundle --output {RootDirectory.GetRelativePathTo(MigrationBundleFile)} --force"));
 
     Target DbReset => _ => _
         .Description("DESTRUCTIVE: drop the database and re-apply all migrations; local, interactive only")

@@ -43,6 +43,7 @@
         "FormatCheck",
         "MigrationAdd",
         "MigrationApply",
+        "MigrationBundle",
         "Restore",
         "Run",
         "Test",
