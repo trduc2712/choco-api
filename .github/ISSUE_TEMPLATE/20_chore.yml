@@ -1,0 +1,25 @@
+name: Chore
+description: Internal work with no new behavior for API clients (base, tooling, CI, docs).
+labels: ["type: chore"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What is missing or wrong today, and why it matters.
+    validations:
+      required: true
+  - type: textarea
+    id: done-when
+    attributes:
+      label: Done When
+      description: Checkable conditions, one per line.
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Links, decisions already made, ideas for the approach.

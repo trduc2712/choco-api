@@ -1,0 +1,34 @@
+name: Bug
+description: Behavior that differs from what the API promises.
+labels: ["type: bug"]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Requests to send, e.g. a curl command or the test that fails.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: Status code, ProblemDetails body, exception or log lines.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Local, CI or deployed; commit if known.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Suspected cause, ideas for the fix, links.
