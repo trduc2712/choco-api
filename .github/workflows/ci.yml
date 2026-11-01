@@ -59,3 +59,17 @@ jobs:
           name: test-results-integration
           path: artifacts/test-results
           if-no-files-found: ignore
+
+  database-docs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - run: bash ./build.sh DbUp MigrationApply DbDocsCheck --no-logo
