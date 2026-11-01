@@ -82,3 +82,9 @@ Pattern: `<Verb><Object>[<Kind>][<Preposition><Table>]`
 | Seed fixed data | `SeedRoles` |
 | Fill a new column | `BackfillDisplayNameInUsers` |
 | Fix bad data | `ChangeEmptyBioToNullInUsers` |
+
+## Comments
+
+| Case | Name |
+|---|---|
+| Add or change table and column comments | `AddCommentsToUsers`, `ChangeCommentsInUsers` |
