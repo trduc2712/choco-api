@@ -1,0 +1,20 @@
+name: choco
+
+docPath: docs/database
+disableOutputSchema: true
+
+er:
+  format: mermaid
+
+exclude:
+  - public.__EFMigrationsHistory
+
+format:
+  adjust: true
+  sort: true
+
+lint:
+  requireTableComment:
+    enabled: true
+  requireColumnComment:
+    enabled: true
