@@ -16,11 +16,12 @@ internal static class TestJwt
         DateTimeOffset issuedAt,
         string issuer = Issuer,
         string? authorizedParty = AuthorizedParty,
-        SecurityKey? signingKey = null)
+        SecurityKey? signingKey = null,
+        string subject = "identity-id")
     {
         Dictionary<string, object> claims = new()
         {
-            [JwtRegisteredClaimNames.Sub] = "identity-id",
+            [JwtRegisteredClaimNames.Sub] = subject,
             [JwtRegisteredClaimNames.Sid] = "session-id"
         };
 
