@@ -4,6 +4,7 @@ using Choco.Application.Abstractions.Authentication;
 using Choco.Presentation.Authentication;
 using Choco.Presentation.OpenApi;
 using Choco.Presentation.Options;
+using Choco.Presentation.RateLimiting;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpLogging;
@@ -38,6 +39,8 @@ public static class DependencyInjection
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();
+
+        services.AddUserRateLimiting(configuration);
 
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<IOptions<ClerkOptions>>((jwtBearerOptions, clerkOptions) =>

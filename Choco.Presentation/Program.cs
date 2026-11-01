@@ -20,6 +20,7 @@ app.UseApiDocumentation();
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health").WithHttpLogging(HttpLoggingFields.None);

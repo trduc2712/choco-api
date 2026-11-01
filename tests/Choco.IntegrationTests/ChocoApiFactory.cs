@@ -22,7 +22,7 @@ using Respawn;
 
 namespace Choco.IntegrationTests;
 
-public sealed class ChocoApiFactory : WebApplicationFactory<Program>, IAsyncLifetime, ITestOutputHelperAccessor
+public class ChocoApiFactory : WebApplicationFactory<Program>, IAsyncLifetime, ITestOutputHelperAccessor
 {
     public const string IdentityProviderSecretKey = "sk_test_secret-key";
 
