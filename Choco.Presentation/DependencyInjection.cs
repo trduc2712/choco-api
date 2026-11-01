@@ -25,6 +25,7 @@ public static class DependencyInjection
 
         services.AddApiDocumentation(configuration);
         services.AddControllers();
+        services.AddHealthChecks();
         services.AddProblemDetails();
         services.AddHttpLogging(options =>
         {
