@@ -9,7 +9,7 @@ The schema is defined by EF Core migrations and nowhere else. A migration merged
 
 ## Workflow
 
-1. Change the entity configuration in `Choco.Infrastructure/Persistence/Configurations/`.
+1. Change the entity configuration in `src/Choco.Infrastructure/Persistence/Configurations/`.
 2. Name the migration by `docs/migration-naming.md`, and ask the user before running `./build.ps1 MigrationAdd --migration-name <Name>`.
 3. Review the generated migration by the rules below, and tell the user about every warning from rule 9.
 4. Ask the user before running `./build.ps1 DbUp MigrationApply`, then run `./build.ps1 DbDocs`.

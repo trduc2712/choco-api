@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Choco.SharedKernel\Choco.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\Choco.SharedKernel\Choco.SharedKernel.csproj" />
   </ItemGroup>
 
   <ItemGroup>

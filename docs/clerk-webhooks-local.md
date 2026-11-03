@@ -46,7 +46,7 @@ Every developer has their own tunnel and their own Clerk webhook endpoint.
 5. Copy the endpoint's signing secret and store it in user secrets:
 
    ```bash
-   dotnet user-secrets set Clerk:WebhookSigningSecret "<whsec_...>" --project Choco.Presentation
+   dotnet user-secrets set Clerk:WebhookSigningSecret "<whsec_...>" --project src/Choco.Presentation
    ```
 
 ## Each Session

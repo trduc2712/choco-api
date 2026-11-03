@@ -28,8 +28,8 @@ class Build : NukeBuild
 
     AbsolutePath SolutionFile => RootDirectory / "Choco.slnx";
     AbsolutePath ComposeFile => RootDirectory / "compose.yaml";
-    AbsolutePath ApiProject => RootDirectory / "Choco.Presentation";
-    AbsolutePath InfrastructureProject => RootDirectory / "Choco.Infrastructure";
+    AbsolutePath ApiProject => RootDirectory / "src" / "Choco.Presentation";
+    AbsolutePath InfrastructureProject => RootDirectory / "src" / "Choco.Infrastructure";
     AbsolutePath MigrationsDirectory => InfrastructureProject / "Persistence" / "Migrations";
     AbsolutePath TestResultsDirectory => RootDirectory / "artifacts" / "test-results";
     AbsolutePath MigrationBundleFile => RootDirectory / "artifacts" / "efbundle";

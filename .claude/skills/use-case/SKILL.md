@@ -5,7 +5,7 @@ description: Add or review a use case of this API, a command or query with its v
 
 # Use Cases
 
-A use case is one command (changes state) or query (reads state), handled by one handler and reached through one endpoint. `CreateUser` in `Choco.Application/Users/CreateUser/` is the reference implementation of a command.
+A use case is one command (changes state) or query (reads state), handled by one handler and reached through one endpoint. `CreateUser` in `src/Choco.Application/Users/CreateUser/` is the reference implementation of a command.
 
 This skill covers Contract, Application and Presentation. Domain code follows the `entity` skill, tests the `test-unit` and `test-integration` skills.
 
@@ -19,8 +19,8 @@ This skill covers Contract, Application and Presentation. Domain code follows th
 
 ## Contract
 
-1. Declare a command as `public sealed record <Verb><Noun>Command(...)` in `Choco.Contract/<Plural>/`, implementing `ICommand` or `ICommand<TResponse>`. Declare a query as `public sealed record Get<Noun>Query(...) : IQuery<TResponse>` in the same folder.
-2. Declare a response as `public sealed record <Noun>Response(...)` in `Choco.Contract/<Plural>/`. It holds only what clients may see, in primitive or Contract types, never a domain type.
+1. Declare a command as `public sealed record <Verb><Noun>Command(...)` in `src/Choco.Contract/<Plural>/`, implementing `ICommand` or `ICommand<TResponse>`. Declare a query as `public sealed record Get<Noun>Query(...) : IQuery<TResponse>` in the same folder.
+2. Declare a response as `public sealed record <Noun>Response(...)` in `src/Choco.Contract/<Plural>/`. It holds only what clients may see, in primitive or Contract types, never a domain type.
 3. A command holds only the fields a client may send. The caller's id is never in a command; the handler gets it from `ICurrentUser`.
 
 ## Validator
@@ -30,7 +30,7 @@ This skill covers Contract, Application and Presentation. Domain code follows th
 
 ## Handler
 
-6. Put the handler in `Choco.Application/<Plural>/<UseCase>/` as `internal sealed class <Name>Handler` (`CreateUserCommandHandler`), implementing `ICommandHandler<...>` or `IQueryHandler<...>`, with its dependencies injected through the constructor.
+6. Put the handler in `src/Choco.Application/<Plural>/<UseCase>/` as `internal sealed class <Name>Handler` (`CreateUserCommandHandler`), implementing `ICommandHandler<...>` or `IQueryHandler<...>`, with its dependencies injected through the constructor.
 7. A command handler only orchestrates: load the aggregate, call its methods, `Add` new aggregates, `IUnitOfWork.SaveChangesAsync`, return the result. A business decision belongs in the domain.
 8. Return expected failures as a `Result` with an error from `<Name>Errors`; never throw for them.
 9. When the use case needs the caller, call `ICurrentUser.GetIdAsync` before adding any entity, and return its failure as is; it may save the caller's user on the same unit of work.
@@ -44,7 +44,7 @@ This skill covers Contract, Application and Presentation. Domain code follows th
 
 ## Endpoint
 
-14. Put the endpoint in `Choco.Presentation/Controllers/<Plural>Controller.cs`, a `public sealed` class deriving from `ApiController`, routed at `api/<plural>`. It is `[Authorize]` through the base class; add `[AllowAnonymous]` only with a reason, such as a signed webhook.
+14. Put the endpoint in `src/Choco.Presentation/Controllers/<Plural>Controller.cs`, a `public sealed` class deriving from `ApiController`, routed at `api/<plural>`. It is `[Authorize]` through the base class; add `[AllowAnonymous]` only with a reason, such as a signed webhook.
 15. Bind the body straight to the command with `[FromBody]`. When the route carries an id, merge it with `command with { Id = id }`, so the body cannot name another resource.
 16. Send the command with `Sender.Send(command, cancellationToken)` and return `HandleFailure(result)` on failure. The status code comes from the error's `ErrorType`; never pick one by hand.
 17. A `POST` that creates a resource has a create command returning `ICommand<<Noun>Response>`, and returns `CreatedAtAction(nameof(GetById), new { id = response.Id }, response)`. The route value names match the `GetById` parameters. Every create endpoint therefore comes with `GET api/<plural>/{id}`.

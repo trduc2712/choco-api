@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Choco.Domain\Choco.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Choco.Domain\Choco.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
