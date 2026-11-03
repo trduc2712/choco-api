@@ -5,7 +5,7 @@ description: Add or review a domain aggregate or entity and its persistence (rep
 
 # Domain Entities
 
-An aggregate is a cluster of domain objects saved and loaded as one, with one root that guards its rules. `User` in `Choco.Domain/Users/` is the reference implementation.
+An aggregate is a cluster of domain objects saved and loaded as one, with one root that guards its rules. `User` in `src/Choco.Domain/Users/` is the reference implementation.
 
 This skill covers the domain and persistence code. Migrations follow the `migration` skill, tests the `test-unit` skill, and commands, handlers and endpoints the `use-case` skill.
 
@@ -18,8 +18,8 @@ This skill covers the domain and persistence code. Migrations follow the `migrat
 
 ## Location
 
-1. Put each aggregate in its own folder, `Choco.Domain/<Plural>/`, holding `<Name>.cs`, `<Name>Errors.cs`, `I<Name>Repository.cs` and its events. Child entities of the aggregate live in the same folder.
-2. Put the configuration in `Choco.Infrastructure/Persistence/Configurations/<Name>Configuration.cs` and the repository in `Choco.Infrastructure/Persistence/Repositories/<Name>Repository.cs`.
+1. Put each aggregate in its own folder, `src/Choco.Domain/<Plural>/`, holding `<Name>.cs`, `<Name>Errors.cs`, `I<Name>Repository.cs` and its events. Child entities of the aggregate live in the same folder.
+2. Put the configuration in `src/Choco.Infrastructure/Persistence/Configurations/<Name>Configuration.cs` and the repository in `src/Choco.Infrastructure/Persistence/Repositories/<Name>Repository.cs`.
 
 ## Shape
 
@@ -58,7 +58,7 @@ This skill covers the domain and persistence code. Migrations follow the `migrat
 ## Repository
 
 19. Derive the interface from `IRepository<T>` and add only the queries a use case needs. A query that must see soft-deleted rows says so in its name (`...IncludingDeleted`).
-20. Implement it as `internal sealed class <Name>Repository : Repository<T>, I<Name>Repository`, and register it with `AddScoped` in `Choco.Infrastructure/DependencyInjection.cs`.
+20. Implement it as `internal sealed class <Name>Repository : Repository<T>, I<Name>Repository`, and register it with `AddScoped` in `src/Choco.Infrastructure/DependencyInjection.cs`.
 
 ## Configuration
 

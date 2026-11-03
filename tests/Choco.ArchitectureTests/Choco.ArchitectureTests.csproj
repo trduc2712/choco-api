@@ -11,12 +11,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Choco.Presentation\Choco.Presentation.csproj" />
-    <ProjectReference Include="..\..\Choco.Application\Choco.Application.csproj" />
-    <ProjectReference Include="..\..\Choco.Contract\Choco.Contract.csproj" />
-    <ProjectReference Include="..\..\Choco.Domain\Choco.Domain.csproj" />
-    <ProjectReference Include="..\..\Choco.Infrastructure\Choco.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Choco.SharedKernel\Choco.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\Choco.Presentation\Choco.Presentation.csproj" />
+    <ProjectReference Include="..\..\src\Choco.Application\Choco.Application.csproj" />
+    <ProjectReference Include="..\..\src\Choco.Contract\Choco.Contract.csproj" />
+    <ProjectReference Include="..\..\src\Choco.Domain\Choco.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Choco.Infrastructure\Choco.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Choco.SharedKernel\Choco.SharedKernel.csproj" />
   </ItemGroup>
 
   <ItemGroup>

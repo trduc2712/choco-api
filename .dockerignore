@@ -2,8 +2,7 @@
 !global.json
 !Directory.Build.props
 !Directory.Packages.props
-!Choco.*
-Choco.slnx
+!src/
 
 **/bin/
 **/obj/

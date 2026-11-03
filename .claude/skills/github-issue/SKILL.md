@@ -45,4 +45,6 @@ Pending work on choco-api is tracked as GitHub Issues on `trduc2712/choco-api`. 
 ## Branches and Closing
 
 15. Link a branch to an issue with `gh issue develop <n> --repo trduc2712/choco-api --name <type>/<kebab-description> --checkout`, where `<type>` is a Conventional Commit type. A number in the branch name does not link it, so leave it out.
-16. Close an issue with `Fixes #n` in the commit or pull request that resolves it. Close dropped work with `gh issue close <n> --reason "not planned"` and a comment that says why.
+16. Before the commit or pull request that resolves an issue, read it with `gh issue view <n> --repo trduc2712/choco-api` and check each Done When item against the change. Report to the user which items are met and which are not.
+17. Tick the met items with `gh issue edit <n> --repo trduc2712/choco-api --body-file <file>`, built from the current body. Leave out `Fixes #n` while an item is unmet, unless the user decides to close the issue anyway.
+18. Close an issue with `Fixes #n` in the commit or pull request that resolves it. Close dropped work with `gh issue close <n> --reason "not planned"` and a comment that says why.
