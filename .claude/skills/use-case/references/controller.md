@@ -20,8 +20,8 @@ public sealed class {Plural}Controller : ApiController
     /// Any signed-in user may call it. The new {noun} belongs to the caller.
     /// Sending the same body twice creates two {plural}.
     /// </remarks>
-    /// <param name="command">The {noun} to create.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
+    /// <param name="command">The {noun} to create.</param>
     /// <response code="201">The {noun} was created; the Location header points to it.</response>
     /// <response code="400">A field is missing, too long or malformed; errors lists each field.</response>
     /// <response code="401">The request has no valid session token.</response>
