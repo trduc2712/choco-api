@@ -2,6 +2,7 @@ using System.Security.Claims;
 
 using Choco.Application.Abstractions.Authentication;
 using Choco.Presentation.Authentication;
+using Choco.Presentation.Authorization;
 using Choco.Presentation.OpenApi;
 using Choco.Presentation.Options;
 using Choco.Presentation.RateLimiting;
@@ -36,6 +37,8 @@ public static class DependencyInjection
                 | HttpLoggingFields.Duration;
             options.CombineLogs = true;
         });
+
+        services.AddHostedService<AdministratorBootstrapHostedService>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();

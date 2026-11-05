@@ -39,5 +39,13 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(user => user.Username)
             .IsUnique()
             .HasFilter("is_deleted = false");
+
+        builder.HasMany(user => user.Roles)
+            .WithOne()
+            .HasForeignKey(UserRoleConfiguration.UserIdColumn)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(user => user.Roles)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
