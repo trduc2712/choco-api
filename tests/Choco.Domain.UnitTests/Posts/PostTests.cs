@@ -1,4 +1,5 @@
 using Choco.Domain.Posts;
+using Choco.SharedKernel.Results;
 
 namespace Choco.Domain.UnitTests.Posts;
 
@@ -82,7 +83,7 @@ public sealed class PostTests
         Post post = Post.Create("content", AuthorId);
         Guid id = post.Id;
 
-        post.Edit("edited-content");
+        post.Edit("edited-content", AuthorId);
 
         post.Content.Should().Be("edited-content");
         post.Id.Should().Be(id);
@@ -94,7 +95,7 @@ public sealed class PostTests
     {
         Post post = Post.Create("content", AuthorId);
 
-        post.Edit(" \n\tedited-content-line-1\n\n  edited-content-line-2 \t\n");
+        post.Edit(" \n\tedited-content-line-1\n\n  edited-content-line-2 \t\n", AuthorId);
 
         post.Content.Should().Be("edited-content-line-1\n\n  edited-content-line-2");
     }
@@ -105,7 +106,7 @@ public sealed class PostTests
         Post post = Post.Create("content", AuthorId);
         string editedContent = new('e', Post.ContentMaxLength);
 
-        post.Edit(editedContent);
+        post.Edit(editedContent, AuthorId);
 
         post.Content.Should().Be(editedContent);
     }
@@ -116,7 +117,7 @@ public sealed class PostTests
         Post post = Post.Create("content", AuthorId);
         string editedContent = new('e', Post.ContentMaxLength + 1);
 
-        Action act = () => post.Edit(editedContent);
+        Action act = () => post.Edit(editedContent, AuthorId);
 
         act.Should().Throw<ArgumentException>().WithParameterName("content");
         post.Content.Should().Be("content");
@@ -130,9 +131,32 @@ public sealed class PostTests
     {
         Post post = Post.Create("content", AuthorId);
 
-        Action act = () => post.Edit(editedContent!);
+        Action act = () => post.Edit(editedContent!, AuthorId);
 
         act.Should().Throw<ArgumentException>().WithParameterName("content");
         post.Content.Should().Be("content");
+    }
+
+    [Fact]
+    public void Edit_ByAnotherUser_ReturnsNotAuthorAndKeepsContent()
+    {
+        Post post = Post.Create("content", AuthorId);
+        Guid otherUserId = new("6a7b8c9d-0e1f-4a2b-8c3d-4e5f6a7b8c9d");
+
+        Result result = post.Edit("edited-content", otherUserId);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(PostErrors.NotAuthor);
+        post.Content.Should().Be("content");
+    }
+
+    [Fact]
+    public void Edit_ByAuthor_ReturnsSuccess()
+    {
+        Post post = Post.Create("content", AuthorId);
+
+        Result result = post.Edit("edited-content", AuthorId);
+
+        result.IsSuccess.Should().BeTrue();
     }
 }

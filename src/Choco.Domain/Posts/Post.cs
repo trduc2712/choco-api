@@ -1,4 +1,5 @@
 using Choco.Domain.Primitives.Entities;
+using Choco.SharedKernel.Results;
 
 namespace Choco.Domain.Posts;
 
@@ -38,9 +39,18 @@ public sealed class Post : AggregateRoot, IAuditable, ISoftDeletable
             authorId);
     }
 
-    public void Edit(string content)
+    public Result Edit(string content, Guid editorId)
     {
-        Content = NormalizeContent(content);
+        string normalizedContent = NormalizeContent(content);
+
+        if (editorId != AuthorId)
+        {
+            return Result.Failure(PostErrors.NotAuthor);
+        }
+
+        Content = normalizedContent;
+
+        return Result.Success();
     }
 
     private static string NormalizeContent(string content)
