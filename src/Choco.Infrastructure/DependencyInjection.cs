@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 
 using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Authorization;
+using Choco.Domain.Posts;
 using Choco.Domain.Primitives.Persistence;
 using Choco.Domain.Roles;
 using Choco.Domain.Users;
@@ -47,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<ChocoDbContext>());
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IPostRepository, PostRepository>();
 
         services.AddOptions<AdministratorBootstrapOptions>()
             .Bind(configuration.GetSection(AdministratorBootstrapOptions.SectionName));

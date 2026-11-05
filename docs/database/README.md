@@ -4,6 +4,7 @@
 
 | Name                                      | Columns | Comment                                                                                                      | Type       |
 | ----------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ | ---------- |
+| [public.posts](public.posts.md)           | 7       | Text posts that users publish.                                                                               | BASE TABLE |
 | [public.roles](public.roles.md)           | 7       | Named sets of permissions that users can hold. Roles and their permissions can change while the system runs. | BASE TABLE |
 | [public.user_roles](public.user_roles.md) | 5       | Roles assigned to users, besides the default role that every signed-in user has.                             | BASE TABLE |
 | [public.users](public.users.md)           | 9       | People who use choco-api. Sign-in lives in Clerk; each row is the local copy of one Clerk user.              | BASE TABLE |
@@ -13,10 +14,20 @@
 ```mermaid
 erDiagram
 
+"public.posts" }o--|| "public.users" : "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.user_roles" }o--o| "public.users" : "FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE RESTRICT"
 "public.user_roles" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.user_roles" }o--|| "public.roles" : "FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE"
 
+"public.posts" {
+  uuid author_id FK
+  varchar_500_ content
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone deleted_at
+  uuid id
+  boolean is_deleted
+  timestamp_with_time_zone modified_at
+}
 "public.roles" {
   timestamp_with_time_zone created_at
   uuid id

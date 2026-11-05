@@ -88,6 +88,21 @@ public sealed class AssignRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
     }
 
     [Fact]
+    public async Task CallerLackingAPermissionOfTheRole_ReturnsForbiddenAndAssignsNothing()
+    {
+        Guid adminRoleId = await GetRoleIdAsync(SystemRoles.Admin);
+        Guid roleManagerRoleId = await AddRoleManagerRoleAsync();
+        await AddUserAsync("identity-id", "username", roleManagerRoleId);
+        User target = await AddUserAsync("identity-id-2", "username-2");
+        using HttpRequestMessage request = CreateRequest(target.Id, adminRoleId);
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        await ShouldBeProblemAsync(response, HttpStatusCode.Forbidden, "Permission.Denied");
+        (await GetUserAsync(target.Id)).Roles.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task AdminAssignsRole_AssignsItAndReturnsNoContent()
     {
         Guid adminRoleId = await GetRoleIdAsync(SystemRoles.Admin);
@@ -206,6 +221,18 @@ public sealed class AssignRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ProblemDetails problem = (await response.Content.ReadFromJsonAsync<ProblemDetails>(TestContext.Current.CancellationToken))!;
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be(code);
+    }
+
+    private async Task<Guid> AddRoleManagerRoleAsync()
+    {
+        Role role = Role.CreateSystem(new SystemRoleDefinition("role-manager", "Role Manager", IsDefault: false, Permissions: [Permission.AssignRoles]));
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Add(role);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+
+        return role.Id;
     }
 
     private Task<Guid> GetRoleIdAsync(string systemKey)
