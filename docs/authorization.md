@@ -26,15 +26,17 @@ A new environment has no administrator, so nobody can assign roles. The first ad
 
 1. In the Clerk dashboard of the environment's Clerk instance, open **Users**, select the person and copy their **User ID** (`user_...`).
 2. Set the setting `Authorization:BootstrapAdminIdentityIds` to a list of these ids:
-   - On Render, add the environment variable `Authorization__BootstrapAdminIdentityIds__0` (and `__1`, `__2` for more people), then redeploy or restart the service.
+   - On Render, declare the environment variable `Authorization__BootstrapAdminIdentityIds__0` (and `__1`, `__2` for more people) on the web service in the Terraform of `choco-infrastructure`, then apply it. Render is managed only by Terraform, so a variable set by hand in the dashboard is overwritten by the next apply.
    - Locally, run `dotnet user-secrets set "Authorization:BootstrapAdminIdentityIds:0" "user_..." --project src/Choco.Presentation`.
+
+   Each environment has its own Clerk instance, so a person's Clerk user id differs between environments. The ids are not secret.
 3. The person becomes an administrator:
    - at the next start of the API, if their user already exists in the database;
    - when their user is created, by the `user.created` webhook or their first request, if it does not exist yet.
 
 The assignment records no assigner (`assigned_by` is null). It only adds the role: removing an id from the setting does not revoke anything. Revoke a role with `DELETE /api/users/{userId}/roles/{roleId}`.
 
-If the setting is not empty and the API cannot reach the database at start, the API does not start.
+If the setting is not empty and the API cannot reach the database at start, the API does not start. The administrator role is created by the migration that adds the `roles` table, so apply the setting after that migration has run in the environment; before it, the deployed code ignores the setting.
 
 ## Adding a Permission
 
