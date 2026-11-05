@@ -15,14 +15,26 @@ internal sealed class SoftDeleteInterceptor : SaveChangesInterceptor
         _timeProvider = timeProvider;
     }
 
+    public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
+    {
+        SoftDelete(eventData.Context);
+
+        return base.SavingChanges(eventData, result);
+    }
+
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
-        DbContext? dbContext = eventData.Context;
+        SoftDelete(eventData.Context);
 
+        return base.SavingChangesAsync(eventData, result, cancellationToken);
+    }
+
+    private void SoftDelete(DbContext? dbContext)
+    {
         if (dbContext is null)
         {
-            return base.SavingChangesAsync(eventData, result, cancellationToken);
+            return;
         }
 
         DateTimeOffset utcNow = _timeProvider.GetUtcNow();
@@ -36,7 +48,5 @@ internal sealed class SoftDeleteInterceptor : SaveChangesInterceptor
                 entry.Property(nameof(ISoftDeletable.DeletedAt)).CurrentValue = utcNow;
             }
         }
-
-        return base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 }

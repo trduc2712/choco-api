@@ -15,14 +15,26 @@ internal sealed class AuditInterceptor : SaveChangesInterceptor
         _timeProvider = timeProvider;
     }
 
+    public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
+    {
+        SetAuditValues(eventData.Context);
+
+        return base.SavingChanges(eventData, result);
+    }
+
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
-        DbContext? dbContext = eventData.Context;
+        SetAuditValues(eventData.Context);
 
+        return base.SavingChangesAsync(eventData, result, cancellationToken);
+    }
+
+    private void SetAuditValues(DbContext? dbContext)
+    {
         if (dbContext is null)
         {
-            return base.SavingChangesAsync(eventData, result, cancellationToken);
+            return;
         }
 
         DateTimeOffset utcNow = _timeProvider.GetUtcNow();
@@ -42,7 +54,5 @@ internal sealed class AuditInterceptor : SaveChangesInterceptor
                     break;
             }
         }
-
-        return base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 }

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
+using Choco.Domain.Roles;
 using Choco.Domain.Users;
 
 using Microsoft.AspNetCore.Mvc;
@@ -147,21 +148,54 @@ public sealed class ClerkWebhooksTests : IClassFixture<ChocoApiFactory>, IAsyncL
         (await GetUsersAsync()).Should().ContainSingle();
     }
 
+    [Fact]
+    public async Task UserCreatedEventForBootstrapAdministrator_CreatesUserWithAdministratorRole()
+    {
+        Guid adminRoleId = await _factory.ExecuteDbContextAsync(dbContext => dbContext.Set<Role>()
+            .Where(role => role.SystemKey == SystemRoles.Admin)
+            .Select(role => role.Id)
+            .SingleAsync(TestContext.Current.CancellationToken));
+        using HttpRequestMessage request = ClerkWebhookSigner.CreateSignedRequest(
+            UserCreatedPayload(identityId: ChocoApiFactory.BootstrapAdminIdentityId), "message-id", DateTimeOffset.UtcNow);
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        User user = (await GetUsersAsync()).Should().ContainSingle().Subject;
+        user.IdentityId.Should().Be(ChocoApiFactory.BootstrapAdminIdentityId);
+        UserRole assignment = user.Roles.Should().ContainSingle().Subject;
+        assignment.RoleId.Should().Be(adminRoleId);
+        assignment.AssignedBy.Should().BeNull();
+        assignment.AssignedAt.Should().Be(ChocoApiFactory.StartTime);
+    }
+
+    [Fact]
+    public async Task UserCreatedEvent_CreatesUserWithoutRoles()
+    {
+        using HttpRequestMessage request = ClerkWebhookSigner.CreateSignedRequest(UserCreatedPayload(), "message-id", DateTimeOffset.UtcNow);
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await GetUsersAsync()).Should().ContainSingle().Which.Roles.Should().BeEmpty();
+    }
+
     private Task<List<User>> GetUsersAsync()
     {
         return _factory.ExecuteDbContextAsync(dbContext => dbContext.Set<User>()
             .AsNoTracking()
+            .Include(user => user.Roles)
             .ToListAsync(TestContext.Current.CancellationToken));
     }
 
-    private static string UserCreatedPayload(string? username = "username")
+    private static string UserCreatedPayload(string? username = "username", string identityId = "identity-id")
     {
         return JsonSerializer.Serialize(new
         {
             type = "user.created",
             data = new
             {
-                id = "identity-id",
+                id = identityId,
                 username,
                 first_name = "first-name",
                 last_name = "last-name",

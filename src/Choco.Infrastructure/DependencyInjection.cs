@@ -1,13 +1,16 @@
 using System.Net.Http.Headers;
 
 using Choco.Application.Abstractions.Authentication;
+using Choco.Application.Abstractions.Authorization;
 using Choco.Domain.Primitives.Persistence;
+using Choco.Domain.Roles;
 using Choco.Domain.Users;
 using Choco.Infrastructure.Authentication;
 using Choco.Infrastructure.Options;
 using Choco.Infrastructure.Persistence;
 using Choco.Infrastructure.Persistence.Interceptors;
 using Choco.Infrastructure.Persistence.Repositories;
+using Choco.Infrastructure.Persistence.Seeding;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -34,6 +37,8 @@ public static class DependencyInjection
             options.UseNpgsql(databaseOptions.ConnectionString);
             options.UseSnakeCaseNamingConvention();
             options.AddInterceptors(softDeleteInterceptor, auditInterceptor);
+            options.UseSeeding(SystemRoleSeeder.Seed);
+            options.UseAsyncSeeding(SystemRoleSeeder.SeedAsync);
         });
 
         services.AddSingleton(TimeProvider.System);
@@ -41,6 +46,10 @@ public static class DependencyInjection
         services.AddSingleton<SoftDeleteInterceptor>();
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<ChocoDbContext>());
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+
+        services.AddOptions<AdministratorBootstrapOptions>()
+            .Bind(configuration.GetSection(AdministratorBootstrapOptions.SectionName));
 
         services.AddOptions<ClerkOptions>()
             .Bind(configuration.GetSection(ClerkOptions.SectionName))

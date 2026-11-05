@@ -1,5 +1,3 @@
-using System.Reflection;
-
 using Choco.SharedKernel.Results;
 
 using FluentValidation;
@@ -47,18 +45,6 @@ internal sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavio
             return await next(cancellationToken);
         }
 
-        return CreateFailure(new ValidationError(errors));
-    }
-
-    private static TResponse CreateFailure(Error error)
-    {
-        if (typeof(TResponse) == typeof(Result))
-        {
-            return (TResponse)Result.Failure(error);
-        }
-
-        MethodInfo failure = typeof(TResponse).GetMethod(nameof(Result.Failure), [typeof(Error)])!;
-
-        return (TResponse)failure.Invoke(null, [error])!;
+        return FailureResult.Create<TResponse>(new ValidationError(errors));
     }
 }

@@ -1,4 +1,5 @@
 using Choco.Application.Abstractions.Authentication;
+using Choco.Application.Abstractions.Authorization;
 using Choco.Application.Abstractions.Behaviors;
 
 using FluentValidation;
@@ -15,12 +16,15 @@ public static class DependencyInjection
         {
             config.RegisterServicesFromAssembly(AssemblyReference.Assembly);
             config.AddOpenBehavior(typeof(LoggingBehavior<,>));
+            config.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
             config.AddOpenBehavior(typeof(ValidationBehavior<,>));
         });
 
         services.AddValidatorsFromAssembly(AssemblyReference.Assembly, includeInternalTypes: true);
+        services.AddAuthorizersFromAssembly(AssemblyReference.Assembly);
 
         services.AddScoped<ICurrentUser, CurrentUser>();
+        services.AddScoped<IPermissionChecker, PermissionChecker>();
 
         return services;
     }

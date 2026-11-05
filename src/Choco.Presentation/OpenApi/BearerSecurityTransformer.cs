@@ -46,7 +46,6 @@ internal sealed class BearerSecurityTransformer : IOpenApiDocumentTransformer, I
 
         operation.Responses ??= [];
         operation.Responses.TryAdd("401", new OpenApiResponse { Description = "The bearer token is missing, expired or invalid." });
-        operation.Responses.TryAdd("403", new OpenApiResponse { Description = "The authenticated user is not allowed to perform this operation." });
 
         return Task.CompletedTask;
     }

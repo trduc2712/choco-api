@@ -1,7 +1,9 @@
 using Choco.Application.Abstractions.Authentication;
 using Choco.Infrastructure.Persistence;
+using Choco.Infrastructure.Persistence.Seeding;
 using Choco.IntegrationTests.Authentication;
 using Choco.IntegrationTests.Webhooks;
+using Choco.Presentation.Authorization;
 
 using MartinCostello.Logging.XUnit;
 
@@ -25,6 +27,7 @@ namespace Choco.IntegrationTests;
 public class ChocoApiFactory : WebApplicationFactory<Program>, IAsyncLifetime, ITestOutputHelperAccessor
 {
     public const string IdentityProviderSecretKey = "sk_test_secret-key";
+    public const string BootstrapAdminIdentityId = "bootstrap-identity-id";
 
     public static readonly DateTimeOffset StartTime = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
     public static readonly Uri IdentityProviderUrl = new("https://identity-provider.example.com/v1/");
@@ -50,10 +53,18 @@ public class ChocoApiFactory : WebApplicationFactory<Program>, IAsyncLifetime, I
     {
         UseTestSettings(builder, _connectionString);
 
+        builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["Authorization:BootstrapAdminIdentityIds:0"] = BootstrapAdminIdentityId
+            }));
+
         builder.ConfigureLogging(logging => logging.ClearProviders().AddXUnit(this));
 
         builder.ConfigureTestServices(services =>
         {
+            services.Remove(services.Single(descriptor =>
+                descriptor.ImplementationType == typeof(AdministratorBootstrapHostedService)));
             services.Replace(ServiceDescriptor.Singleton<TimeProvider>(TimeProvider));
             services.AddHttpClient(nameof(IIdentityProvider))
                 .ConfigurePrimaryHttpMessageHandler(() => IdentityProvider);
@@ -82,12 +93,18 @@ public class ChocoApiFactory : WebApplicationFactory<Program>, IAsyncLifetime, I
     public async Task ResetAsync()
     {
         OutputHelper = TestContext.Current.TestOutputHelper;
-        TimeProvider.SetUtcNow(StartTime);
+        TimeProvider.AdjustTime(StartTime);
         IdentityProvider.Reset();
 
         await using NpgsqlConnection connection = await OpenConnectionAsync();
 
         await _respawner.ResetAsync(connection);
+
+        await ExecuteDbContextAsync(async dbContext =>
+        {
+            await SystemRoleSeeder.SeedAsync(dbContext, true, TestContext.Current.CancellationToken);
+            return 0;
+        });
     }
 
     internal async Task<T> ExecuteDbContextAsync<T>(Func<ChocoDbContext, Task<T>> action)
