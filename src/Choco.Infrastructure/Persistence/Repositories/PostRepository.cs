@@ -14,4 +14,28 @@ internal sealed class PostRepository : Repository<Post>, IPostRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(post => post.Id == id, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Post>> ListByAuthorForReadAsync(
+        Guid authorId,
+        (DateTimeOffset CreatedAt, Guid Id)? after,
+        int count,
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable<Post> posts = DbSet
+            .AsNoTracking()
+            .Where(post => post.AuthorId == authorId);
+
+        if (after is { } position)
+        {
+            posts = posts.Where(post => EF.Functions.LessThan(
+                ValueTuple.Create(post.CreatedAt, post.Id),
+                ValueTuple.Create(position.CreatedAt, position.Id)));
+        }
+
+        return await posts
+            .OrderByDescending(post => post.CreatedAt)
+            .ThenByDescending(post => post.Id)
+            .Take(count)
+            .ToListAsync(cancellationToken);
+    }
 }
