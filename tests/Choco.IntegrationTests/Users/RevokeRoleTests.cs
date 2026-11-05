@@ -62,6 +62,22 @@ public sealed class RevokeRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
     }
 
     [Fact]
+    public async Task CallerLackingAPermissionOfTheRole_ReturnsForbiddenAndKeepsRole()
+    {
+        Guid adminRoleId = await GetRoleIdAsync(SystemRoles.Admin);
+        Guid roleManagerRoleId = await AddRoleManagerRoleAsync();
+        await AddUserAsync("identity-id", "username", roleManagerRoleId);
+        await AddUserAsync("identity-id-3", "username-3", adminRoleId);
+        User target = await AddUserAsync("identity-id-2", "username-2", adminRoleId);
+        using HttpRequestMessage request = CreateRequest(target.Id, adminRoleId);
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        await ShouldBeProblemAsync(response, HttpStatusCode.Forbidden, "Permission.Denied");
+        (await GetUserAsync(target.Id)).HoldsRole(adminRoleId).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task AdminRevokesRoleFromAnotherAdmin_RemovesItAndReturnsNoContent()
     {
         Guid adminRoleId = await GetRoleIdAsync(SystemRoles.Admin);
@@ -186,6 +202,18 @@ public sealed class RevokeRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ProblemDetails problem = (await response.Content.ReadFromJsonAsync<ProblemDetails>(TestContext.Current.CancellationToken))!;
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be(code);
+    }
+
+    private async Task<Guid> AddRoleManagerRoleAsync()
+    {
+        Role role = Role.CreateSystem(new SystemRoleDefinition("role-manager", "Role Manager", IsDefault: false, Permissions: [Permission.AssignRoles]));
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Add(role);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+
+        return role.Id;
     }
 
     private Task<Guid> GetRoleIdAsync(string systemKey)

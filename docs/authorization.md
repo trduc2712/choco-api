@@ -49,5 +49,4 @@ The seeder only creates system roles that are missing; it never changes a role t
 ## Known Gaps
 
 - There are no endpoints to create, rename or delete roles or to change their permissions. Changing a role needs a migration.
-- The rule that a user only assigns or revokes roles whose permissions they hold has no integration test that fails without it: the catalog has one permission, and every caller who passes the permission check holds it.
 - A request with an authorizer whose endpoint does not declare `403` is missing `403` in the OpenAPI document, and nothing reports it.

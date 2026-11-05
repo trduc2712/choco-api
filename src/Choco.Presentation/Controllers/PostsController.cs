@@ -71,6 +71,33 @@ public sealed class PostsController : ApiController
     }
 
     /// <summary>
+    /// Deletes a post.
+    /// </summary>
+    /// <remarks>
+    /// The author may delete their own post; a caller with the permission to delete any post may delete any post.
+    /// A deleted post is no longer found, so deleting it again returns 404.
+    /// </remarks>
+    /// <param name="id" example="00000000-0000-0000-0000-000000000001">The post's id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="204">The post was deleted.</response>
+    /// <response code="400">The id is empty; errors lists the field.</response>
+    /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="403">The caller is not the author and may not delete other users' posts.</response>
+    /// <response code="404">No post has this id.</response>
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        Result result = await Sender.Send(new DeletePostCommand(id), cancellationToken);
+
+        return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
+
+    /// <summary>
     /// Gets a post by its id.
     /// </summary>
     /// <remarks>

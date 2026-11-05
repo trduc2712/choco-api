@@ -159,4 +159,29 @@ public sealed class PostTests
 
         result.IsSuccess.Should().BeTrue();
     }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void CheckCanDelete_AuthorOrPermittedUser_ReturnsSuccess(bool isAuthor, bool canDeleteAnyPost)
+    {
+        Post post = Post.Create("content", AuthorId);
+        Guid userId = isAuthor ? AuthorId : new Guid("6a7b8c9d-0e1f-4a2b-8c3d-4e5f6a7b8c9d");
+
+        Result result = post.CheckCanDelete(userId, canDeleteAnyPost);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CheckCanDelete_AnotherUserWithoutPermission_ReturnsNotAuthor()
+    {
+        Post post = Post.Create("content", AuthorId);
+
+        Result result = post.CheckCanDelete(new Guid("6a7b8c9d-0e1f-4a2b-8c3d-4e5f6a7b8c9d"), canDeleteAnyPost: false);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(PostErrors.NotAuthor);
+    }
 }

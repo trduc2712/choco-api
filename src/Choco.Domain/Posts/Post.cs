@@ -53,6 +53,13 @@ public sealed class Post : AggregateRoot, IAuditable, ISoftDeletable
         return Result.Success();
     }
 
+    public Result CheckCanDelete(Guid userId, bool canDeleteAnyPost)
+    {
+        return userId == AuthorId || canDeleteAnyPost
+            ? Result.Success()
+            : Result.Failure(PostErrors.NotAuthor);
+    }
+
     private static string NormalizeContent(string content)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
