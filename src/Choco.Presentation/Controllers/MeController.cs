@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Choco.Application.Abstractions.Authentication;
 using Choco.Contract.Abstractions;
 using Choco.Contract.Posts;
+using Choco.Contract.Users;
 using Choco.Presentation.Abstractions;
 using Choco.SharedKernel.Results;
 
@@ -25,6 +26,23 @@ public sealed class MeController : ApiController
     public MeController(ISender sender, ICurrentUser currentUser) : base(sender)
     {
         _currentUser = currentUser;
+    }
+
+    /// <summary>Gets the caller's basic profile.</summary>
+    /// <remarks>Any signed-in user may call it. Creates the local account if needed. Returns the stored username, display name and avatar.</remarks>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The caller's profile.</response>
+    /// <response code="400">The account details needed to create the local profile are invalid; errors lists the field.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    [HttpGet("profile")]
+    [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetProfile(CancellationToken cancellationToken)
+    {
+        Result<UserProfileResponse> result = await Sender.Send(new GetMyProfileQuery(), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
     }
 
     [HttpGet]

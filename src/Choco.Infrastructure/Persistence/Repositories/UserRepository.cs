@@ -8,6 +8,11 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
 {
     public UserRepository(ChocoDbContext dbContext) : base(dbContext) { }
 
+    public Task<User?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return DbSet.AsNoTracking().FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
+    }
+
     public Task<bool> ExistsByIdentityIdIncludingDeletedAsync(string identityId, CancellationToken cancellationToken = default)
     {
         return DbSet

@@ -17,6 +17,26 @@ public sealed class UsersController : ApiController
 {
     public UsersController(ISender sender) : base(sender) { }
 
+    /// <summary>Gets a user's basic profile.</summary>
+    /// <remarks>Any signed-in user with an active account may view this profile. Deleted users are not found. Session and role information is not returned.</remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The user's id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The user's profile.</response>
+    /// <response code="400">The id is empty, or the caller's account details needed to create the local profile are invalid; errors lists the field.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">The user does not exist or is deleted.</response>
+    [HttpGet("{userId:guid}")]
+    [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProfile(Guid userId, CancellationToken cancellationToken)
+    {
+        Result<UserProfileResponse> result = await Sender.Send(new GetUserProfileQuery(userId), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
     /// <summary>
     /// Assigns a role to a user.
     /// </summary>
