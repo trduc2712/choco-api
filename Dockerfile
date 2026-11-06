@@ -11,12 +11,11 @@ COPY --link src/Choco.Contract/Choco.Contract.csproj src/Choco.Contract/
 COPY --link src/Choco.Application/Choco.Application.csproj src/Choco.Application/
 COPY --link src/Choco.Infrastructure/Choco.Infrastructure.csproj src/Choco.Infrastructure/
 COPY --link src/Choco.Presentation/Choco.Presentation.csproj src/Choco.Presentation/
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet restore src/Choco.Presentation/Choco.Presentation.csproj -a $TARGETARCH
+# Keep packages in the restore layer so --no-restore works even when a builder's cache mounts are empty.
+RUN dotnet restore src/Choco.Presentation/Choco.Presentation.csproj -a $TARGETARCH
 
 COPY --link . .
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet publish src/Choco.Presentation/Choco.Presentation.csproj \
+RUN dotnet publish src/Choco.Presentation/Choco.Presentation.csproj \
         -c Release -a $TARGETARCH --no-restore -o /app -p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.14-noble-chiseled@sha256:c89a6a61f494f20a5ae302990e814627a8d91b332fd4a8e7c1707c2d4da9555d AS final
