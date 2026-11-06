@@ -6,3 +6,4 @@ Never run `DbReset`; ask the user to run it.
 Always ask the user before running `MigrationAdd` or `MigrationApply`.
 Name migrations by `docs/migration-naming.md`.
 Write test data by `docs/test-data.md`.
+Always create a separate branch before committing. Never commit directly to `main`. Use a branch prefix that matches the change type, such as `docs/` for documentation changes.
