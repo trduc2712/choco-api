@@ -39,6 +39,7 @@
         "DbDown",
         "DbReset",
         "DbUp",
+        "DockerBuild",
         "Format",
         "FormatCheck",
         "MigrationAdd",

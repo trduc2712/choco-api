@@ -114,6 +114,10 @@ class Build : NukeBuild
         .Description("Run the API with hot reload")
         .Executes(() => DotNet($"watch --project {ApiProject} run"));
 
+    Target DockerBuild => _ => _
+        .Description("Build the API container image locally")
+        .Executes(() => Docker("build --progress plain --tag choco-api:local ."));
+
     Target DbUp => _ => _
         .Description("Start Postgres in Docker and wait until it is healthy")
         .Executes(() => Docker($"compose -f {ComposeFile} up -d --wait postgres"));
