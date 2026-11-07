@@ -13,6 +13,11 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
         return DbSet.AsNoTracking().FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
     }
 
+    public Task<User?> GetByUsernameForReadAsync(string username, CancellationToken cancellationToken = default)
+    {
+        return DbSet.AsNoTracking().FirstOrDefaultAsync(user => user.Username == username, cancellationToken);
+    }
+
     public Task<bool> ExistsByIdentityIdIncludingDeletedAsync(string identityId, CancellationToken cancellationToken = default)
     {
         return DbSet
