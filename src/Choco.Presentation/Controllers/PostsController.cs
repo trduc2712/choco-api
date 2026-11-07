@@ -1,3 +1,5 @@
+using Asp.Versioning;
+
 using Choco.Contract.Posts;
 using Choco.Presentation.Abstractions;
 using Choco.SharedKernel.Results;
@@ -12,7 +14,8 @@ namespace Choco.Presentation.Controllers;
 /// <summary>
 /// Text posts that users publish.
 /// </summary>
-[Route("api/posts")]
+[Route("api/v{version:apiVersion}/posts")]
+[ApiVersion(1.0)]
 public sealed class PostsController : ApiController
 {
     public PostsController(ISender sender) : base(sender) { }
@@ -38,7 +41,7 @@ public sealed class PostsController : ApiController
         Result<PostResponse> result = await Sender.Send(command, cancellationToken);
 
         return result.IsSuccess
-            ? CreatedAtAction(nameof(GetById), new { id = result.Value.Id }, result.Value)
+            ? CreatedAtAction(nameof(GetById), new { version = RouteData.Values["version"], id = result.Value.Id }, result.Value)
             : HandleFailure(result);
     }
 

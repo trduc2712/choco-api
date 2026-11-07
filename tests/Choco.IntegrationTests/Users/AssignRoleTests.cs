@@ -40,7 +40,7 @@ public sealed class AssignRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
     {
         Guid adminRoleId = await GetRoleIdAsync(SystemRoles.Admin);
         User target = await AddUserAsync("identity-id-2", "username-2");
-        using HttpRequestMessage request = new(HttpMethod.Put, $"/api/users/{target.Id}/roles/{adminRoleId}");
+        using HttpRequestMessage request = new(HttpMethod.Put, $"/api/v1/users/{target.Id}/roles/{adminRoleId}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -209,7 +209,7 @@ public sealed class AssignRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
 
     private static HttpRequestMessage CreateRequest(Guid userId, Guid roleId)
     {
-        HttpRequestMessage request = new(HttpMethod.Put, $"/api/users/{userId}/roles/{roleId}");
+        HttpRequestMessage request = new(HttpMethod.Put, $"/api/v1/users/{userId}/roles/{roleId}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", TestJwt.Create(DateTimeOffset.UtcNow));
 
         return request;

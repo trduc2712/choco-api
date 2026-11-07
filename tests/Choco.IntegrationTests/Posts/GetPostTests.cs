@@ -38,7 +38,7 @@ public sealed class GetPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifetim
     public async Task NoToken_ReturnsUnauthorized()
     {
         Post post = await AddPostAsync();
-        using HttpRequestMessage request = new(HttpMethod.Get, $"/api/posts/{post.Id}");
+        using HttpRequestMessage request = new(HttpMethod.Get, $"/api/v1/posts/{post.Id}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -86,7 +86,7 @@ public sealed class GetPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifetim
 
     private static HttpRequestMessage CreateRequest(Guid id)
     {
-        HttpRequestMessage request = new(HttpMethod.Get, $"/api/posts/{id}");
+        HttpRequestMessage request = new(HttpMethod.Get, $"/api/v1/posts/{id}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", TestJwt.Create(DateTimeOffset.UtcNow));
 
         return request;

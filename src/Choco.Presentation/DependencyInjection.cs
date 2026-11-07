@@ -1,5 +1,7 @@
 using System.Security.Claims;
 
+using Asp.Versioning;
+
 using Choco.Application.Abstractions.Authentication;
 using Choco.Presentation.Authentication;
 using Choco.Presentation.Authorization;
@@ -25,8 +27,20 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        services.AddApiDocumentation(configuration);
         services.AddControllers();
+        services.AddApiVersioning(options =>
+        {
+            options.DefaultApiVersion = new ApiVersion(1, 0);
+            options.ReportApiVersions = true;
+            options.ApiVersionReader = new UrlSegmentApiVersionReader();
+        })
+        .AddMvc()
+        .AddApiExplorer(options =>
+        {
+            options.GroupNameFormat = "'v'VVV";
+            options.SubstituteApiVersionInUrl = true;
+        })
+        .AddApiDocumentation(configuration);
         services.AddHealthChecks();
         services.AddProblemDetails();
         services.AddHttpLogging(options =>

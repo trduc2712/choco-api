@@ -102,7 +102,7 @@ public sealed class RateLimitingTests : IClassFixture<RateLimitingApiFactory>, I
 
     private static HttpRequestMessage CreateMeRequest(string identityId)
     {
-        HttpRequestMessage request = new(HttpMethod.Get, "/api/me");
+        HttpRequestMessage request = new(HttpMethod.Get, "/api/v1/me");
         request.Headers.Authorization = new AuthenticationHeaderValue(
             "Bearer", TestJwt.Create(DateTimeOffset.UtcNow, subject: identityId));
 

@@ -1,3 +1,8 @@
+using Asp.Versioning;
+using Asp.Versioning.ApiExplorer;
+using Asp.Versioning.OpenApi.Transformers;
+
+using Choco.Contract.Posts;
 using Choco.Presentation.Options;
 
 using Microsoft.Extensions.Options;
@@ -6,18 +11,19 @@ namespace Choco.Presentation.OpenApi;
 
 internal static class OpenApiExtensions
 {
-    private const string DocumentUrl = "/openapi/v1.json";
-
-    public static IServiceCollection AddApiDocumentation(this IServiceCollection services, IConfiguration configuration)
+    public static IApiVersioningBuilder AddApiDocumentation(this IApiVersioningBuilder builder, IConfiguration configuration)
     {
-        services.AddOptions<ApiDocumentationOptions>()
+        builder.Services.AddOptions<ApiDocumentationOptions>()
             .Bind(configuration.GetSection(ApiDocumentationOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        services.AddOpenApi(options =>
+        builder.AddOpenApi(options =>
         {
-            options.AddDocumentTransformer((document, context, _) =>
+            XmlCommentsTransformer contractComments = new(Path.ChangeExtension(typeof(PostResponse).Assembly.Location, ".xml"));
+            options.Document.AddSchemaTransformer(contractComments);
+            options.Document.AddDocumentTransformer(contractComments);
+            options.Document.AddDocumentTransformer((document, context, _) =>
             {
                 ApiDocumentationOptions documentation = context.ApplicationServices
                     .GetRequiredService<IOptions<ApiDocumentationOptions>>().Value;
@@ -26,11 +32,11 @@ internal static class OpenApiExtensions
 
                 return Task.CompletedTask;
             });
-            options.AddDocumentTransformer<BearerSecurityTransformer>();
-            options.AddOperationTransformer<BearerSecurityTransformer>();
+            options.Document.AddDocumentTransformer<BearerSecurityTransformer>();
+            options.Document.AddOperationTransformer<BearerSecurityTransformer>();
         });
 
-        return services;
+        return builder;
     }
 
     public static WebApplication UseApiDocumentation(this WebApplication app)
@@ -47,12 +53,15 @@ internal static class OpenApiExtensions
             OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache"
         });
 
-        app.MapOpenApi().AllowAnonymous();
+        app.MapOpenApi().WithDocumentPerVersion().AllowAnonymous();
 
         app.UseSwaggerUI(options =>
         {
             options.DocumentTitle = documentation.Title;
-            options.SwaggerEndpoint(DocumentUrl, documentation.Title);
+            foreach (ApiVersionDescription version in app.DescribeApiVersions().Reverse())
+            {
+                options.SwaggerEndpoint($"/openapi/{version.GroupName}.json", $"{documentation.Title} {version.GroupName}");
+            }
             options.EnableDeepLinking();
             options.EnableTryItOutByDefault();
             options.DisplayRequestDuration();

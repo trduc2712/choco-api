@@ -36,7 +36,7 @@ public sealed class CreatePostTests : IClassFixture<ChocoApiFactory>, IAsyncLife
     [Fact]
     public async Task NoToken_ReturnsUnauthorized()
     {
-        using HttpRequestMessage request = new(HttpMethod.Post, "/api/posts")
+        using HttpRequestMessage request = new(HttpMethod.Post, "/api/v1/posts")
         {
             Content = JsonContent.Create(new { content = "content" })
         };
@@ -47,8 +47,10 @@ public sealed class CreatePostTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         (await GetPostsAsync()).Should().BeEmpty();
     }
 
-    [Fact]
-    public async Task NewUser_CreatesUserAndPostAndReturnsCreated()
+    [Theory]
+    [InlineData("/api/v1/posts")]
+    [InlineData("/api/v1.0/posts")]
+    public async Task NewUser_CreatesUserAndPostAndReturnsCreated(string path)
     {
         _factory.IdentityProvider.RespondWith(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -62,6 +64,7 @@ public sealed class CreatePostTests : IClassFixture<ChocoApiFactory>, IAsyncLife
             })
         });
         using HttpRequestMessage request = CreateRequest(new { content = "content" });
+        request.RequestUri = new Uri(path, UriKind.Relative);
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -69,7 +72,12 @@ public sealed class CreatePostTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         PostBody body = (await response.Content.ReadFromJsonAsync<PostBody>(TestContext.Current.CancellationToken))!;
         User user = (await GetUsersAsync()).Should().ContainSingle().Subject;
         Post post = (await GetPostsAsync()).Should().ContainSingle().Subject;
-        response.Headers.Location.Should().Be(new Uri(_client.BaseAddress!, $"/api/posts/{post.Id}"));
+        response.Headers.Location.Should().Be(new Uri(_client.BaseAddress!, $"{path}/{post.Id}"));
+        using HttpRequestMessage getRequest = new(HttpMethod.Get, response.Headers.Location);
+        getRequest.Headers.Authorization = request.Headers.Authorization;
+        using HttpResponseMessage resource = await _client.SendAsync(getRequest, TestContext.Current.CancellationToken);
+        resource.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await resource.Content.ReadFromJsonAsync<PostBody>(TestContext.Current.CancellationToken)).Should().Be(body);
         body.Should().Be(new PostBody(post.Id, user.Id, "content", ChocoApiFactory.StartTime, ChocoApiFactory.StartTime));
         post.AuthorId.Should().Be(user.Id);
         post.Content.Should().Be("content");
@@ -116,7 +124,7 @@ public sealed class CreatePostTests : IClassFixture<ChocoApiFactory>, IAsyncLife
 
     private static HttpRequestMessage CreateRequest(object body)
     {
-        HttpRequestMessage request = new(HttpMethod.Post, "/api/posts")
+        HttpRequestMessage request = new(HttpMethod.Post, "/api/v1/posts")
         {
             Content = JsonContent.Create(body)
         };

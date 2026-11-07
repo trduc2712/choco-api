@@ -35,7 +35,7 @@ public sealed class GetMyPostsTests : IClassFixture<ChocoApiFactory>, IAsyncLife
     [Fact]
     public async Task NoToken_ReturnsUnauthorized()
     {
-        using HttpRequestMessage request = new(HttpMethod.Get, "/api/me/posts");
+        using HttpRequestMessage request = new(HttpMethod.Get, "/api/v1/me/posts");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -56,7 +56,7 @@ public sealed class GetMyPostsTests : IClassFixture<ChocoApiFactory>, IAsyncLife
                 image_url = "https://example.com/avatar.png"
             })
         });
-        using HttpRequestMessage request = CreateRequest("/api/me/posts");
+        using HttpRequestMessage request = CreateRequest("/api/v1/me/posts");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -77,7 +77,7 @@ public sealed class GetMyPostsTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         Post newer = await AddPostAsync(caller, "content-3");
         await AddPostAsync(otherUser, "content-4");
         await DeletePostAsync(deleted.Id);
-        using HttpRequestMessage request = CreateRequest("/api/me/posts");
+        using HttpRequestMessage request = CreateRequest("/api/v1/me/posts");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -96,10 +96,10 @@ public sealed class GetMyPostsTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         Post first = await AddPostAsync(caller, "content-1");
         Post second = await AddPostAsync(caller, "content-2");
         Post third = await AddPostAsync(caller, "content-3");
-        using HttpRequestMessage firstRequest = CreateRequest("/api/me/posts?limit=2");
+        using HttpRequestMessage firstRequest = CreateRequest("/api/v1/me/posts?limit=2");
         using HttpResponseMessage firstResponse = await _client.SendAsync(firstRequest, TestContext.Current.CancellationToken);
         PageBody firstPage = (await firstResponse.Content.ReadFromJsonAsync<PageBody>(TestContext.Current.CancellationToken))!;
-        using HttpRequestMessage secondRequest = CreateRequest($"/api/me/posts?limit=2&cursor={firstPage.NextCursor}");
+        using HttpRequestMessage secondRequest = CreateRequest($"/api/v1/me/posts?limit=2&cursor={firstPage.NextCursor}");
 
         using HttpResponseMessage secondResponse = await _client.SendAsync(secondRequest, TestContext.Current.CancellationToken);
 
@@ -118,7 +118,7 @@ public sealed class GetMyPostsTests : IClassFixture<ChocoApiFactory>, IAsyncLife
     public async Task LimitOutOfRange_ReturnsValidationProblem(int limit)
     {
         await AddUserAsync("identity-id", "username");
-        using HttpRequestMessage request = CreateRequest($"/api/me/posts?limit={limit}");
+        using HttpRequestMessage request = CreateRequest($"/api/v1/me/posts?limit={limit}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -129,7 +129,7 @@ public sealed class GetMyPostsTests : IClassFixture<ChocoApiFactory>, IAsyncLife
     public async Task InvalidCursor_ReturnsValidationProblem()
     {
         await AddUserAsync("identity-id", "username");
-        using HttpRequestMessage request = CreateRequest("/api/me/posts?cursor=not-a-cursor");
+        using HttpRequestMessage request = CreateRequest("/api/v1/me/posts?cursor=not-a-cursor");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -145,7 +145,7 @@ public sealed class GetMyPostsTests : IClassFixture<ChocoApiFactory>, IAsyncLife
             dbContext.Remove(dbContext.Set<User>().Single(user => user.Id == caller.Id));
             return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
-        using HttpRequestMessage request = CreateRequest("/api/me/posts");
+        using HttpRequestMessage request = CreateRequest("/api/v1/me/posts");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 

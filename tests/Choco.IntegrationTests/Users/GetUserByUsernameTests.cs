@@ -35,7 +35,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
     [Fact]
     public async Task NoToken_ReturnsUnauthorized()
     {
-        using HttpResponseMessage response = await _client.GetAsync("/api/users/by-username/unknown-username", TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await _client.GetAsync("/api/v1/users/by-username/unknown-username", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -47,7 +47,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
     {
         await AddUserAsync("identity-id", "username", null);
         User target = await AddUserAsync("identity-id-2", "username-2", avatarUrl, "Display Name 2");
-        using HttpRequestMessage request = Request($"/api/users/by-username/{target.Username}");
+        using HttpRequestMessage request = Request($"/api/v1/users/by-username/{target.Username}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -65,7 +65,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
     public async Task UnknownUser_ReturnsNotFound()
     {
         await AddUserAsync("identity-id", "username", null);
-        using HttpRequestMessage request = Request("/api/users/by-username/unknown-username");
+        using HttpRequestMessage request = Request("/api/v1/users/by-username/unknown-username");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -82,7 +82,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
             db.Remove(db.Set<User>().Single(user => user.Id == target.Id));
             return await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
-        using HttpRequestMessage request = Request($"/api/users/by-username/{target.Username}");
+        using HttpRequestMessage request = Request($"/api/v1/users/by-username/{target.Username}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -94,7 +94,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
     {
         await AddUserAsync("identity-id", "username", null);
         await AddUserAsync("identity-id-2", "username-2", null);
-        using HttpRequestMessage request = Request("/api/users/by-username/USERNAME-2");
+        using HttpRequestMessage request = Request("/api/v1/users/by-username/USERNAME-2");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -112,7 +112,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
             return await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
         User active = await AddUserAsync("identity-id-3", "username-2", null, "Display Name 3");
-        using HttpRequestMessage request = Request("/api/users/by-username/username-2");
+        using HttpRequestMessage request = Request("/api/v1/users/by-username/username-2");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -126,7 +126,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
     public async Task TooLongUsername_ReturnsValidationProblem()
     {
         await AddUserAsync("identity-id", "username", null);
-        using HttpRequestMessage request = Request($"/api/users/by-username/{new string('u', User.UsernameMaxLength + 1)}");
+        using HttpRequestMessage request = Request($"/api/v1/users/by-username/{new string('u', User.UsernameMaxLength + 1)}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -148,7 +148,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
             db.Remove(db.Set<User>().Single(user => user.Id == caller.Id));
             return await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
-        using HttpRequestMessage request = Request("/api/users/by-username/unknown-username");
+        using HttpRequestMessage request = Request("/api/v1/users/by-username/unknown-username");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -174,7 +174,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
                 image_url = "https://example.com/avatar.png"
             })
         });
-        using HttpRequestMessage request = Request($"/api/users/by-username/{target.Username}");
+        using HttpRequestMessage request = Request($"/api/v1/users/by-username/{target.Username}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -199,7 +199,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
     public async Task CallerMissingFromIdentityProvider_ReturnsUnauthorizedAndCreatesNoUser()
     {
         _factory.IdentityProvider.RespondWith(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
-        using HttpRequestMessage request = Request("/api/users/by-username/unknown-username");
+        using HttpRequestMessage request = Request("/api/v1/users/by-username/unknown-username");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -227,7 +227,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
                 image_url = "https://example.com/avatar.png"
             })
         });
-        using HttpRequestMessage request = Request("/api/users/by-username/unknown-username");
+        using HttpRequestMessage request = Request("/api/v1/users/by-username/unknown-username");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 

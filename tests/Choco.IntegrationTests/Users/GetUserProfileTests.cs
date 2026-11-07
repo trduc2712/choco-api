@@ -35,7 +35,7 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
     [Fact]
     public async Task NoToken_ReturnsUnauthorized()
     {
-        using HttpResponseMessage response = await _client.GetAsync("/api/users/00000000-0000-0000-0000-000000000001", TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await _client.GetAsync("/api/v1/users/00000000-0000-0000-0000-000000000001", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -47,7 +47,7 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
     {
         await AddUserAsync("identity-id", "username", null);
         User target = await AddUserAsync("identity-id-2", "username-2", avatarUrl, "Display Name 2");
-        using HttpRequestMessage request = Request($"/api/users/{target.Id}");
+        using HttpRequestMessage request = Request($"/api/v1/users/{target.Id}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -65,7 +65,7 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
     public async Task UnknownUser_ReturnsNotFound()
     {
         await AddUserAsync("identity-id", "username", null);
-        using HttpRequestMessage request = Request("/api/users/00000000-0000-0000-0000-000000000001");
+        using HttpRequestMessage request = Request("/api/v1/users/00000000-0000-0000-0000-000000000001");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -82,7 +82,7 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
             db.Remove(db.Set<User>().Single(user => user.Id == target.Id));
             return await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
-        using HttpRequestMessage request = Request($"/api/users/{target.Id}");
+        using HttpRequestMessage request = Request($"/api/v1/users/{target.Id}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -93,7 +93,7 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
     public async Task EmptyUserId_ReturnsValidationProblem()
     {
         await AddUserAsync("identity-id", "username", null);
-        using HttpRequestMessage request = Request($"/api/users/{Guid.Empty}");
+        using HttpRequestMessage request = Request($"/api/v1/users/{Guid.Empty}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -115,7 +115,7 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
             db.Remove(db.Set<User>().Single(user => user.Id == caller.Id));
             return await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
-        using HttpRequestMessage request = Request("/api/users/00000000-0000-0000-0000-000000000001");
+        using HttpRequestMessage request = Request("/api/v1/users/00000000-0000-0000-0000-000000000001");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -141,7 +141,7 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
                 image_url = "https://example.com/avatar.png"
             })
         });
-        using HttpRequestMessage request = Request($"/api/users/{target.Id}");
+        using HttpRequestMessage request = Request($"/api/v1/users/{target.Id}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -166,7 +166,7 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
     public async Task CallerMissingFromIdentityProvider_ReturnsUnauthorizedAndCreatesNoUser()
     {
         _factory.IdentityProvider.RespondWith(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
-        using HttpRequestMessage request = Request("/api/users/00000000-0000-0000-0000-000000000001");
+        using HttpRequestMessage request = Request("/api/v1/users/00000000-0000-0000-0000-000000000001");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -194,7 +194,7 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
                 image_url = "https://example.com/avatar.png"
             })
         });
-        using HttpRequestMessage request = Request("/api/users/00000000-0000-0000-0000-000000000001");
+        using HttpRequestMessage request = Request("/api/v1/users/00000000-0000-0000-0000-000000000001");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
