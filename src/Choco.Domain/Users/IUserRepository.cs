@@ -6,6 +6,8 @@ public interface IUserRepository : IRepository<User>
 {
     Task<User?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<User?> GetByUsernameForReadAsync(string username, CancellationToken cancellationToken = default);
+
     Task<bool> ExistsByIdentityIdIncludingDeletedAsync(string identityId, CancellationToken cancellationToken = default);
 
     Task<User?> GetByIdentityIdIncludingDeletedAsync(string identityId, CancellationToken cancellationToken = default);
