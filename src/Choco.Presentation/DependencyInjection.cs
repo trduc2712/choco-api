@@ -27,6 +27,11 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddCors(options => options.AddDefaultPolicy(policy => policy
+            .WithOrigins(configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
+            .AllowAnyHeader()
+            .AllowAnyMethod()));
+
         services.AddControllers();
         services.AddApiVersioning(options =>
         {
