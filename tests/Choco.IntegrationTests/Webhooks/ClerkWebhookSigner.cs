@@ -14,7 +14,7 @@ internal static class ClerkWebhookSigner
     {
         Webhook webhook = new(SigningSecret);
 
-        HttpRequestMessage request = new(HttpMethod.Post, "/api/webhooks/clerk")
+        HttpRequestMessage request = new(HttpMethod.Post, "/api/v1/webhooks/clerk")
         {
             Content = new StringContent(payload, Encoding.UTF8, "application/json")
         };

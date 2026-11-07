@@ -95,6 +95,12 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
         paths.TryGetProperty("/api/v1/me/profile", out _).Should().BeTrue();
         paths.TryGetProperty("/api/v1/users/{userId}", out _).Should().BeTrue();
         paths.TryGetProperty("/api/posts", out _).Should().BeFalse();
+        paths.TryGetProperty("/api/webhooks/clerk", out _).Should().BeFalse();
+        JsonElement webhook = paths.GetProperty("/api/v1/webhooks/clerk").GetProperty("post");
+        webhook.GetProperty("summary").GetString().Should().Be("Receives a Clerk webhook.");
+        webhook.GetProperty("description").GetString().Should().Contain("signature");
+        webhook.GetProperty("responses").EnumerateObject().Select(status => status.Name).Should().Contain(["200", "400", "401"]);
+        webhook.TryGetProperty("security", out _).Should().BeFalse();
         paths.EnumerateObject().Should().NotContain(path => path.Name.Contains("{version}"));
         JsonElement createPost = paths.GetProperty("/api/v1/posts").GetProperty("post");
         createPost.GetProperty("summary").GetString().Should().Be("Publishes a post.");

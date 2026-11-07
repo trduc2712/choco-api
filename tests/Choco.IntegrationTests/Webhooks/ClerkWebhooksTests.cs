@@ -32,6 +32,22 @@ public sealed class ClerkWebhooksTests : IClassFixture<ChocoApiFactory>, IAsyncL
         return ValueTask.CompletedTask;
     }
 
+    [Theory]
+    [InlineData("/api/webhooks/clerk")]
+    [InlineData("/api/v2/webhooks/clerk")]
+    [InlineData("/api/v1.1/webhooks/clerk")]
+    [InlineData("/api/vinvalid/webhooks/clerk")]
+    public async Task MissingOrUnsupportedVersion_ReturnsNotFoundAndCreatesNoUser(string path)
+    {
+        using HttpRequestMessage request = ClerkWebhookSigner.CreateSignedRequest(UserCreatedPayload(), "message-id", DateTimeOffset.UtcNow);
+        request.RequestUri = new Uri(path, UriKind.Relative);
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await GetUsersAsync()).Should().BeEmpty();
+    }
+
     [Fact]
     public async Task InvalidSignature_ReturnsUnauthorized()
     {
