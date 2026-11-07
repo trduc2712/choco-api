@@ -17,8 +17,11 @@ using Svix.Exceptions;
 
 namespace Choco.Presentation.Controllers;
 
-[Route("api/webhooks/clerk")]
-[ApiVersionNeutral]
+/// <summary>
+/// Signed Clerk events that synchronize local users.
+/// </summary>
+[Route("api/v{version:apiVersion}/webhooks/clerk")]
+[ApiVersion(1.0)]
 [AllowAnonymous]
 public sealed class ClerkWebhooksController : ApiController
 {
@@ -36,7 +39,19 @@ public sealed class ClerkWebhooksController : ApiController
         _webhook = webhook;
     }
 
+    /// <summary>Receives a Clerk webhook.</summary>
+    /// <remarks>
+    /// Requires a valid webhook signature in the svix-id, svix-timestamp and svix-signature headers; no bearer token is needed.
+    /// A user.created event creates the local user. Repeated events for the same identity and other event types are acknowledged without creating another user.
+    /// </remarks>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The event was processed or acknowledged.</response>
+    /// <response code="400">The user details are invalid; errors lists the field.</response>
+    /// <response code="401">The webhook signature or timestamp is missing or invalid.</response>
     [HttpPost]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Receive(CancellationToken cancellationToken)
     {
         using StreamReader reader = new(Request.Body);

@@ -1,12 +1,13 @@
 # API Versioning
 
-Client-facing endpoints require a version in the URL. Version 1 is the current
+API endpoints require a version in the URL. Version 1 is the current
 contract:
 
 - `/api/v1/me`, `/api/v1/me/profile` and `/api/v1/me/posts`
 - `/api/v1/posts` and `/api/v1/posts/{id}`
 - `/api/v1/users/{userId}` and `/api/v1/users/{userId}/roles/{roleId}`
 - `/api/v1/users/by-username/{username}`
+- `/api/v1/webhooks/clerk`
 
 The previous `/api/me`, `/api/posts` and `/api/users/...` routes are removed.
 Clients must update their URLs; there is no default route or redirect. Query
@@ -30,8 +31,11 @@ When API documentation is enabled, `/openapi/v1.json` describes version 1 and
 Swagger UI at `/swagger` lists the supported version documents. Each document
 uses concrete versioned URLs, so Try it out sends requests to that version.
 
-The signed Clerk webhook at `/api/webhooks/clerk` is version-neutral and retains
-its existing URL. The health endpoint remains `/health`.
+The signed Clerk webhook requires `/api/v1/webhooks/clerk`; the previous
+`/api/webhooks/clerk` URL is removed. Update the webhook endpoint URL in each
+Clerk environment, including local tunnels. Signature verification still
+protects the endpoint and no bearer token is required. The health endpoint
+remains `/health`.
 
 ## Adding a Version
 

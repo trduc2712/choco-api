@@ -40,7 +40,7 @@ Every developer has their own tunnel and their own Clerk webhook endpoint.
    ```
 
 4. In the Clerk Dashboard of the development instance, open **Configure → Webhooks** and add an endpoint:
-   - URL: `<tunnel-url>/api/webhooks/clerk`
+   - URL: `<tunnel-url>/api/v1/webhooks/clerk`
    - Events: all `user.*` events
 
 5. Copy the endpoint's signing secret and store it in user secrets:
