@@ -19,6 +19,8 @@ app.UseStatusCodePages();
 app.UseApiDocumentation();
 
 app.UseHttpsRedirection();
+app.UseRouting();
+app.UseCors();
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();

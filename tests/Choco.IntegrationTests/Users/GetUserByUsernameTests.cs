@@ -7,7 +7,9 @@ using Choco.Domain.Users;
 using Choco.IntegrationTests.Authentication;
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace Choco.IntegrationTests.Users;
 
@@ -30,6 +32,30 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
     public ValueTask DisposeAsync()
     {
         return ValueTask.CompletedTask;
+    }
+
+    [Fact]
+    public async Task BrowserPreflight_AllowsConfiguredOriginAndAuthorizationHeader()
+    {
+        const string origin = "https://choco-web.example.test";
+        await using WebApplicationFactory<Program> factory = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?> { ["Cors:AllowedOrigins:0"] = origin })));
+        using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new("https://localhost"),
+            AllowAutoRedirect = false,
+        });
+        using HttpRequestMessage request = new(HttpMethod.Options, "/api/v1/users/by-username/unknown-username");
+        request.Headers.Add("Origin", origin);
+        request.Headers.Add("Access-Control-Request-Method", "GET");
+        request.Headers.Add("Access-Control-Request-Headers", "authorization");
+
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        response.Headers.GetValues("Access-Control-Allow-Origin").Should().Equal(origin);
+        response.Headers.GetValues("Access-Control-Allow-Headers").Should().Contain("authorization");
     }
 
     [Fact]
