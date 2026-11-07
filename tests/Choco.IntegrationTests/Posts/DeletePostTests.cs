@@ -41,7 +41,7 @@ public sealed class DeletePostTests : IClassFixture<ChocoApiFactory>, IAsyncLife
     {
         User author = await AddUserAsync("identity-id", "username");
         Post post = await AddPostAsync(author);
-        using HttpRequestMessage request = new(HttpMethod.Delete, $"/api/posts/{post.Id}");
+        using HttpRequestMessage request = new(HttpMethod.Delete, $"/api/v1/posts/{post.Id}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -124,7 +124,7 @@ public sealed class DeletePostTests : IClassFixture<ChocoApiFactory>, IAsyncLife
 
     private static HttpRequestMessage CreateRequest(Guid id)
     {
-        HttpRequestMessage request = new(HttpMethod.Delete, $"/api/posts/{id}");
+        HttpRequestMessage request = new(HttpMethod.Delete, $"/api/v1/posts/{id}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", TestJwt.Create(DateTimeOffset.UtcNow));
 
         return request;

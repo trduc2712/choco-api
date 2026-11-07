@@ -34,7 +34,7 @@ A new environment has no administrator, so nobody can assign roles. The first ad
    - at the next start of the API, if their user already exists in the database;
    - when their user is created, by the `user.created` webhook or their first request, if it does not exist yet.
 
-The assignment records no assigner (`assigned_by` is null). It only adds the role: removing an id from the setting does not revoke anything. Revoke a role with `DELETE /api/users/{userId}/roles/{roleId}`.
+The assignment records no assigner (`assigned_by` is null). It only adds the role: removing an id from the setting does not revoke anything. Revoke a role with `DELETE /api/v1/users/{userId}/roles/{roleId}`.
 
 If the setting is not empty and the API cannot reach the database at start, the API does not start. The administrator role is created by the migration that adds the `roles` table, so apply the setting after that migration has run in the environment; before it, the deployed code ignores the setting.
 

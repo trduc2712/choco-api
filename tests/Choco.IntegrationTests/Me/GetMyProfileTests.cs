@@ -35,7 +35,7 @@ public sealed class GetMyProfileTests : IClassFixture<ChocoApiFactory>, IAsyncLi
     [Fact]
     public async Task NoToken_ReturnsUnauthorized()
     {
-        using HttpResponseMessage response = await _client.GetAsync("/api/me/profile", TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await _client.GetAsync("/api/v1/me/profile", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -52,7 +52,7 @@ public sealed class GetMyProfileTests : IClassFixture<ChocoApiFactory>, IAsyncLi
             return db.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
         User target = await AddUserAsync("identity-id", "username", avatarUrl);
-        using HttpRequestMessage request = Request("/api/me/profile");
+        using HttpRequestMessage request = Request("/api/v1/me/profile");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -75,7 +75,7 @@ public sealed class GetMyProfileTests : IClassFixture<ChocoApiFactory>, IAsyncLi
             db.Remove(db.Set<User>().Single(user => user.Id == caller.Id));
             return await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
-        using HttpRequestMessage request = Request("/api/me/profile");
+        using HttpRequestMessage request = Request("/api/v1/me/profile");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -100,7 +100,7 @@ public sealed class GetMyProfileTests : IClassFixture<ChocoApiFactory>, IAsyncLi
                 image_url = "https://example.com/avatar.png"
             })
         });
-        using HttpRequestMessage request = Request("/api/me/profile");
+        using HttpRequestMessage request = Request("/api/v1/me/profile");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -125,7 +125,7 @@ public sealed class GetMyProfileTests : IClassFixture<ChocoApiFactory>, IAsyncLi
     public async Task CallerMissingFromIdentityProvider_ReturnsUnauthorizedAndCreatesNoUser()
     {
         _factory.IdentityProvider.RespondWith(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
-        using HttpRequestMessage request = Request("/api/me/profile");
+        using HttpRequestMessage request = Request("/api/v1/me/profile");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -153,7 +153,7 @@ public sealed class GetMyProfileTests : IClassFixture<ChocoApiFactory>, IAsyncLi
                 image_url = "https://example.com/avatar.png"
             })
         });
-        using HttpRequestMessage request = Request("/api/me/profile");
+        using HttpRequestMessage request = Request("/api/v1/me/profile");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 

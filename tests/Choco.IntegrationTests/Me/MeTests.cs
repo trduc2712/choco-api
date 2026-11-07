@@ -38,7 +38,7 @@ public sealed class MeTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
     [Fact]
     public async Task NoToken_ReturnsUnauthorized()
     {
-        using HttpRequestMessage request = new(HttpMethod.Get, "/api/me");
+        using HttpRequestMessage request = new(HttpMethod.Get, "/api/v1/me");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -183,7 +183,7 @@ public sealed class MeTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
 
     private static HttpRequestMessage CreateRequest(string token)
     {
-        HttpRequestMessage request = new(HttpMethod.Get, "/api/me");
+        HttpRequestMessage request = new(HttpMethod.Get, "/api/v1/me");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         return request;

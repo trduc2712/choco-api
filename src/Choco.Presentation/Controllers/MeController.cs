@@ -1,5 +1,7 @@
 using System.Security.Claims;
 
+using Asp.Versioning;
+
 using Choco.Application.Abstractions.Authentication;
 using Choco.Contract.Abstractions;
 using Choco.Contract.Posts;
@@ -18,7 +20,8 @@ namespace Choco.Presentation.Controllers;
 /// <summary>
 /// The signed-in user and what belongs to them.
 /// </summary>
-[Route("api/me")]
+[Route("api/v{version:apiVersion}/me")]
+[ApiVersion(1.0)]
 public sealed class MeController : ApiController
 {
     private readonly ICurrentUser _currentUser;

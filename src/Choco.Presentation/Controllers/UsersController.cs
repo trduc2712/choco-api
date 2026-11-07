@@ -1,3 +1,5 @@
+using Asp.Versioning;
+
 using Choco.Contract.Users;
 using Choco.Presentation.Abstractions;
 using Choco.SharedKernel.Results;
@@ -12,7 +14,8 @@ namespace Choco.Presentation.Controllers;
 /// <summary>
 /// Users of choco-api and the roles they hold.
 /// </summary>
-[Route("api/users")]
+[Route("api/v{version:apiVersion}/users")]
+[ApiVersion(1.0)]
 public sealed class UsersController : ApiController
 {
     public UsersController(ISender sender) : base(sender) { }

@@ -40,7 +40,7 @@ public sealed class EditPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifeti
     {
         User author = await AddUserAsync("identity-id", "username");
         Post post = await AddPostAsync(author);
-        using HttpRequestMessage request = new(HttpMethod.Put, $"/api/posts/{post.Id}")
+        using HttpRequestMessage request = new(HttpMethod.Put, $"/api/v1/posts/{post.Id}")
         {
             Content = JsonContent.Create(new { content = "edited-content" })
         };
@@ -128,7 +128,7 @@ public sealed class EditPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifeti
 
     private static HttpRequestMessage CreateRequest(Guid id, object body)
     {
-        HttpRequestMessage request = new(HttpMethod.Put, $"/api/posts/{id}")
+        HttpRequestMessage request = new(HttpMethod.Put, $"/api/v1/posts/{id}")
         {
             Content = JsonContent.Create(body)
         };

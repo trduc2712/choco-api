@@ -1,5 +1,7 @@
 using System.Text.Json;
 
+using Asp.Versioning;
+
 using Choco.Contract.Users;
 using Choco.Presentation.Abstractions;
 using Choco.Presentation.Webhooks.Clerk;
@@ -16,6 +18,7 @@ using Svix.Exceptions;
 namespace Choco.Presentation.Controllers;
 
 [Route("api/webhooks/clerk")]
+[ApiVersionNeutral]
 [AllowAnonymous]
 public sealed class ClerkWebhooksController : ApiController
 {

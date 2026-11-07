@@ -40,7 +40,7 @@ public sealed class RevokeRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
     {
         Guid adminRoleId = await GetRoleIdAsync(SystemRoles.Admin);
         User target = await AddUserAsync("identity-id-2", "username-2", adminRoleId);
-        using HttpRequestMessage request = new(HttpMethod.Delete, $"/api/users/{target.Id}/roles/{adminRoleId}");
+        using HttpRequestMessage request = new(HttpMethod.Delete, $"/api/v1/users/{target.Id}/roles/{adminRoleId}");
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -190,7 +190,7 @@ public sealed class RevokeRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
 
     private static HttpRequestMessage CreateRequest(Guid userId, Guid roleId)
     {
-        HttpRequestMessage request = new(HttpMethod.Delete, $"/api/users/{userId}/roles/{roleId}");
+        HttpRequestMessage request = new(HttpMethod.Delete, $"/api/v1/users/{userId}/roles/{roleId}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", TestJwt.Create(DateTimeOffset.UtcNow));
 
         return request;
