@@ -3,11 +3,15 @@ using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Abstractions;
 using Choco.Contract.Posts;
 using Choco.Domain.Posts;
+using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
 
 namespace Choco.Application.Posts.GetRecommendedFeed;
 
-internal sealed class GetRecommendedFeedQueryHandler(ICurrentUser currentUser, IPostRepository postRepository)
+internal sealed class GetRecommendedFeedQueryHandler(
+    ICurrentUser currentUser,
+    IPostRepository postRepository,
+    IUserRepository userRepository)
     : IQueryHandler<GetRecommendedFeedQuery, PageResponse<PostResponse>>
 {
     public async Task<Result<PageResponse<PostResponse>>> Handle(
@@ -20,7 +24,7 @@ internal sealed class GetRecommendedFeedQueryHandler(ICurrentUser currentUser, I
         }
 
         PageResponse<PostResponse> page = await PostPages.ReadRecommendedAsync(
-            postRepository, caller.Value, query.Cursor, query.Limit, cancellationToken);
+            postRepository, userRepository, caller.Value, query.Cursor, query.Limit, cancellationToken);
 
         return Result<PageResponse<PostResponse>>.Success(page);
     }

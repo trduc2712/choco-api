@@ -117,14 +117,16 @@ public sealed class GetUserPostsTests(ChocoApiFactory factory) : IClassFixture<C
 
         firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         PageBody firstPage = (await firstResponse.Content.ReadFromJsonAsync<PageBody>(TestContext.Current.CancellationToken))!;
-        firstPage.Items.Should().Equal(new PostBody(newer.Id, author.Id, newer.Content, newer.CreatedAt, newer.ModifiedAt));
+        firstPage.Items.Should().Equal(new PostBody(
+            newer.Id, author.Id, new AuthorBody("username-2", "Display Name 2", null), newer.Content, newer.CreatedAt, newer.ModifiedAt));
         firstPage.NextCursor.Should().NotBeNullOrEmpty();
 
         using HttpResponseMessage secondResponse = await GetAsync($"{path}&cursor={firstPage.NextCursor}");
 
         secondResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         PageBody secondPage = (await secondResponse.Content.ReadFromJsonAsync<PageBody>(TestContext.Current.CancellationToken))!;
-        secondPage.Items.Should().Equal(new PostBody(older.Id, author.Id, older.Content, older.CreatedAt, older.ModifiedAt));
+        secondPage.Items.Should().Equal(new PostBody(
+            older.Id, author.Id, new AuthorBody("username-2", "Display Name 2", null), older.Content, older.CreatedAt, older.ModifiedAt));
         secondPage.NextCursor.Should().BeNull();
     }
 
@@ -170,5 +172,7 @@ public sealed class GetUserPostsTests(ChocoApiFactory factory) : IClassFixture<C
 
     private sealed record PageBody(List<PostBody> Items, string? NextCursor);
 
-    private sealed record PostBody(Guid Id, Guid AuthorId, string Content, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
+    private sealed record AuthorBody(string Username, string DisplayName, string? AvatarUrl);
+
+    private sealed record PostBody(Guid Id, Guid AuthorId, AuthorBody Author, string Content, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
 }

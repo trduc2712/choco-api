@@ -29,7 +29,7 @@ internal sealed class GetUserPostsQueryHandler(
         }
 
         PageResponse<PostResponse> page = await PostPages.ReadByAuthorAsync(
-            postRepository, author.Id, query.Cursor, query.Limit, cancellationToken);
+            postRepository, userRepository, author.Id, query.Cursor, query.Limit, cancellationToken);
 
         return Result<PageResponse<PostResponse>>.Success(page);
     }

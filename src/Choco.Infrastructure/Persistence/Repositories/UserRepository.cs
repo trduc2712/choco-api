@@ -27,6 +27,12 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
         return DbSet.AsNoTracking().FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<User>> ListByIdsForReadAsync(
+        IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        return await DbSet.AsNoTracking().Where(user => ids.Contains(user.Id)).ToListAsync(cancellationToken);
+    }
+
     public Task<User?> GetByUsernameForReadAsync(string username, CancellationToken cancellationToken = default)
     {
         return DbSet.AsNoTracking().FirstOrDefaultAsync(user => user.Username == username, cancellationToken);

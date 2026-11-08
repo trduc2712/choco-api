@@ -55,7 +55,58 @@ public sealed class GetPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifetim
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         PostBody body = (await response.Content.ReadFromJsonAsync<PostBody>(TestContext.Current.CancellationToken))!;
-        body.Should().Be(new PostBody(post.Id, post.AuthorId, "content", ChocoApiFactory.StartTime, ChocoApiFactory.StartTime));
+        body.Should().Be(new PostBody(
+            post.Id, post.AuthorId, new AuthorBody("username", "Display Name", "https://example.com/avatar.png"),
+            "content", ChocoApiFactory.StartTime, ChocoApiFactory.StartTime));
+    }
+
+    [Fact]
+    public async Task AuthorWithoutAvatar_ReturnsNullAvatarUrl()
+    {
+        Post post = await AddPostAsync(avatarUrl: null);
+        using HttpRequestMessage request = CreateRequest(post.Id);
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        PostBody body = (await response.Content.ReadFromJsonAsync<PostBody>(TestContext.Current.CancellationToken))!;
+        body.Author.Should().Be(new AuthorBody("username", "Display Name", null));
+    }
+
+    [Fact]
+    public async Task ChangedAuthorProfile_IsReflectedByTheNextRequest()
+    {
+        Post post = await AddPostAsync();
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            User author = dbContext.Set<User>().Single(user => user.Id == post.AuthorId);
+            author.ChangeProfileName("username-2", "Display Name 2");
+            author.ChangeAvatar("https://example.com/avatar-2.png");
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        using HttpRequestMessage request = CreateRequest(post.Id);
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        PostBody body = (await response.Content.ReadFromJsonAsync<PostBody>(TestContext.Current.CancellationToken))!;
+        body.Author.Should().Be(new AuthorBody("username-2", "Display Name 2", "https://example.com/avatar-2.png"));
+    }
+
+    [Fact]
+    public async Task PostOfDeletedAuthor_ReturnsNotFound()
+    {
+        Post post = await AddPostAsync();
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Remove(dbContext.Set<User>().Single(user => user.Id == post.AuthorId));
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        using HttpRequestMessage request = CreateRequest(post.Id);
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        await ShouldBePostNotFoundProblemAsync(response);
     }
 
     [Fact]
@@ -100,9 +151,9 @@ public sealed class GetPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifetim
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be("Post.NotFound");
     }
 
-    private async Task<Post> AddPostAsync()
+    private async Task<Post> AddPostAsync(string? avatarUrl = "https://example.com/avatar.png")
     {
-        User user = User.Create("identity-id", "username", "Display Name", null);
+        User user = User.Create("identity-id", "username", "Display Name", avatarUrl);
         Post post = Post.Create("content", user.Id);
         await _factory.ExecuteDbContextAsync(dbContext =>
         {
@@ -113,5 +164,7 @@ public sealed class GetPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifetim
         return post;
     }
 
-    private sealed record PostBody(Guid Id, Guid AuthorId, string Content, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
+    private sealed record AuthorBody(string Username, string DisplayName, string? AvatarUrl);
+
+    private sealed record PostBody(Guid Id, Guid AuthorId, AuthorBody Author, string Content, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
 }

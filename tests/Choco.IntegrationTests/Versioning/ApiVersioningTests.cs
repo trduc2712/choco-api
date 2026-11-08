@@ -142,6 +142,23 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
     }
 
     [Fact]
+    public async Task OpenApi_DescribesPostAuthor()
+    {
+        using HttpResponseMessage response = await _client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using JsonDocument document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken), cancellationToken: TestContext.Current.CancellationToken);
+        JsonElement schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
+        JsonElement post = schemas.GetProperty("PostResponse");
+        post.GetProperty("properties").GetProperty("author").GetProperty("$ref").GetString().Should().EndWith("PostAuthorResponse");
+        post.GetProperty("required").EnumerateArray().Select(name => name.GetString()).Should().Contain("author");
+        post.GetProperty("example").GetProperty("author").GetProperty("username").GetString().Should().Be("username");
+        JsonElement author = schemas.GetProperty("PostAuthorResponse").GetProperty("properties");
+        author.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo("username", "displayName", "avatarUrl");
+        author.EnumerateObject().Should().OnlyContain(property => !string.IsNullOrWhiteSpace(property.Value.GetProperty("description").GetString()));
+    }
+
+    [Fact]
     public async Task OpenApi_DescribesRecommendedFeed()
     {
         using HttpResponseMessage response = await _client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
