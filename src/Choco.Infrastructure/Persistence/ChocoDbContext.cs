@@ -36,6 +36,14 @@ internal sealed class ChocoDbContext : DbContext, IUnitOfWork
         base.OnModelCreating(modelBuilder);
     }
 
+    public async Task<T> InTransactionAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken)
+    {
+        await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
+        T result = await action();
+        await transaction.CommitAsync(cancellationToken);
+        return result;
+    }
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         IReadOnlyList<AggregateRoot> aggregateRoots = ChangeTracker.Entries<AggregateRoot>()

@@ -8,6 +8,20 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
 {
     public UserRepository(ChocoDbContext dbContext) : base(dbContext) { }
 
+    public async Task<User?> GetByIdForProfileUpdateAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        // Hold the row lock while writing to the identity provider, then persist in the same order.
+        User? user = await DbSet.FromSql($"SELECT * FROM users WHERE id = {id} AND NOT is_deleted FOR UPDATE")
+            .SingleOrDefaultAsync(cancellationToken);
+        if (user is not null)
+        {
+            // Resolving the caller may have tracked the row before the lock was acquired.
+            await DbContext.Entry(user).ReloadAsync(cancellationToken);
+        }
+
+        return user;
+    }
+
     public Task<User?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return DbSet.AsNoTracking().FirstOrDefaultAsync(user => user.Id == id, cancellationToken);

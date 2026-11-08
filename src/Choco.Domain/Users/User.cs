@@ -46,6 +46,19 @@ public sealed class User : AggregateRoot, IAuditable, ISoftDeletable
             avatarUrl);
     }
 
+    public void ChangeProfileName(string username, string? displayName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(username);
+
+        Username = username;
+        DisplayName = string.IsNullOrWhiteSpace(displayName) ? username : displayName;
+    }
+
+    public void ChangeAvatar(string? avatarUrl)
+    {
+        AvatarUrl = avatarUrl;
+    }
+
     public void AssignRole(Guid roleId, Guid? assignedBy, DateTimeOffset now)
     {
         if (roleId == Guid.Empty)

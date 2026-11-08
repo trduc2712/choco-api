@@ -4,6 +4,7 @@ namespace Choco.Domain.Users;
 
 public interface IUserRepository : IRepository<User>
 {
+    Task<User?> GetByIdForProfileUpdateAsync(Guid id, CancellationToken cancellationToken = default);
     Task<User?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<User?> GetByUsernameForReadAsync(string username, CancellationToken cancellationToken = default);
