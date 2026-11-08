@@ -1,4 +1,5 @@
 using Choco.Domain.Posts;
+using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -100,6 +101,97 @@ public sealed class PostRepositoryTests : IClassFixture<ChocoApiFactory>, IAsync
         posts.Select(post => post.Id).Should().Equal(third.Id, second.Id);
     }
 
+    [Fact]
+    public async Task FollowedAuthors_ReturnsOnlyFollowedAuthorsPostsNewestFirst()
+    {
+        User follower = await AddUserAsync("identity-id", "username");
+        User firstAuthor = await AddUserAsync("identity-id-2", "username-2");
+        User secondAuthor = await AddUserAsync("identity-id-3", "username-3");
+        User notFollowed = await AddUserAsync("identity-id-4", "username-4");
+        User deletedAuthor = await AddUserAsync("identity-id-5", "username-5");
+        await FollowAsync(follower, firstAuthor, secondAuthor, deletedAuthor);
+        await FollowAsync(notFollowed, follower);
+        Post first = await AddPostAsync(firstAuthor, "content-1");
+        Post deleted = await AddPostAsync(firstAuthor, "content-2");
+        Post second = await AddPostAsync(secondAuthor, "content-3");
+        await AddPostAsync(notFollowed, "content-4");
+        await AddPostAsync(follower, "content-5");
+        await AddPostAsync(deletedAuthor, "content-6");
+        await DeletePostAsync(deleted.Id);
+        await DeleteUserAsync(deletedAuthor.Id);
+
+        IReadOnlyList<Post> posts = await ListFollowedAsync(follower.Id, null, 10);
+
+        posts.Select(post => post.Id).Should().Equal(second.Id, first.Id);
+    }
+
+    [Fact]
+    public async Task FollowedAuthors_WithoutFollows_ReturnsNothing()
+    {
+        User follower = await AddUserAsync("identity-id", "username");
+        User author = await AddUserAsync("identity-id-2", "username-2");
+        await AddPostAsync(author, "content-1");
+
+        IReadOnlyList<Post> posts = await ListFollowedAsync(follower.Id, null, 10);
+
+        posts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FollowedAuthors_WithPosition_ReturnsOnlyOlderPosts()
+    {
+        User follower = await AddUserAsync("identity-id", "username");
+        User author = await AddUserAsync("identity-id-2", "username-2");
+        await FollowAsync(follower, author);
+        Post first = await AddPostAsync(author, "content-1");
+        Post second = await AddPostAsync(author, "content-2");
+        await AddPostAsync(author, "content-3");
+
+        IReadOnlyList<Post> posts = await ListFollowedAsync(follower.Id, (second.CreatedAt, second.Id), 10);
+
+        posts.Select(post => post.Id).Should().Equal(first.Id);
+    }
+
+    [Fact]
+    public async Task FollowedAuthors_ReturnsAtMostCount()
+    {
+        User follower = await AddUserAsync("identity-id", "username");
+        User author = await AddUserAsync("identity-id-2", "username-2");
+        await FollowAsync(follower, author);
+        await AddPostAsync(author, "content-1");
+        Post second = await AddPostAsync(author, "content-2");
+        Post third = await AddPostAsync(author, "content-3");
+
+        IReadOnlyList<Post> posts = await ListFollowedAsync(follower.Id, null, 2);
+
+        posts.Select(post => post.Id).Should().Equal(third.Id, second.Id);
+    }
+
+    [Fact]
+    public async Task FollowedAuthors_WithSameCreatedAt_OrdersByIdAndPagesWithoutGaps()
+    {
+        User follower = await AddUserAsync("identity-id", "username");
+        User firstAuthor = await AddUserAsync("identity-id-2", "username-2");
+        User secondAuthor = await AddUserAsync("identity-id-3", "username-3");
+        await FollowAsync(follower, firstAuthor, secondAuthor);
+        Post one = Post.Create("content-1", firstAuthor.Id);
+        Post two = Post.Create("content-2", secondAuthor.Id);
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.AddRange(one, two);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        Guid[] expectedOrder = new[] { one.Id, two.Id }
+            .OrderByDescending(id => id.ToString(), StringComparer.Ordinal)
+            .ToArray();
+        IReadOnlyList<Post> firstPage = await ListFollowedAsync(follower.Id, null, 1);
+
+        IReadOnlyList<Post> secondPage = await ListFollowedAsync(follower.Id, (firstPage[0].CreatedAt, firstPage[0].Id), 1);
+
+        firstPage.Select(post => post.Id).Should().Equal(expectedOrder[0]);
+        secondPage.Select(post => post.Id).Should().Equal(expectedOrder[1]);
+    }
+
     private async Task<User> AddUserAsync(string identityId, string username)
     {
         User user = User.Create(identityId, username, "Display Name", null);
@@ -132,6 +224,33 @@ public sealed class PostRepositoryTests : IClassFixture<ChocoApiFactory>, IAsync
             dbContext.Remove(dbContext.Set<Post>().Single(post => post.Id == id));
             return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
+    }
+
+    private Task FollowAsync(User follower, params User[] followed)
+    {
+        return _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            DateTimeOffset now = _factory.TimeProvider.GetUtcNow();
+            dbContext.AddRange(followed.Select(user => UserFollow.Create(follower.Id, user.Id, now).Value));
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+    }
+
+    private Task DeleteUserAsync(Guid id)
+    {
+        return _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Remove(dbContext.Set<User>().Single(user => user.Id == id));
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+    }
+
+    private async Task<IReadOnlyList<Post>> ListFollowedAsync(Guid followerId, (DateTimeOffset CreatedAt, Guid Id)? after, int count)
+    {
+        using IServiceScope scope = _factory.Services.CreateScope();
+        IPostRepository repository = scope.ServiceProvider.GetRequiredService<IPostRepository>();
+
+        return await repository.ListByFollowedAuthorsForReadAsync(followerId, after, count, TestContext.Current.CancellationToken);
     }
 
     private async Task<IReadOnlyList<Post>> ListAsync(Guid authorId, (DateTimeOffset CreatedAt, Guid Id)? after, int count)
