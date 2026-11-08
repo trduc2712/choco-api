@@ -122,6 +122,25 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
         username.GetProperty("example").GetString().Should().Be("username");
     }
 
+    [Theory]
+    [InlineData("followers")]
+    [InlineData("following")]
+    public async Task OpenApi_DescribesFollowLists(string list)
+    {
+        using HttpResponseMessage response = await _client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using JsonDocument document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken), cancellationToken: TestContext.Current.CancellationToken);
+        JsonElement operation = document.RootElement.GetProperty("paths").GetProperty($"/api/v1/users/{{userId}}/{list}").GetProperty("get");
+        operation.GetProperty("summary").GetString().Should().NotBeNullOrWhiteSpace();
+        operation.GetProperty("description").GetString().Should().Contain("nextCursor");
+        operation.GetProperty("responses").EnumerateObject().Select(status => status.Name).Should().Contain(["200", "400", "401", "404"]);
+        operation.GetProperty("parameters").EnumerateArray().Select(parameter => parameter.GetProperty("name").GetString())
+            .Should().Contain(["userId", "cursor", "limit"]);
+        operation.GetProperty("parameters").EnumerateArray()
+            .Should().OnlyContain(parameter => !string.IsNullOrWhiteSpace(parameter.GetProperty("description").GetString()));
+    }
+
     [Fact]
     public async Task SwaggerUi_ListsVersionOneDocument()
     {

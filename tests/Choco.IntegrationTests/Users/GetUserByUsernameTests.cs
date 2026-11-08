@@ -118,6 +118,59 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
     }
 
     [Fact]
+    public async Task TargetFollowingOnlyTheCaller_ReturnsNotFollowedByMe()
+    {
+        User caller = await AddUserAsync("identity-id", "username", null);
+        User target = await AddUserAsync("identity-id-2", "username-2", null);
+        await AddFollowsAsync((target, caller));
+        using HttpRequestMessage request = Request($"/api/v1/users/by-username/{target.Username}");
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        body.GetProperty("isFollowedByMe").GetBoolean().Should().BeFalse();
+        body.GetProperty("followerCount").GetInt32().Should().Be(0);
+        body.GetProperty("followingCount").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CallersOwnProfile_ReturnsCountsAndNotFollowedByMe()
+    {
+        User caller = await AddUserAsync("identity-id", "username", null);
+        User other = await AddUserAsync("identity-id-2", "username-2", null);
+        await AddFollowsAsync((other, caller), (caller, other));
+        using HttpRequestMessage request = Request($"/api/v1/users/by-username/{caller.Username}");
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        body.GetProperty("isFollowedByMe").GetBoolean().Should().BeFalse();
+        body.GetProperty("followerCount").GetInt32().Should().Be(1);
+        body.GetProperty("followingCount").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task FollowedTarget_ReturnsFollowStatusTrueAndUpdatedCounts()
+    {
+        await AddUserAsync("identity-id", "username", null);
+        User target = await AddUserAsync("identity-id-2", "username-2", null);
+        using HttpRequestMessage follow = new(HttpMethod.Put, $"/api/v1/users/{target.Id}/follow");
+        follow.Headers.Authorization = new AuthenticationHeaderValue("Bearer", TestJwt.Create(DateTimeOffset.UtcNow));
+        using HttpResponseMessage followResponse = await _client.SendAsync(follow, TestContext.Current.CancellationToken);
+        using HttpRequestMessage request = Request($"/api/v1/users/by-username/{target.Username}");
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        followResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        body.GetProperty("isFollowedByMe").GetBoolean().Should().BeTrue();
+        body.GetProperty("followerCount").GetInt32().Should().Be(1);
+        body.GetProperty("followingCount").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
     public async Task UnfollowedTarget_ReturnsFollowStatusFalseAndUpdatedCounts()
     {
         User caller = await AddUserAsync("identity-id", "username", null);
