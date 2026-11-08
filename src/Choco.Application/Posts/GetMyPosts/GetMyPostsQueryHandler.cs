@@ -27,19 +27,9 @@ internal sealed class GetMyPostsQueryHandler : IQueryHandler<GetMyPostsQuery, Pa
             return Result<PageResponse<PostResponse>>.Failure(userIdResult.Error);
         }
 
-        (DateTimeOffset CreatedAt, Guid Id)? after = PostCursor.TryDecode(query.Cursor, out PostCursor? cursor)
-            ? (cursor!.CreatedAt, cursor.Id)
-            : null;
+        PageResponse<PostResponse> page = await PostPages.ReadByAuthorAsync(
+            _postRepository, userIdResult.Value, query.Cursor, query.Limit, cancellationToken);
 
-        IReadOnlyList<Post> posts = await _postRepository.ListByAuthorForReadAsync(
-            userIdResult.Value, after, query.Limit + 1, cancellationToken);
-
-        List<Post> page = posts.Take(query.Limit).ToList();
-        string? nextCursor = posts.Count > query.Limit
-            ? new PostCursor(page[^1].CreatedAt, page[^1].Id).Encode()
-            : null;
-
-        return Result<PageResponse<PostResponse>>.Success(
-            new PageResponse<PostResponse>(page.Select(post => post.ToResponse()).ToList(), nextCursor));
+        return Result<PageResponse<PostResponse>>.Success(page);
     }
 }

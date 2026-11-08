@@ -1,5 +1,7 @@
 using Asp.Versioning;
 
+using Choco.Contract.Abstractions;
+using Choco.Contract.Posts;
 using Choco.Contract.Users;
 using Choco.Presentation.Abstractions;
 using Choco.SharedKernel.Results;
@@ -56,6 +58,37 @@ public sealed class UsersController : ApiController
     public async Task<IActionResult> GetProfile(Guid userId, CancellationToken cancellationToken)
     {
         Result<UserProfileResponse> result = await Sender.Send(new GetUserProfileQuery(userId), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
+    /// <summary>Lists a user's posts, newest first.</summary>
+    /// <remarks>
+    /// Any signed-in user with an active account may call this endpoint. Deleted posts are excluded.
+    /// A first request may create the caller's local account from their sign-in provider details.
+    /// To get the next page, pass the previous page's nextCursor as cursor. It is null on the last page.
+    /// </remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The author's id.</param>
+    /// <param name="cursor" example="NjM5MDI4MjI0MDAwMDAwMDAwXzAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAx">The nextCursor of the previous page. Omit it for the first page.</param>
+    /// <param name="limit" example="20">The page size, from 1 to 50. Defaults to 20.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">One page of the user's posts. The page can be empty.</response>
+    /// <response code="400">The id is empty, the cursor or limit is invalid, or the caller's account details are invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">The user does not exist or is deleted.</response>
+    [HttpGet("{userId:guid}/posts")]
+    [ProducesResponseType(typeof(PageResponse<PostResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPosts(
+        Guid userId,
+        string? cursor = null,
+        int limit = GetMyPostsQuery.DefaultLimit,
+        CancellationToken cancellationToken = default)
+    {
+        Result<PageResponse<PostResponse>> result = await Sender.Send(
+            new GetUserPostsQuery(userId, cursor, limit), cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
     }
