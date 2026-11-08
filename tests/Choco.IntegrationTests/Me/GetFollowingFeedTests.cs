@@ -109,8 +109,8 @@ public sealed class GetFollowingFeedTests : IClassFixture<ChocoApiFactory>, IAsy
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         PageBody body = (await response.Content.ReadFromJsonAsync<PageBody>(TestContext.Current.CancellationToken))!;
         body.Items.Should().Equal(
-            new PostBody(newer.Id, secondAuthor.Id, "content-3", newer.CreatedAt, newer.CreatedAt),
-            new PostBody(older.Id, firstAuthor.Id, "content-1", older.CreatedAt, older.CreatedAt));
+            new PostBody(newer.Id, secondAuthor.Id, new AuthorBody("username-3", "Display Name", null), "content-3", newer.CreatedAt, newer.CreatedAt),
+            new PostBody(older.Id, firstAuthor.Id, new AuthorBody("username-2", "Display Name", null), "content-1", older.CreatedAt, older.CreatedAt));
         body.NextCursor.Should().BeNull();
         _factory.IdentityProvider.Requests.Should().BeEmpty();
     }
@@ -312,5 +312,7 @@ public sealed class GetFollowingFeedTests : IClassFixture<ChocoApiFactory>, IAsy
 
     private sealed record PageBody(List<PostBody> Items, string? NextCursor);
 
-    private sealed record PostBody(Guid Id, Guid AuthorId, string Content, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
+    private sealed record AuthorBody(string Username, string DisplayName, string? AvatarUrl);
+
+    private sealed record PostBody(Guid Id, Guid AuthorId, AuthorBody Author, string Content, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
 }

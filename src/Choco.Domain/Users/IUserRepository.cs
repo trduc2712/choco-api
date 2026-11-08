@@ -7,6 +7,9 @@ public interface IUserRepository : IRepository<User>
     Task<User?> GetByIdForProfileUpdateAsync(Guid id, CancellationToken cancellationToken = default);
     Task<User?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<User>> ListByIdsForReadAsync(
+        IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
+
     Task<User?> GetByUsernameForReadAsync(string username, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<UserSearchMatch>> SearchForReadAsync(

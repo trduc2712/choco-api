@@ -78,7 +78,9 @@ public sealed class CreatePostTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         using HttpResponseMessage resource = await _client.SendAsync(getRequest, TestContext.Current.CancellationToken);
         resource.StatusCode.Should().Be(HttpStatusCode.OK);
         (await resource.Content.ReadFromJsonAsync<PostBody>(TestContext.Current.CancellationToken)).Should().Be(body);
-        body.Should().Be(new PostBody(post.Id, user.Id, "content", ChocoApiFactory.StartTime, ChocoApiFactory.StartTime));
+        body.Should().Be(new PostBody(
+            post.Id, user.Id, new AuthorBody("username", "first-name last-name", "https://example.com/avatar.png"),
+            "content", ChocoApiFactory.StartTime, ChocoApiFactory.StartTime));
         post.AuthorId.Should().Be(user.Id);
         post.Content.Should().Be("content");
         post.CreatedAt.Should().Be(ChocoApiFactory.StartTime);
@@ -160,5 +162,7 @@ public sealed class CreatePostTests : IClassFixture<ChocoApiFactory>, IAsyncLife
             .ToListAsync(TestContext.Current.CancellationToken));
     }
 
-    private sealed record PostBody(Guid Id, Guid AuthorId, string Content, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
+    private sealed record AuthorBody(string Username, string DisplayName, string? AvatarUrl);
+
+    private sealed record PostBody(Guid Id, Guid AuthorId, AuthorBody Author, string Content, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
 }

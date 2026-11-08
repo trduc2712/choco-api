@@ -3,6 +3,7 @@ using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Posts;
 using Choco.Domain.Posts;
 using Choco.Domain.Primitives.Persistence;
+using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
 
 namespace Choco.Application.Posts.CreatePost;
@@ -11,12 +12,18 @@ internal sealed class CreatePostCommandHandler : ICommandHandler<CreatePostComma
 {
     private readonly ICurrentUser _currentUser;
     private readonly IPostRepository _postRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public CreatePostCommandHandler(ICurrentUser currentUser, IPostRepository postRepository, IUnitOfWork unitOfWork)
+    public CreatePostCommandHandler(
+        ICurrentUser currentUser,
+        IPostRepository postRepository,
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork)
     {
         _currentUser = currentUser;
         _postRepository = postRepository;
+        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -29,12 +36,19 @@ internal sealed class CreatePostCommandHandler : ICommandHandler<CreatePostComma
             return Result<PostResponse>.Failure(authorIdResult.Error);
         }
 
-        Post post = Post.Create(command.Content, authorIdResult.Value);
+        User? author = await _userRepository.GetByIdForReadAsync(authorIdResult.Value, cancellationToken);
+
+        if (author is null)
+        {
+            return Result<PostResponse>.Failure(UserErrors.Deleted);
+        }
+
+        Post post = Post.Create(command.Content, author.Id);
 
         _postRepository.Add(post);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result<PostResponse>.Success(post.ToResponse());
+        return Result<PostResponse>.Success(post.ToResponse(author));
     }
 }
