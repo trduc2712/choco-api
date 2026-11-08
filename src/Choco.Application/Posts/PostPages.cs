@@ -32,6 +32,19 @@ internal static class PostPages
         return ToPage(posts, limit);
     }
 
+    public static async Task<PageResponse<PostResponse>> ReadRecommendedAsync(
+        IPostRepository postRepository,
+        Guid viewerId,
+        string? cursor,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        IReadOnlyList<Post> posts = await postRepository.ListRecommendedForReadAsync(
+            viewerId, ReadPosition(cursor), limit + 1, cancellationToken);
+
+        return ToPage(posts, limit);
+    }
+
     public static PageResponse<PostResponse> ToPage(IReadOnlyList<Post> posts, int limit)
     {
         List<Post> page = posts.Take(limit).ToList();

@@ -102,6 +102,90 @@ public sealed class PostRepositoryTests : IClassFixture<ChocoApiFactory>, IAsync
     }
 
     [Fact]
+    public async Task Recommended_ReturnsOthersPostsNewestFirst()
+    {
+        User viewer = await AddUserAsync("identity-id", "username");
+        User followedAuthor = await AddUserAsync("identity-id-2", "username-2");
+        User otherAuthor = await AddUserAsync("identity-id-3", "username-3");
+        User deletedAuthor = await AddUserAsync("identity-id-4", "username-4");
+        await FollowAsync(viewer, followedAuthor);
+        Post first = await AddPostAsync(followedAuthor, "content-1");
+        Post deleted = await AddPostAsync(otherAuthor, "content-2");
+        Post second = await AddPostAsync(otherAuthor, "content-3");
+        await AddPostAsync(viewer, "content-4");
+        await AddPostAsync(deletedAuthor, "content-5");
+        await DeletePostAsync(deleted.Id);
+        await DeleteUserAsync(deletedAuthor.Id);
+
+        IReadOnlyList<Post> posts = await ListRecommendedAsync(viewer.Id, null, 10);
+
+        posts.Select(post => post.Id).Should().Equal(second.Id, first.Id);
+    }
+
+    [Fact]
+    public async Task Recommended_WithOnlyOwnPosts_ReturnsNothing()
+    {
+        User viewer = await AddUserAsync("identity-id", "username");
+        await AddPostAsync(viewer, "content-1");
+
+        IReadOnlyList<Post> posts = await ListRecommendedAsync(viewer.Id, null, 10);
+
+        posts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Recommended_WithPosition_ReturnsOnlyOlderPosts()
+    {
+        User viewer = await AddUserAsync("identity-id", "username");
+        User author = await AddUserAsync("identity-id-2", "username-2");
+        Post first = await AddPostAsync(author, "content-1");
+        Post second = await AddPostAsync(author, "content-2");
+        await AddPostAsync(author, "content-3");
+
+        IReadOnlyList<Post> posts = await ListRecommendedAsync(viewer.Id, (second.CreatedAt, second.Id), 10);
+
+        posts.Select(post => post.Id).Should().Equal(first.Id);
+    }
+
+    [Fact]
+    public async Task Recommended_ReturnsAtMostCount()
+    {
+        User viewer = await AddUserAsync("identity-id", "username");
+        User author = await AddUserAsync("identity-id-2", "username-2");
+        await AddPostAsync(author, "content-1");
+        Post second = await AddPostAsync(author, "content-2");
+        Post third = await AddPostAsync(author, "content-3");
+
+        IReadOnlyList<Post> posts = await ListRecommendedAsync(viewer.Id, null, 2);
+
+        posts.Select(post => post.Id).Should().Equal(third.Id, second.Id);
+    }
+
+    [Fact]
+    public async Task Recommended_WithSameCreatedAt_OrdersByIdAndPagesWithoutGaps()
+    {
+        User viewer = await AddUserAsync("identity-id", "username");
+        User firstAuthor = await AddUserAsync("identity-id-2", "username-2");
+        User secondAuthor = await AddUserAsync("identity-id-3", "username-3");
+        Post one = Post.Create("content-1", firstAuthor.Id);
+        Post two = Post.Create("content-2", secondAuthor.Id);
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.AddRange(one, two);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        Guid[] expectedOrder = new[] { one.Id, two.Id }
+            .OrderByDescending(id => id.ToString(), StringComparer.Ordinal)
+            .ToArray();
+        IReadOnlyList<Post> firstPage = await ListRecommendedAsync(viewer.Id, null, 1);
+
+        IReadOnlyList<Post> secondPage = await ListRecommendedAsync(viewer.Id, (firstPage[0].CreatedAt, firstPage[0].Id), 1);
+
+        firstPage.Select(post => post.Id).Should().Equal(expectedOrder[0]);
+        secondPage.Select(post => post.Id).Should().Equal(expectedOrder[1]);
+    }
+
+    [Fact]
     public async Task FollowedAuthors_ReturnsOnlyFollowedAuthorsPostsNewestFirst()
     {
         User follower = await AddUserAsync("identity-id", "username");
@@ -243,6 +327,14 @@ public sealed class PostRepositoryTests : IClassFixture<ChocoApiFactory>, IAsync
             dbContext.Remove(dbContext.Set<User>().Single(user => user.Id == id));
             return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
+    }
+
+    private async Task<IReadOnlyList<Post>> ListRecommendedAsync(Guid viewerId, (DateTimeOffset CreatedAt, Guid Id)? after, int count)
+    {
+        using IServiceScope scope = _factory.Services.CreateScope();
+        IPostRepository repository = scope.ServiceProvider.GetRequiredService<IPostRepository>();
+
+        return await repository.ListRecommendedForReadAsync(viewerId, after, count, TestContext.Current.CancellationToken);
     }
 
     private async Task<IReadOnlyList<Post>> ListFollowedAsync(Guid followerId, (DateTimeOffset CreatedAt, Guid Id)? after, int count)
