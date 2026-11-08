@@ -114,12 +114,18 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
         id.GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
         id.TryGetProperty("example", out _).Should().BeTrue();
         JsonElement getByUsername = paths.GetProperty("/api/v1/users/by-username/{username}").GetProperty("get");
-        getByUsername.GetProperty("summary").GetString().Should().Be("Gets a user's basic profile by username.");
+        getByUsername.GetProperty("summary").GetString().Should().Be("Gets a user's profile by username.");
         getByUsername.GetProperty("description").GetString().Should().Contain("case-sensitive");
         getByUsername.GetProperty("responses").EnumerateObject().Select(status => status.Name).Should().Contain(["200", "400", "401", "404"]);
         JsonElement username = getByUsername.GetProperty("parameters").EnumerateArray().Single(parameter => parameter.GetProperty("name").GetString() == "username");
         username.GetProperty("description").GetString().Should().Contain("exact username");
         username.GetProperty("example").GetString().Should().Be("username");
+        JsonElement profile = root.GetProperty("components").GetProperty("schemas").GetProperty("UserProfileResponse");
+        JsonElement profileProperties = profile.GetProperty("properties");
+        profileProperties.GetProperty("followerCount").GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        profileProperties.GetProperty("followingCount").GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        profileProperties.GetProperty("isFollowedByMe").GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        profile.GetProperty("example").GetProperty("isFollowedByMe").GetBoolean().Should().BeTrue();
     }
 
     [Fact]

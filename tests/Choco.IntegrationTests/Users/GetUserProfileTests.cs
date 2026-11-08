@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 using Choco.IntegrationTests.Authentication;
 
@@ -43,7 +44,7 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
     [Theory]
     [InlineData(null)]
     [InlineData("https://example.com/avatar.png")]
-    public async Task ExistingUser_ReturnsOnlyBasicProfile(string? avatarUrl)
+    public async Task ExistingUser_ReturnsProfileWithZeroFollowCounts(string? avatarUrl)
     {
         await AddUserAsync("identity-id", "username", null);
         User target = await AddUserAsync("identity-id-2", "username-2", avatarUrl, "Display Name 2");
@@ -53,12 +54,69 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
-        body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo("id", "username", "displayName", "avatarUrl");
+        body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+            "id", "username", "displayName", "avatarUrl", "followerCount", "followingCount", "isFollowedByMe");
+        body.GetProperty("followerCount").GetInt32().Should().Be(0);
+        body.GetProperty("followingCount").GetInt32().Should().Be(0);
+        body.GetProperty("isFollowedByMe").GetBoolean().Should().BeFalse();
         body.GetProperty("id").GetGuid().Should().Be(target.Id);
         body.GetProperty("username").GetString().Should().Be(target.Username);
         body.GetProperty("displayName").GetString().Should().Be("Display Name 2");
         body.GetProperty("avatarUrl").GetString().Should().Be(avatarUrl);
         _factory.IdentityProvider.Requests.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Profile_ReflectsFollowChangesAndCountsOnlyActiveUsers(bool byUsername)
+    {
+        User caller = await AddUserAsync("identity-id", "username", null);
+        User target = await AddUserAsync("identity-id-2", "username-2", null);
+        User deletedUser = await AddUserAsync("identity-id-3", "username-3", null);
+        await _factory.ExecuteDbContextAsync(db =>
+        {
+            DateTimeOffset now = _factory.TimeProvider.GetUtcNow();
+            db.AddRange(
+                UserFollow.Create(target.Id, caller.Id, now).Value,
+                UserFollow.Create(target.Id, deletedUser.Id, now).Value,
+                UserFollow.Create(deletedUser.Id, target.Id, now).Value);
+            return db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        await _factory.ExecuteDbContextAsync(db =>
+        {
+            db.Remove(deletedUser);
+            return db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        string profilePath = byUsername ? $"/api/v1/users/by-username/{target.Username}" : $"/api/v1/users/{target.Id}";
+        string followPath = $"/api/v1/users/{target.Id}/follow";
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        using HttpRequestMessage beforeRequest = Request(profilePath);
+        using HttpRequestMessage followRequest = Request(followPath, HttpMethod.Put);
+        using HttpRequestMessage followedRequest = Request(profilePath);
+        using HttpRequestMessage unfollowRequest = Request(followPath, HttpMethod.Delete);
+        using HttpRequestMessage unfollowedRequest = Request(profilePath);
+
+        using HttpResponseMessage before = await _client.SendAsync(beforeRequest, cancellationToken);
+        using HttpResponseMessage follow = await _client.SendAsync(followRequest, cancellationToken);
+        using HttpResponseMessage followed = await _client.SendAsync(followedRequest, cancellationToken);
+        using HttpResponseMessage unfollow = await _client.SendAsync(unfollowRequest, cancellationToken);
+        using HttpResponseMessage unfollowed = await _client.SendAsync(unfollowedRequest, cancellationToken);
+
+        follow.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        unfollow.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        await ShouldHaveFollowDetailsAsync(before, followerCount: 0, isFollowedByMe: false);
+        await ShouldHaveFollowDetailsAsync(followed, followerCount: 1, isFollowedByMe: true);
+        await ShouldHaveFollowDetailsAsync(unfollowed, followerCount: 0, isFollowedByMe: false);
+    }
+
+    private static async Task ShouldHaveFollowDetailsAsync(HttpResponseMessage response, int followerCount, bool isFollowedByMe)
+    {
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        body.GetProperty("followerCount").GetInt32().Should().Be(followerCount);
+        body.GetProperty("followingCount").GetInt32().Should().Be(1);
+        body.GetProperty("isFollowedByMe").GetBoolean().Should().Be(isFollowedByMe);
     }
 
     [Fact]
@@ -229,9 +287,9 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
         return user;
     }
 
-    private static HttpRequestMessage Request(string path)
+    private static HttpRequestMessage Request(string path, HttpMethod? method = null)
     {
-        HttpRequestMessage request = new(HttpMethod.Get, path);
+        HttpRequestMessage request = new(method ?? HttpMethod.Get, path);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", TestJwt.Create(DateTimeOffset.UtcNow));
         return request;
     }

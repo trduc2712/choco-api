@@ -31,7 +31,10 @@ internal sealed class MyProfileWriter(ICurrentUser currentUser, IUserRepository 
             }
 
             await unitOfWork.SaveChangesAsync(cancellationToken);
-            return Result<UserProfileResponse>.Success(user.ToProfileResponse());
+            UserProfileDetails? profile = await users.GetProfileByIdForReadAsync(user.Id, caller.Value, cancellationToken);
+            return profile is null
+                ? Result<UserProfileResponse>.Failure(UserErrors.Deleted)
+                : Result<UserProfileResponse>.Success(profile.ToProfileResponse());
         }, cancellationToken);
     }
 }

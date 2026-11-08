@@ -31,8 +31,8 @@ public sealed class MeController : ApiController
         _currentUser = currentUser;
     }
 
-    /// <summary>Gets the caller's basic profile.</summary>
-    /// <remarks>Any signed-in user may call it. Creates the local account if needed. Returns the stored username, display name and avatar.</remarks>
+    /// <summary>Gets the caller's profile and follow totals.</summary>
+    /// <remarks>Any signed-in user may call it. Creates the local account if needed. Returns the stored profile and active follower and following totals. isFollowedByMe is false.</remarks>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="200">The caller's profile.</response>
     /// <response code="400">The account details needed to create the local profile are invalid; errors lists the field.</response>
