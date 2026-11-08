@@ -2,12 +2,13 @@
 
 ## Tables
 
-| Name                                      | Columns | Comment                                                                                                      | Type       |
-| ----------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ | ---------- |
-| [public.posts](public.posts.md)           | 7       | Text posts that users publish.                                                                               | BASE TABLE |
-| [public.roles](public.roles.md)           | 7       | Named sets of permissions that users can hold. Roles and their permissions can change while the system runs. | BASE TABLE |
-| [public.user_roles](public.user_roles.md) | 5       | Roles assigned to users, besides the default role that every signed-in user has.                             | BASE TABLE |
-| [public.users](public.users.md)           | 9       | People who use choco-api. Sign-in lives in Clerk; each row is the local copy of one Clerk user.              | BASE TABLE |
+| Name                                          | Columns | Comment                                                                                                      | Type       |
+| --------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ | ---------- |
+| [public.posts](public.posts.md)               | 7       | Text posts that users publish.                                                                               | BASE TABLE |
+| [public.roles](public.roles.md)               | 7       | Named sets of permissions that users can hold. Roles and their permissions can change while the system runs. | BASE TABLE |
+| [public.user_follows](public.user_follows.md) | 4       | Active follow relationships between users.                                                                   | BASE TABLE |
+| [public.user_roles](public.user_roles.md)     | 5       | Roles assigned to users, besides the default role that every signed-in user has.                             | BASE TABLE |
+| [public.users](public.users.md)               | 9       | People who use choco-api. Sign-in lives in Clerk; each row is the local copy of one Clerk user.              | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -24,6 +25,8 @@
 erDiagram
 
 "public.posts" }o--|| "public.users" : "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.user_follows" }o--|| "public.users" : "FOREIGN KEY (followed_user_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.user_follows" }o--|| "public.users" : "FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.user_roles" }o--o| "public.users" : "FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE RESTRICT"
 "public.user_roles" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.user_roles" }o--|| "public.roles" : "FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE"
@@ -45,6 +48,12 @@ erDiagram
   varchar_64_ name
   varchar_64___ permissions
   varchar_64_ system_key
+}
+"public.user_follows" {
+  timestamp_with_time_zone followed_at
+  uuid followed_user_id FK
+  uuid follower_id FK
+  uuid id
 }
 "public.user_roles" {
   timestamp_with_time_zone assigned_at

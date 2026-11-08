@@ -5,6 +5,7 @@ using Choco.Application.Abstractions.Authorization;
 using Choco.Domain.Posts;
 using Choco.Domain.Primitives.Persistence;
 using Choco.Domain.Roles;
+using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 using Choco.Infrastructure.Authentication;
 using Choco.Infrastructure.Options;
@@ -47,6 +48,7 @@ public static class DependencyInjection
         services.AddSingleton<SoftDeleteInterceptor>();
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<ChocoDbContext>());
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserFollowRepository, UserFollowRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IPostRepository, PostRepository>();
 
