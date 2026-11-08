@@ -41,6 +41,32 @@ internal sealed class PostRepository : Repository<Post>, IPostRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Post>> ListRecommendedForReadAsync(
+        Guid viewerId,
+        (DateTimeOffset CreatedAt, Guid Id)? after,
+        int count,
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable<User> users = DbContext.Set<User>();
+
+        IQueryable<Post> posts = DbSet
+            .AsNoTracking()
+            .Where(post => post.AuthorId != viewerId && users.Any(user => user.Id == post.AuthorId));
+
+        if (after is { } position)
+        {
+            posts = posts.Where(post => EF.Functions.LessThan(
+                ValueTuple.Create(post.CreatedAt, post.Id),
+                ValueTuple.Create(position.CreatedAt, position.Id)));
+        }
+
+        return await posts
+            .OrderByDescending(post => post.CreatedAt)
+            .ThenByDescending(post => post.Id)
+            .Take(count)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Post>> ListByFollowedAuthorsForReadAsync(
         Guid followerId,
         (DateTimeOffset CreatedAt, Guid Id)? after,
