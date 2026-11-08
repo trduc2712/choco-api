@@ -232,4 +232,58 @@ public sealed class UsersController : ApiController
 
         return result.IsSuccess ? NoContent() : HandleFailure(result);
     }
+
+    /// <summary>Lists accounts that follow a user.</summary>
+    /// <remarks>Any signed-in user with an active account may call this endpoint. Results exclude deleted accounts and are ordered by user id. Pass nextCursor as cursor to get the next page.</remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The id of the user whose list is requested.</param>
+    /// <param name="cursor" example="00000000000000000000000000000001">The previous page's nextCursor. Omit it for the first page.</param>
+    /// <param name="limit" example="20">Page size, from 1 to 50. Defaults to 20.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">One page of users. The page can be empty.</response>
+    /// <response code="400">The id is empty, the cursor or limit is invalid, or the caller's account details are invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">The user does not exist or is deleted.</response>
+    [HttpGet("{userId:guid}/followers")]
+    [ProducesResponseType(typeof(PageResponse<UserFollowItemResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetFollowers(
+        Guid userId,
+        string? cursor = null,
+        int limit = GetUserFollowersQuery.DefaultLimit,
+        CancellationToken cancellationToken = default)
+    {
+        Result<PageResponse<UserFollowItemResponse>> result = await Sender.Send(
+            new GetUserFollowersQuery(userId, cursor, limit), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
+    /// <summary>Lists accounts a user follows.</summary>
+    /// <remarks>Any signed-in user with an active account may call this endpoint. Results exclude deleted accounts and are ordered by user id. Pass nextCursor as cursor to get the next page.</remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The id of the user whose list is requested.</param>
+    /// <param name="cursor" example="00000000000000000000000000000001">The previous page's nextCursor. Omit it for the first page.</param>
+    /// <param name="limit" example="20">Page size, from 1 to 50. Defaults to 20.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">One page of users. The page can be empty.</response>
+    /// <response code="400">The id is empty, the cursor or limit is invalid, or the caller's account details are invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">The user does not exist or is deleted.</response>
+    [HttpGet("{userId:guid}/following")]
+    [ProducesResponseType(typeof(PageResponse<UserFollowItemResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetFollowing(
+        Guid userId,
+        string? cursor = null,
+        int limit = GetUserFollowersQuery.DefaultLimit,
+        CancellationToken cancellationToken = default)
+    {
+        Result<PageResponse<UserFollowItemResponse>> result = await Sender.Send(
+            new GetUserFollowingQuery(userId, cursor, limit), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
 }
