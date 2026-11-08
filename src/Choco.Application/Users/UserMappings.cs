@@ -5,8 +5,10 @@ namespace Choco.Application.Users;
 
 internal static class UserMappings
 {
-    public static UserProfileResponse ToProfileResponse(this User user)
+    public static UserProfileResponse ToProfileResponse(this UserProfileDetails profile)
     {
-        return new UserProfileResponse(user.Id, user.Username, user.DisplayName, user.AvatarUrl);
+        return new UserProfileResponse(
+            profile.Id, profile.Username, profile.DisplayName, profile.AvatarUrl,
+            profile.FollowerCount, profile.FollowingCount, profile.IsFollowedByMe);
     }
 }

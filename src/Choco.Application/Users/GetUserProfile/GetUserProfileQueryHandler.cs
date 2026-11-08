@@ -18,10 +18,11 @@ internal sealed class GetUserProfileQueryHandler(ICurrentUser currentUser, IUser
             return Result<UserProfileResponse>.Failure(userIdResult.Error);
         }
 
-        User? user = await userRepository.GetByIdForReadAsync(query.Id, cancellationToken);
+        UserProfileDetails? profile = await userRepository.GetProfileByIdForReadAsync(
+            query.Id, userIdResult.Value, cancellationToken);
 
-        return user is null
+        return profile is null
             ? Result<UserProfileResponse>.Failure(UserErrors.NotFound)
-            : Result<UserProfileResponse>.Success(user.ToProfileResponse());
+            : Result<UserProfileResponse>.Success(profile.ToProfileResponse());
     }
 }

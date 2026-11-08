@@ -43,7 +43,7 @@ public sealed class GetMyProfileTests : IClassFixture<ChocoApiFactory>, IAsyncLi
     [Theory]
     [InlineData(null)]
     [InlineData("https://example.com/avatar.png")]
-    public async Task ExistingUser_ReturnsOnlyBasicProfile(string? avatarUrl)
+    public async Task ExistingUser_ReturnsProfileWithZeroFollowCounts(string? avatarUrl)
     {
         User otherUser = User.Create("identity-id-2", "username-2", "Display Name 2", "https://example.com/avatar-2.png");
         await _factory.ExecuteDbContextAsync(db =>
@@ -58,7 +58,11 @@ public sealed class GetMyProfileTests : IClassFixture<ChocoApiFactory>, IAsyncLi
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
-        body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo("id", "username", "displayName", "avatarUrl");
+        body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+            "id", "username", "displayName", "avatarUrl", "followerCount", "followingCount", "isFollowedByMe");
+        body.GetProperty("followerCount").GetInt32().Should().Be(0);
+        body.GetProperty("followingCount").GetInt32().Should().Be(0);
+        body.GetProperty("isFollowedByMe").GetBoolean().Should().BeFalse();
         body.GetProperty("id").GetGuid().Should().Be(target.Id);
         body.GetProperty("username").GetString().Should().Be(target.Username);
         body.GetProperty("displayName").GetString().Should().Be("Display Name");

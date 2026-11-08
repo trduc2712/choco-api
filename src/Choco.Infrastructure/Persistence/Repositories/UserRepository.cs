@@ -1,3 +1,4 @@
+using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,29 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
     public Task<User?> GetByUsernameForReadAsync(string username, CancellationToken cancellationToken = default)
     {
         return DbSet.AsNoTracking().FirstOrDefaultAsync(user => user.Username == username, cancellationToken);
+    }
+
+    public Task<UserProfileDetails?> GetProfileByIdForReadAsync(Guid id, Guid viewerId, CancellationToken cancellationToken)
+    {
+        return WithProfileDetails(DbSet.Where(user => user.Id == id), viewerId).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public Task<UserProfileDetails?> GetProfileByUsernameForReadAsync(string username, Guid viewerId, CancellationToken cancellationToken)
+    {
+        return WithProfileDetails(DbSet.Where(user => user.Username == username), viewerId).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private IQueryable<UserProfileDetails> WithProfileDetails(IQueryable<User> users, Guid viewerId)
+    {
+        DbSet<UserFollow> follows = DbContext.Set<UserFollow>();
+        return users.AsNoTracking().Select(user => new UserProfileDetails(
+            user.Id,
+            user.Username,
+            user.DisplayName,
+            user.AvatarUrl,
+            follows.Count(follow => follow.FollowedUserId == user.Id && DbSet.Any(active => active.Id == follow.FollowerId)),
+            follows.Count(follow => follow.FollowerId == user.Id && DbSet.Any(active => active.Id == follow.FollowedUserId)),
+            follows.Any(follow => follow.FollowerId == viewerId && follow.FollowedUserId == user.Id)));
     }
 
     public async Task<IReadOnlyList<UserSearchMatch>> SearchForReadAsync(
