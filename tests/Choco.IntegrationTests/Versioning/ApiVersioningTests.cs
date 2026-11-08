@@ -122,6 +122,28 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
         username.GetProperty("example").GetString().Should().Be("username");
     }
 
+    [Theory]
+    [InlineData("followers")]
+    [InlineData("following")]
+    public async Task OpenApi_DescribesPaginationAndResponses(string direction)
+    {
+        using HttpResponseMessage response = await _client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement document = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        JsonElement operation = document.GetProperty("paths").GetProperty($"/api/v1/users/{{userId}}/{direction}").GetProperty("get");
+        operation.GetProperty("summary").GetString().Should().NotBeNullOrWhiteSpace();
+        operation.GetProperty("description").GetString().Should().Contain("nextCursor");
+        JsonElement parameters = operation.GetProperty("parameters");
+        parameters.EnumerateArray().Select(parameter => parameter.GetProperty("name").GetString())
+            .Should().BeEquivalentTo("userId", "cursor", "limit");
+        parameters.EnumerateArray().Select(parameter =>
+                parameter.TryGetProperty("description", out _) && parameter.TryGetProperty("example", out _))
+            .Should().OnlyContain(hasDocumentation => hasDocumentation);
+        operation.GetProperty("responses").EnumerateObject().Select(status => status.Name)
+            .Should().BeEquivalentTo("200", "400", "401", "404");
+    }
+
     [Fact]
     public async Task SwaggerUi_ListsVersionOneDocument()
     {
