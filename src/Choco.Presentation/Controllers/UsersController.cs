@@ -193,6 +193,68 @@ public sealed class UsersController : ApiController
         return result.IsSuccess ? NoContent() : HandleFailure(result);
     }
 
+    /// <summary>Lists the users who follow a user, most recent follower first.</summary>
+    /// <remarks>
+    /// Any signed-in user with an active account may call this endpoint. Deleted accounts are excluded.
+    /// A first request may create the caller's local account from their sign-in provider details.
+    /// To get the next page, pass the previous page's nextCursor as cursor. It is null on the last page.
+    /// </remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The followed user's id.</param>
+    /// <param name="cursor" example="NjM5MDI4MjI0MDAwMDAwMDAwXzAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAx">The nextCursor of the previous page. Omit it for the first page.</param>
+    /// <param name="limit" example="20">The page size, from 1 to 50. Defaults to 20.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">One page of followers. The page can be empty.</response>
+    /// <response code="400">The id is empty, the cursor or limit is invalid, or the caller's account details are invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">The user does not exist or is deleted.</response>
+    [HttpGet("{userId:guid}/followers")]
+    [ProducesResponseType(typeof(PageResponse<UserSearchItemResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetFollowers(
+        Guid userId,
+        string? cursor = null,
+        int limit = GetUserFollowersQuery.DefaultLimit,
+        CancellationToken cancellationToken = default)
+    {
+        Result<PageResponse<UserSearchItemResponse>> result = await Sender.Send(
+            new GetUserFollowersQuery(userId, cursor, limit), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
+    /// <summary>Lists the users a user follows, most recently followed first.</summary>
+    /// <remarks>
+    /// Any signed-in user with an active account may call this endpoint. Deleted accounts are excluded.
+    /// A first request may create the caller's local account from their sign-in provider details.
+    /// To get the next page, pass the previous page's nextCursor as cursor. It is null on the last page.
+    /// </remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The following user's id.</param>
+    /// <param name="cursor" example="NjM5MDI4MjI0MDAwMDAwMDAwXzAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAx">The nextCursor of the previous page. Omit it for the first page.</param>
+    /// <param name="limit" example="20">The page size, from 1 to 50. Defaults to 20.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">One page of followed users. The page can be empty.</response>
+    /// <response code="400">The id is empty, the cursor or limit is invalid, or the caller's account details are invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">The user does not exist or is deleted.</response>
+    [HttpGet("{userId:guid}/following")]
+    [ProducesResponseType(typeof(PageResponse<UserSearchItemResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetFollowing(
+        Guid userId,
+        string? cursor = null,
+        int limit = GetUserFollowersQuery.DefaultLimit,
+        CancellationToken cancellationToken = default)
+    {
+        Result<PageResponse<UserSearchItemResponse>> result = await Sender.Send(
+            new GetUserFollowingQuery(userId, cursor, limit), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
     /// <summary>Follows another user.</summary>
     /// <remarks>Any signed-in user with an active account may call this endpoint. Repeating it when the target is already followed changes nothing.</remarks>
     /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The target user's id.</param>

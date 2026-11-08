@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+
 using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 
@@ -43,5 +45,52 @@ internal sealed class UserFollowRepository : Repository<UserFollow>, IUserFollow
                 cancellationToken);
 
         return new UserFollowSummary(isFollowedByViewer, followerCount, followingCount);
+    }
+
+    public Task<IReadOnlyList<UserFollowEntry>> ListFollowersForReadAsync(
+        Guid userId,
+        (DateTimeOffset FollowedAt, Guid FollowId)? after,
+        int count,
+        CancellationToken cancellationToken)
+    {
+        return ListAsync(
+            follow => follow.FollowedUserId == userId, follow => follow.FollowerId, after, count, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<UserFollowEntry>> ListFollowingForReadAsync(
+        Guid userId,
+        (DateTimeOffset FollowedAt, Guid FollowId)? after,
+        int count,
+        CancellationToken cancellationToken)
+    {
+        return ListAsync(
+            follow => follow.FollowerId == userId, follow => follow.FollowedUserId, after, count, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<UserFollowEntry>> ListAsync(
+        Expression<Func<UserFollow, bool>> owner,
+        Expression<Func<UserFollow, Guid>> listedUserId,
+        (DateTimeOffset FollowedAt, Guid FollowId)? after,
+        int count,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<UserFollow> follows = DbSet.AsNoTracking().Where(owner);
+
+        if (after is { } position)
+        {
+            follows = follows.Where(follow => EF.Functions.LessThan(
+                ValueTuple.Create(follow.FollowedAt, follow.Id),
+                ValueTuple.Create(position.FollowedAt, position.FollowId)));
+        }
+
+        var rows = await follows
+            .Join(DbContext.Set<User>().AsNoTracking(), listedUserId, user => user.Id,
+                (follow, user) => new { FollowId = follow.Id, follow.FollowedAt, User = user })
+            .OrderByDescending(row => row.FollowedAt)
+            .ThenByDescending(row => row.FollowId)
+            .Take(count)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(row => new UserFollowEntry(row.FollowId, row.FollowedAt, row.User)).ToList();
     }
 }
