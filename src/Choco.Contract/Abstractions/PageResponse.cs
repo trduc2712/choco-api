@@ -1,7 +1,7 @@
 namespace Choco.Contract.Abstractions;
 
 /// <summary>
-/// One page of a list, newest first.
+/// One page of a list, ordered according to the endpoint.
 /// </summary>
 /// <param name="Items">The items on this page.</param>
 /// <param name="NextCursor">Pass it as cursor to get the next page; null when there are no more items.</param>
