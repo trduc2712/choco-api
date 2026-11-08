@@ -63,7 +63,7 @@ public sealed class UsersController : ApiController
     }
 
     /// <summary>Gets a user's basic profile by username.</summary>
-    /// <remarks>Any signed-in user with an active account may view this profile. The username match is exact and case-sensitive. Deleted users are not found. A first request may create the caller's local account from their sign-in provider details. Session and role information is not returned.</remarks>
+    /// <remarks>Any signed-in user with an active account may view this profile. The username match is exact and case-sensitive. Deleted users are not found. The profile shows whether the caller follows the user and how many users follow them and are followed by them; deleted accounts are not counted. A first request may create the caller's local account from their sign-in provider details. Session and role information is not returned.</remarks>
     /// <param name="username" example="username">The exact username, required and up to 64 characters.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="200">The user's profile.</response>
@@ -71,19 +71,19 @@ public sealed class UsersController : ApiController
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     /// <response code="404">The username does not exist or the user is deleted.</response>
     [HttpGet("by-username/{username}")]
-    [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UserProfileDetailsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByUsername(string username, CancellationToken cancellationToken)
     {
-        Result<UserProfileResponse> result = await Sender.Send(new GetUserByUsernameQuery(username), cancellationToken);
+        Result<UserProfileDetailsResponse> result = await Sender.Send(new GetUserByUsernameQuery(username), cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
     }
 
     /// <summary>Gets a user's basic profile.</summary>
-    /// <remarks>Any signed-in user with an active account may view this profile. Deleted users are not found. Session and role information is not returned.</remarks>
+    /// <remarks>Any signed-in user with an active account may view this profile. Deleted users are not found. The profile shows whether the caller follows the user and how many users follow them and are followed by them; deleted accounts are not counted. Session and role information is not returned.</remarks>
     /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The user's id.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="200">The user's profile.</response>
@@ -91,13 +91,13 @@ public sealed class UsersController : ApiController
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     /// <response code="404">The user does not exist or is deleted.</response>
     [HttpGet("{userId:guid}")]
-    [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UserProfileDetailsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetProfile(Guid userId, CancellationToken cancellationToken)
     {
-        Result<UserProfileResponse> result = await Sender.Send(new GetUserProfileQuery(userId), cancellationToken);
+        Result<UserProfileDetailsResponse> result = await Sender.Send(new GetUserProfileQuery(userId), cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
     }

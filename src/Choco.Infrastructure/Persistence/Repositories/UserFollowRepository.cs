@@ -1,4 +1,5 @@
 using Choco.Domain.UserFollows;
+using Choco.Domain.Users;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -21,5 +22,26 @@ internal sealed class UserFollowRepository : Repository<UserFollow>, IUserFollow
     {
         await DbSet.Where(follow => follow.FollowerId == followerId && follow.FollowedUserId == followedUserId)
             .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    public async Task<UserFollowSummary> GetSummaryForReadAsync(
+        Guid userId, Guid viewerId, CancellationToken cancellationToken)
+    {
+        IQueryable<User> users = DbContext.Set<User>();
+
+        bool isFollowedByViewer = await DbSet.AsNoTracking()
+            .AnyAsync(follow => follow.FollowerId == viewerId && follow.FollowedUserId == userId, cancellationToken);
+
+        int followerCount = await DbSet.AsNoTracking()
+            .CountAsync(
+                follow => follow.FollowedUserId == userId && users.Any(user => user.Id == follow.FollowerId),
+                cancellationToken);
+
+        int followingCount = await DbSet.AsNoTracking()
+            .CountAsync(
+                follow => follow.FollowerId == userId && users.Any(user => user.Id == follow.FollowedUserId),
+                cancellationToken);
+
+        return new UserFollowSummary(isFollowedByViewer, followerCount, followingCount);
     }
 }
