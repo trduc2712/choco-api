@@ -29,6 +29,12 @@ How a request is mapped to a user of this system, and why.
 
 Queries by `identity_id` include soft-deleted users (`...IncludingDeleted`): the unique index on `identity_id` keeps a deleted user's id, so treating them as missing would try to insert a duplicate.
 
+## Profile edits
+
+- `PUT /api/v1/me/profile` replaces the caller's username, first name and last name. The display name is the first and last names joined with a space. An omitted last name clears it.
+- `POST /api/v1/me/profile/avatar` accepts an image in the multipart field named `image`, up to 10 MB. `DELETE` on the same path clears the avatar.
+- The API writes each edit to Clerk first and returns the updated local profile after saving it. If Clerk accepts an edit and the local save fails, the caller can retry the edit.
+
 ## Known Gaps
 
 ### Sync

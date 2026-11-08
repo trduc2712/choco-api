@@ -5,11 +5,16 @@ namespace Choco.IntegrationTests;
 internal sealed class StubHttpMessageHandler : HttpMessageHandler
 {
     private readonly List<HttpRequestMessage> _requests = [];
-    private Func<HttpRequestMessage, HttpResponseMessage> _respond = NotConfigured;
+    private Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _respond = NotConfigured;
 
     public IReadOnlyList<HttpRequestMessage> Requests => _requests;
 
     public void RespondWith(Func<HttpRequestMessage, HttpResponseMessage> respond)
+    {
+        _respond = (request, _) => Task.FromResult(respond(request));
+    }
+
+    public void RespondWithAsync(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond)
     {
         _respond = respond;
     }
@@ -24,11 +29,11 @@ internal sealed class StubHttpMessageHandler : HttpMessageHandler
     {
         _requests.Add(request);
 
-        return Task.FromResult(_respond(request));
+        return _respond(request, cancellationToken);
     }
 
-    private static HttpResponseMessage NotConfigured(HttpRequestMessage request)
+    private static Task<HttpResponseMessage> NotConfigured(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
     }
 }

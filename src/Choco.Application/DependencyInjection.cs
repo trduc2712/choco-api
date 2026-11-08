@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddAuthorizersFromAssembly(AssemblyReference.Assembly);
 
         services.AddScoped<ICurrentUser, CurrentUser>();
+        services.AddScoped<Users.MyProfileWriter>();
         services.AddScoped<IPermissionChecker, PermissionChecker>();
 
         return services;

@@ -73,6 +73,35 @@ public sealed class UserTests
         act.Should().Throw<ArgumentException>().WithParameterName(expectedParamName);
     }
 
+    [Theory]
+    [InlineData("Display Name 2", "Display Name 2")]
+    [InlineData(null, "username-2")]
+    public void ChangeProfileName_WithNewUsername_UpdatesNameAndKeepsAvatar(string? displayName, string expectedName)
+    {
+        const string avatarUrl = "https://example.com/avatar.png";
+        User user = User.Create("identity-id", "username", "Display Name", avatarUrl);
+
+        user.ChangeProfileName("username-2", displayName);
+
+        user.Username.Should().Be("username-2");
+        user.DisplayName.Should().Be(expectedName);
+        user.AvatarUrl.Should().Be(avatarUrl);
+    }
+
+    [Theory]
+    [InlineData("https://example.com/avatar-2.png")]
+    [InlineData(null)]
+    public void ChangeAvatar_WithNewValue_UpdatesAvatarAndKeepsName(string? avatarUrl)
+    {
+        User user = User.Create("identity-id", "username", "Display Name", "https://example.com/avatar.png");
+
+        user.ChangeAvatar(avatarUrl);
+
+        user.AvatarUrl.Should().Be(avatarUrl);
+        user.Username.Should().Be("username");
+        user.DisplayName.Should().Be("Display Name");
+    }
+
     [Fact]
     public void AssignRole_NewRole_AddsAssignment()
     {

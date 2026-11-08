@@ -48,6 +48,66 @@ public sealed class MeController : ApiController
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
     }
 
+    /// <summary>Replaces the caller's username and display name.</summary>
+    /// <remarks>Any signed-in user may call it. The display name combines the first and last names. Sending the same values again is safe.</remarks>
+    /// <param name="command">The new username and name.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The updated profile.</response>
+    /// <response code="400">One or more profile fields are invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="409">The username is unavailable.</response>
+    [HttpPut("profile")]
+    [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateMyProfileCommand command, CancellationToken cancellationToken)
+    {
+        Result<UserProfileResponse> result = await Sender.Send(command, cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
+    /// <summary>Uploads a new avatar for the caller.</summary>
+    /// <remarks>Any signed-in user may call it. Send a multipart/form-data file named image, up to 10 MB. The uploaded image replaces the caller's current avatar.</remarks>
+    /// <param name="image">The image file in a multipart/form-data field named image, up to 10 MB.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The profile with the new avatar URL.</response>
+    /// <response code="400">The image is missing, too large, or unsupported.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="413">The multipart request exceeds the request size limit.</response>
+    /// <response code="415">The request does not use multipart/form-data.</response>
+    [HttpPost("profile/avatar")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(UploadMyAvatarCommand.MaxImageBytes + 65_536)]
+    [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status413PayloadTooLarge)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status415UnsupportedMediaType)]
+    public async Task<IActionResult> UploadAvatar(IFormFile image, CancellationToken cancellationToken)
+    {
+        await using Stream stream = image.OpenReadStream();
+        Result<UserProfileResponse> result = await Sender.Send(new UploadMyAvatarCommand(stream), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
+    /// <summary>Removes the caller's avatar.</summary>
+    /// <remarks>Any signed-in user may call it. The caller may repeat the request when they have no avatar.</remarks>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The profile with a null avatar URL.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    [HttpDelete("profile/avatar")]
+    [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RemoveAvatar(CancellationToken cancellationToken)
+    {
+        Result<UserProfileResponse> result = await Sender.Send(new RemoveMyAvatarCommand(), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
