@@ -192,4 +192,44 @@ public sealed class UsersController : ApiController
 
         return result.IsSuccess ? NoContent() : HandleFailure(result);
     }
+
+    /// <summary>Follows another user.</summary>
+    /// <remarks>Any signed-in user with an active account may call this endpoint. Repeating it when the target is already followed changes nothing.</remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The target user's id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="204">The caller follows the target user.</response>
+    /// <response code="400">The id is empty, the caller tried to follow their own account, or the caller's account details are invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">The target user does not exist or is deleted.</response>
+    [HttpPut("{userId:guid}/follow")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Follow(Guid userId, CancellationToken cancellationToken)
+    {
+        Result result = await Sender.Send(new FollowUserCommand(userId), cancellationToken);
+
+        return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
+
+    /// <summary>Stops following another user.</summary>
+    /// <remarks>Any signed-in user with an active account may call this endpoint. Repeating it when the target is already unfollowed changes nothing.</remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The target user's id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="204">The caller does not follow the target user.</response>
+    /// <response code="400">The id is empty or the caller's account details are invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">The target user does not exist or is deleted.</response>
+    [HttpDelete("{userId:guid}/follow")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Unfollow(Guid userId, CancellationToken cancellationToken)
+    {
+        Result result = await Sender.Send(new UnfollowUserCommand(userId), cancellationToken);
+
+        return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
 }
