@@ -24,6 +24,7 @@ internal sealed class ChocoDbContext : DbContext, IUnitOfWork
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(AssemblyReference.Assembly);
+        modelBuilder.HasPostgresExtension("unaccent");
 
         foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes().ToList())
         {

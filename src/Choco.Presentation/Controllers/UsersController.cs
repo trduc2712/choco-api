@@ -22,6 +22,46 @@ public sealed class UsersController : ApiController
 {
     public UsersController(ISender sender) : base(sender) { }
 
+    /// <summary>Suggests up to ten users as the caller types.</summary>
+    /// <remarks>Any signed-in user with an active account may call this endpoint. Results match the username or display name and exclude the caller and deleted accounts. An empty search returns an empty list.</remarks>
+    /// <param name="q" example="username">Search text, up to 256 characters after trimming. Matching starts at one character.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">User suggestions in relevance order.</response>
+    /// <response code="400">The search text or the caller's account details are invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    [HttpGet("suggestions")]
+    [ProducesResponseType(typeof(IReadOnlyList<UserSearchItemResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetSuggestions([FromQuery] string? q, CancellationToken cancellationToken)
+    {
+        Result<IReadOnlyList<UserSearchItemResponse>> result = await Sender.Send(
+            new GetUserSuggestionsQuery(q), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
+    /// <summary>Searches for users by username or display name.</summary>
+    /// <remarks>Any signed-in user with an active account may call this endpoint. Each page contains up to ten users, excluding the caller and deleted accounts. Use nextCursor with the same search text to get the next page.</remarks>
+    /// <param name="q" example="username">Search text, up to 256 characters after trimming. Matching starts at one character.</param>
+    /// <param name="cursor" example="MjowMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMToxNkY3OEE3RDYzMTdGMTAyQkJEOTVGQzlBNEYzRkYyRTMyNDkyODc2OTBCOEJEQUQ2Qjc4MTBGODJCMzRBQ0UzOnVzZXJuYW1lLTEw">The previous page's nextCursor. Omit it for the first page.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">A page of users in relevance order. An empty search returns an empty page.</response>
+    /// <response code="400">The search text, cursor or the caller's account details are invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(PageResponse<UserSearchItemResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetSearchResults(
+        [FromQuery] string? q, [FromQuery] string? cursor, CancellationToken cancellationToken)
+    {
+        Result<PageResponse<UserSearchItemResponse>> result = await Sender.Send(
+            new GetUserSearchResultsQuery(q, cursor), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
     /// <summary>Gets a user's basic profile by username.</summary>
     /// <remarks>Any signed-in user with an active account may view this profile. The username match is exact and case-sensitive. Deleted users are not found. A first request may create the caller's local account from their sign-in provider details. Session and role information is not returned.</remarks>
     /// <param name="username" example="username">The exact username, required and up to 64 characters.</param>

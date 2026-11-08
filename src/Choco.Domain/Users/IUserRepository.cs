@@ -8,6 +8,13 @@ public interface IUserRepository : IRepository<User>
 
     Task<User?> GetByUsernameForReadAsync(string username, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<UserSearchMatch>> SearchForReadAsync(
+        string text,
+        Guid excludedUserId,
+        (int Rank, string Username, Guid Id)? after,
+        int count,
+        CancellationToken cancellationToken = default);
+
     Task<bool> ExistsByIdentityIdIncludingDeletedAsync(string identityId, CancellationToken cancellationToken = default);
 
     Task<User?> GetByIdentityIdIncludingDeletedAsync(string identityId, CancellationToken cancellationToken = default);
