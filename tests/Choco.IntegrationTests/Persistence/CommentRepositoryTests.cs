@@ -113,6 +113,66 @@ public sealed class CommentRepositoryTests : IClassFixture<ChocoApiFactory>, IAs
         secondPage.Select(comment => comment.Id).Should().Equal(expectedOrder[1]);
     }
 
+    [Fact]
+    public async Task Counts_CountEachPostSeparatelyAndOmitPostsWithoutComments()
+    {
+        User author = await AddUserAsync("identity-id", "username");
+        Post twice = await AddPostAsync(author);
+        Post once = await AddPostAsync(author);
+        Post never = await AddPostAsync(author);
+        await AddCommentAsync(twice, author, "content-1");
+        await AddCommentAsync(twice, author, "content-2");
+        await AddCommentAsync(once, author, "content-3");
+
+        IReadOnlyDictionary<Guid, int> counts = await CountAsync([twice.Id, once.Id, never.Id]);
+
+        counts[twice.Id].Should().Be(2);
+        counts[once.Id].Should().Be(1);
+        counts.Should().NotContainKey(never.Id);
+    }
+
+    [Fact]
+    public async Task Counts_SkipDeletedCommentsDeletedAuthorsAndOtherPosts()
+    {
+        User author = await AddUserAsync("identity-id-1", "username-1");
+        User deletedAuthor = await AddUserAsync("identity-id-2", "username-2");
+        Post asked = await AddPostAsync(author);
+        Post notAsked = await AddPostAsync(author);
+        await AddCommentAsync(asked, author, "content-1");
+        Comment deleted = await AddCommentAsync(asked, author, "content-2");
+        await AddCommentAsync(asked, deletedAuthor, "content-3");
+        await AddCommentAsync(notAsked, author, "content-4");
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Remove(dbContext.Set<Comment>().Single(comment => comment.Id == deleted.Id));
+            dbContext.Remove(dbContext.Set<User>().Single(user => user.Id == deletedAuthor.Id));
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+
+        IReadOnlyDictionary<Guid, int> counts = await CountAsync([asked.Id]);
+
+        counts.Should().ContainSingle().Which.Should().Be(new KeyValuePair<Guid, int>(asked.Id, 1));
+    }
+
+    [Fact]
+    public async Task Counts_WithoutPostIds_ReturnNothing()
+    {
+        User author = await AddUserAsync("identity-id", "username");
+        await AddCommentAsync(await AddPostAsync(author), author, "content-1");
+
+        IReadOnlyDictionary<Guid, int> counts = await CountAsync([]);
+
+        counts.Should().BeEmpty();
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, int>> CountAsync(Guid[] postIds)
+    {
+        using IServiceScope scope = _factory.Services.CreateScope();
+        ICommentRepository repository = scope.ServiceProvider.GetRequiredService<ICommentRepository>();
+
+        return await repository.CountByPostsForReadAsync(postIds, TestContext.Current.CancellationToken);
+    }
+
     private async Task<User> AddUserAsync(string identityId, string username)
     {
         User user = User.Create(identityId, username, "Display Name", null);

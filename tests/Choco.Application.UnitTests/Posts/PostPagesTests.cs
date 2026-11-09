@@ -10,6 +10,7 @@ namespace Choco.Application.UnitTests.Posts;
 public sealed class PostPagesTests
 {
     private static readonly IReadOnlyDictionary<Guid, PostLikeSummary> NoLikes = new Dictionary<Guid, PostLikeSummary>();
+    private static readonly IReadOnlyDictionary<Guid, int> NoComments = new Dictionary<Guid, int>();
 
     [Fact]
     public void ToPage_MapsEachPostWithItsOwnAuthor()
@@ -19,7 +20,7 @@ public sealed class PostPagesTests
         Post firstPost = Post.Create("content-1", firstAuthor.Id);
         Post secondPost = Post.Create("content-2", secondAuthor.Id);
 
-        PageResponse<PostResponse> page = PostPages.ToPage([firstPost, secondPost], [secondAuthor, firstAuthor], NoLikes, 10);
+        PageResponse<PostResponse> page = PostPages.ToPage([firstPost, secondPost], [secondAuthor, firstAuthor], NoLikes, NoComments, 10);
 
         page.Items.Select(item => (item.Id, item.AuthorId, item.Content)).Should().Equal(
             (firstPost.Id, firstAuthor.Id, "content-1"),
@@ -37,9 +38,22 @@ public sealed class PostPagesTests
         Post unliked = Post.Create("content-2", author.Id);
         Dictionary<Guid, PostLikeSummary> likes = new() { [liked.Id] = new PostLikeSummary(3, true) };
 
-        PageResponse<PostResponse> page = PostPages.ToPage([liked, unliked], [author], likes, 10);
+        PageResponse<PostResponse> page = PostPages.ToPage([liked, unliked], [author], likes, NoComments, 10);
 
         page.Items.Select(item => (item.LikeCount, item.IsLikedByMe)).Should().Equal((3, true), (0, false));
+    }
+
+    [Fact]
+    public void ToPage_MapsEachPostWithItsOwnCommentCount()
+    {
+        User author = User.Create("identity-id", "username", "Display Name", null);
+        Post commented = Post.Create("content-1", author.Id);
+        Post uncommented = Post.Create("content-2", author.Id);
+        Dictionary<Guid, int> commentCounts = new() { [commented.Id] = 4 };
+
+        PageResponse<PostResponse> page = PostPages.ToPage([commented, uncommented], [author], NoLikes, commentCounts, 10);
+
+        page.Items.Select(item => item.CommentCount).Should().Equal(4, 0);
     }
 
     [Fact]
@@ -48,7 +62,7 @@ public sealed class PostPagesTests
         User author = User.Create("identity-id", "username", "Display Name", null);
         Post[] posts = [Post.Create("content-1", author.Id), Post.Create("content-2", author.Id)];
 
-        PageResponse<PostResponse> page = PostPages.ToPage(posts, [author], NoLikes, 2);
+        PageResponse<PostResponse> page = PostPages.ToPage(posts, [author], NoLikes, NoComments, 2);
 
         page.Items.Should().HaveCount(2);
         page.NextCursor.Should().BeNull();
@@ -60,7 +74,7 @@ public sealed class PostPagesTests
         User author = User.Create("identity-id", "username", "Display Name", null);
         Post[] posts = [Post.Create("content-1", author.Id), Post.Create("content-2", author.Id), Post.Create("content-3", author.Id)];
 
-        PageResponse<PostResponse> page = PostPages.ToPage(posts, [author], NoLikes, 2);
+        PageResponse<PostResponse> page = PostPages.ToPage(posts, [author], NoLikes, NoComments, 2);
 
         page.Items.Select(item => item.Id).Should().Equal(posts[0].Id, posts[1].Id);
         PostCursor.TryDecode(page.NextCursor, out PostCursor? cursor).Should().BeTrue();
@@ -75,7 +89,7 @@ public sealed class PostPagesTests
         Post orphan = Post.Create("content-2", Guid.NewGuid());
         Post extra = Post.Create("content-3", author.Id);
 
-        PageResponse<PostResponse> page = PostPages.ToPage([kept, orphan, extra], [author], NoLikes, 2);
+        PageResponse<PostResponse> page = PostPages.ToPage([kept, orphan, extra], [author], NoLikes, NoComments, 2);
 
         page.Items.Select(item => item.Id).Should().Equal(kept.Id);
         PostCursor.TryDecode(page.NextCursor, out PostCursor? cursor).Should().BeTrue();
@@ -85,7 +99,7 @@ public sealed class PostPagesTests
     [Fact]
     public void ToPage_WithoutPosts_ReturnsEmptyPage()
     {
-        PageResponse<PostResponse> page = PostPages.ToPage([], [], NoLikes, 2);
+        PageResponse<PostResponse> page = PostPages.ToPage([], [], NoLikes, NoComments, 2);
 
         page.Items.Should().BeEmpty();
         page.NextCursor.Should().BeNull();

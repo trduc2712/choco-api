@@ -141,6 +141,19 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
             .Should().OnlyContain(parameter => !string.IsNullOrWhiteSpace(parameter.GetProperty("description").GetString()));
     }
 
+    [Fact]
+    public async Task OpenApi_DescribesPostCommentCount()
+    {
+        using HttpResponseMessage response = await _client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using JsonDocument document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken), cancellationToken: TestContext.Current.CancellationToken);
+        JsonElement post = document.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("PostResponse");
+        post.GetProperty("properties").GetProperty("commentCount").GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        post.GetProperty("required").EnumerateArray().Select(name => name.GetString()).Should().Contain("commentCount");
+        post.GetProperty("example").GetProperty("commentCount").GetInt32().Should().Be(2);
+    }
+
     [Theory]
     [InlineData("/api/v1/posts/{id}/comments", "post", "201,400,401,404")]
     [InlineData("/api/v1/posts/{id}/comments", "get", "200,400,401,404")]

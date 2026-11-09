@@ -80,7 +80,7 @@ public sealed class CreatePostTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         (await resource.Content.ReadFromJsonAsync<PostBody>(TestContext.Current.CancellationToken)).Should().Be(body);
         body.Should().Be(new PostBody(
             post.Id, user.Id, new AuthorBody("username", "first-name last-name", "https://example.com/avatar.png"),
-            "content", 0, false, ChocoApiFactory.StartTime, ChocoApiFactory.StartTime));
+            "content", 0, false, 0, ChocoApiFactory.StartTime, ChocoApiFactory.StartTime));
         post.AuthorId.Should().Be(user.Id);
         post.Content.Should().Be("content");
         post.CreatedAt.Should().Be(ChocoApiFactory.StartTime);
@@ -164,5 +164,5 @@ public sealed class CreatePostTests : IClassFixture<ChocoApiFactory>, IAsyncLife
 
     private sealed record AuthorBody(string Username, string DisplayName, string? AvatarUrl);
 
-    private sealed record PostBody(Guid Id, Guid AuthorId, AuthorBody Author, string Content, int LikeCount, bool IsLikedByMe, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
+    private sealed record PostBody(Guid Id, Guid AuthorId, AuthorBody Author, string Content, int LikeCount, bool IsLikedByMe, int CommentCount, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
 }

@@ -34,4 +34,18 @@ internal sealed class CommentRepository : Repository<Comment>, ICommentRepositor
             .Take(count)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyDictionary<Guid, int>> CountByPostsForReadAsync(
+        IReadOnlyCollection<Guid> postIds, CancellationToken cancellationToken = default)
+    {
+        IQueryable<User> users = DbContext.Set<User>();
+
+        var rows = await DbSet.AsNoTracking()
+            .Where(comment => postIds.Contains(comment.PostId) && users.Any(user => user.Id == comment.AuthorId))
+            .GroupBy(comment => comment.PostId)
+            .Select(group => new { PostId = group.Key, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+
+        return rows.ToDictionary(row => row.PostId, row => row.Count);
+    }
 }
