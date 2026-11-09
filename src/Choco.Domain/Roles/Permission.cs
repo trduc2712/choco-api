@@ -6,10 +6,12 @@ public static class Permission
 
     public const string AssignRoles = "roles.assign";
     public const string DeleteAnyPost = "posts.delete-any";
+    public const string DeleteAnyComment = "comments.delete-any";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
         AssignRoles,
-        DeleteAnyPost
+        DeleteAnyPost,
+        DeleteAnyComment
     };
 }
