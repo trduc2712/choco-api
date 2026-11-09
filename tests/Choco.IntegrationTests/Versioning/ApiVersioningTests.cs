@@ -142,6 +142,29 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
     }
 
     [Theory]
+    [InlineData("/api/v1/posts/{id}/comments", "post", "201,400,401,404")]
+    [InlineData("/api/v1/posts/{id}/comments", "get", "200,400,401,404")]
+    [InlineData("/api/v1/comments/{id}", "delete", "204,400,401,403,404")]
+    public async Task OpenApi_DescribesCommentOperations(string path, string method, string statuses)
+    {
+        using HttpResponseMessage response = await _client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using JsonDocument document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken), cancellationToken: TestContext.Current.CancellationToken);
+        JsonElement root = document.RootElement;
+        JsonElement operation = root.GetProperty("paths").GetProperty(path).GetProperty(method);
+        operation.GetProperty("summary").GetString().Should().NotBeNullOrWhiteSpace();
+        operation.GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        operation.GetProperty("responses").EnumerateObject().Select(status => status.Name).Should().Contain(statuses.Split(','));
+        operation.GetProperty("parameters").EnumerateArray()
+            .Should().OnlyContain(parameter => !string.IsNullOrWhiteSpace(parameter.GetProperty("description").GetString()));
+        JsonElement schemas = root.GetProperty("components").GetProperty("schemas");
+        schemas.GetProperty("CommentResponse").GetProperty("properties").EnumerateObject().Select(property => property.Name)
+            .Should().BeEquivalentTo("id", "postId", "authorId", "author", "content", "createdAt");
+        schemas.GetProperty("CreateCommentCommand").GetProperty("example").GetProperty("content").GetString().Should().Be("content");
+    }
+
+    [Theory]
     [InlineData("put")]
     [InlineData("delete")]
     public async Task OpenApi_DescribesPostLikeOperations(string method)

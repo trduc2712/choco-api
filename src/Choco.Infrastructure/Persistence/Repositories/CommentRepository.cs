@@ -1,0 +1,37 @@
+using Choco.Domain.Comments;
+using Choco.Domain.Users;
+
+using Microsoft.EntityFrameworkCore;
+
+namespace Choco.Infrastructure.Persistence.Repositories;
+
+internal sealed class CommentRepository : Repository<Comment>, ICommentRepository
+{
+    public CommentRepository(ChocoDbContext dbContext) : base(dbContext) { }
+
+    public async Task<IReadOnlyList<Comment>> ListByPostForReadAsync(
+        Guid postId,
+        (DateTimeOffset CreatedAt, Guid Id)? after,
+        int count,
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable<User> users = DbContext.Set<User>();
+
+        IQueryable<Comment> comments = DbSet
+            .AsNoTracking()
+            .Where(comment => comment.PostId == postId && users.Any(user => user.Id == comment.AuthorId));
+
+        if (after is { } position)
+        {
+            comments = comments.Where(comment => EF.Functions.GreaterThan(
+                ValueTuple.Create(comment.CreatedAt, comment.Id),
+                ValueTuple.Create(position.CreatedAt, position.Id)));
+        }
+
+        return await comments
+            .OrderBy(comment => comment.CreatedAt)
+            .ThenBy(comment => comment.Id)
+            .Take(count)
+            .ToListAsync(cancellationToken);
+    }
+}
