@@ -1,6 +1,7 @@
 using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Posts;
+using Choco.Domain.PostLikes;
 using Choco.Domain.Posts;
 using Choco.Domain.Primitives.Persistence;
 using Choco.Domain.Users;
@@ -49,6 +50,6 @@ internal sealed class CreatePostCommandHandler : ICommandHandler<CreatePostComma
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result<PostResponse>.Success(post.ToResponse(author));
+        return Result<PostResponse>.Success(post.ToResponse(author, PostLikeSummary.None));
     }
 }

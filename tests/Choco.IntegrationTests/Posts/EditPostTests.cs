@@ -65,7 +65,7 @@ public sealed class EditPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifeti
         DateTimeOffset editedAt = ChocoApiFactory.StartTime.AddMinutes(1);
         body.Should().Be(new PostBody(
             post.Id, author.Id, new AuthorBody("username", "Display Name", null),
-            "edited-content", ChocoApiFactory.StartTime, editedAt));
+            "edited-content", 0, false, ChocoApiFactory.StartTime, editedAt));
         Post saved = await GetPostAsync(post.Id);
         saved.Content.Should().Be("edited-content");
         saved.ModifiedAt.Should().Be(editedAt);
@@ -181,5 +181,5 @@ public sealed class EditPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifeti
 
     private sealed record AuthorBody(string Username, string DisplayName, string? AvatarUrl);
 
-    private sealed record PostBody(Guid Id, Guid AuthorId, AuthorBody Author, string Content, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
+    private sealed record PostBody(Guid Id, Guid AuthorId, AuthorBody Author, string Content, int LikeCount, bool IsLikedByMe, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
 }
