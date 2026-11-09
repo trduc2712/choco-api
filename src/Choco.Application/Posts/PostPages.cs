@@ -12,6 +12,7 @@ internal static class PostPages
         IReadOnlyList<Post> posts,
         IReadOnlyCollection<User> authors,
         IReadOnlyDictionary<Guid, PostLikeSummary> likes,
+        IReadOnlyDictionary<Guid, int> commentCounts,
         int limit)
     {
         Dictionary<Guid, User> authorsById = authors.ToDictionary(author => author.Id);
@@ -24,7 +25,8 @@ internal static class PostPages
             .Where(post => authorsById.ContainsKey(post.AuthorId))
             .Select(post => post.ToResponse(
                 authorsById[post.AuthorId],
-                likes.GetValueOrDefault(post.Id, PostLikeSummary.None)))
+                likes.GetValueOrDefault(post.Id, PostLikeSummary.None),
+                commentCounts.GetValueOrDefault(post.Id)))
             .ToList();
 
         return new PageResponse<PostResponse>(items, nextCursor);

@@ -50,6 +50,6 @@ internal sealed class CreatePostCommandHandler : ICommandHandler<CreatePostComma
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result<PostResponse>.Success(post.ToResponse(author, PostLikeSummary.None));
+        return Result<PostResponse>.Success(post.ToResponse(author, PostLikeSummary.None, 0));
     }
 }

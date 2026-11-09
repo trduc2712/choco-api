@@ -9,4 +9,7 @@ public interface ICommentRepository : IRepository<Comment>
         (DateTimeOffset CreatedAt, Guid Id)? after,
         int count,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<Guid, int>> CountByPostsForReadAsync(
+        IReadOnlyCollection<Guid> postIds, CancellationToken cancellationToken = default);
 }

@@ -7,7 +7,7 @@ namespace Choco.Application.Posts;
 
 internal static class PostMappings
 {
-    public static PostResponse ToResponse(this Post post, User author, PostLikeSummary likes)
+    public static PostResponse ToResponse(this Post post, User author, PostLikeSummary likes, int commentCount)
     {
         return new PostResponse(
             post.Id,
@@ -16,6 +16,7 @@ internal static class PostMappings
             post.Content,
             likes.LikeCount,
             likes.IsLikedByViewer,
+            commentCount,
             post.CreatedAt,
             post.ModifiedAt);
     }
