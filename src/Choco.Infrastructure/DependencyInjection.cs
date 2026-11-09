@@ -1,7 +1,11 @@
 using System.Net.Http.Headers;
 
+using Amazon.Runtime;
+using Amazon.S3;
+
 using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Authorization;
+using Choco.Application.Abstractions.Storage;
 using Choco.Domain.Posts;
 using Choco.Domain.Primitives.Persistence;
 using Choco.Domain.Roles;
@@ -13,6 +17,7 @@ using Choco.Infrastructure.Persistence;
 using Choco.Infrastructure.Persistence.Interceptors;
 using Choco.Infrastructure.Persistence.Repositories;
 using Choco.Infrastructure.Persistence.Seeding;
+using Choco.Infrastructure.Storage;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -67,6 +72,30 @@ public static class DependencyInjection
             client.BaseAddress = clerkOptions.BackendApiUrl;
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", clerkOptions.SecretKey);
         });
+
+        services.AddOptions<StorageOptions>()
+            .Bind(configuration.GetSection(StorageOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddSingleton<IAmazonS3>(serviceProvider =>
+        {
+            StorageOptions storageOptions = serviceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
+
+            AmazonS3Config config = new()
+            {
+                ServiceURL = storageOptions.ServiceUrl,
+                AuthenticationRegion = storageOptions.Region,
+                ForcePathStyle = true,
+                RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+                ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED,
+            };
+
+            return new AmazonS3Client(
+                new BasicAWSCredentials(storageOptions.AccessKeyId, storageOptions.SecretAccessKey), config);
+        });
+
+        services.AddSingleton<IObjectStorage, S3ObjectStorage>();
 
         return services;
     }

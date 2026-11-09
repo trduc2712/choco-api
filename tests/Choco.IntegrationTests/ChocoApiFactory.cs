@@ -127,7 +127,13 @@ public class ChocoApiFactory : WebApplicationFactory<Program>, IAsyncLifetime, I
                 ["Clerk:AuthorizedParties:0"] = TestJwt.AuthorizedParty,
                 ["Clerk:WebhookSigningSecret"] = ClerkWebhookSigner.SigningSecret,
                 ["Clerk:SecretKey"] = IdentityProviderSecretKey,
-                ["Clerk:BackendApiUrl"] = IdentityProviderUrl.ToString()
+                ["Clerk:BackendApiUrl"] = IdentityProviderUrl.ToString(),
+                ["Storage:ServiceUrl"] = "http://localhost:9000",
+                ["Storage:Region"] = "us-east-1",
+                ["Storage:UploadsBucketName"] = "choco-test-uploads",
+                ["Storage:MediaBucketName"] = "choco-test-media",
+                ["Storage:AccessKeyId"] = "test-access-key",
+                ["Storage:SecretAccessKey"] = "test-secret-key"
             }));
     }
 
