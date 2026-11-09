@@ -123,8 +123,16 @@ class Build : NukeBuild
         .Executes(() => Docker($"compose -f {ComposeFile} up -d --wait postgres"));
 
     Target DbDown => _ => _
-        .Description("Stop Postgres container (data volume is kept)")
+        .Description("Stop the Docker services (data volumes are kept)")
         .Executes(() => Docker($"compose -f {ComposeFile} down"));
+
+    Target StorageUp => _ => _
+        .Description("Start SeaweedFS in Docker and create the development buckets")
+        .Executes(() =>
+        {
+            Docker($"compose -f {ComposeFile} up -d --wait seaweedfs");
+            Docker($"compose -f {ComposeFile} run --rm storage-init");
+        });
 
     Target MigrationAdd => _ => _
         .Description("Add an EF Core migration; requires --migration-name")
