@@ -141,6 +141,30 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
             .Should().OnlyContain(parameter => !string.IsNullOrWhiteSpace(parameter.GetProperty("description").GetString()));
     }
 
+    [Theory]
+    [InlineData("put")]
+    [InlineData("delete")]
+    public async Task OpenApi_DescribesPostLikeOperations(string method)
+    {
+        using HttpResponseMessage response = await _client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using JsonDocument document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken), cancellationToken: TestContext.Current.CancellationToken);
+        JsonElement root = document.RootElement;
+        JsonElement operation = root.GetProperty("paths").GetProperty("/api/v1/posts/{id}/like").GetProperty(method);
+        operation.GetProperty("summary").GetString().Should().NotBeNullOrWhiteSpace();
+        operation.GetProperty("description").GetString().Should().Contain("changes nothing");
+        operation.GetProperty("responses").EnumerateObject().Select(status => status.Name).Should().Contain(["204", "400", "401", "404"]);
+        JsonElement id = operation.GetProperty("parameters").EnumerateArray().Single(parameter => parameter.GetProperty("name").GetString() == "id");
+        id.GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        id.TryGetProperty("example", out _).Should().BeTrue();
+        JsonElement post = root.GetProperty("components").GetProperty("schemas").GetProperty("PostResponse");
+        post.GetProperty("properties").EnumerateObject().Select(property => property.Name).Should().Contain(["likeCount", "isLikedByMe"]);
+        post.GetProperty("required").EnumerateArray().Select(name => name.GetString()).Should().Contain(["likeCount", "isLikedByMe"]);
+        post.GetProperty("properties").GetProperty("likeCount").GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        post.GetProperty("properties").GetProperty("isLikedByMe").GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
     [Fact]
     public async Task OpenApi_DescribesPostAuthor()
     {

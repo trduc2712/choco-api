@@ -101,6 +101,56 @@ public sealed class PostsController : ApiController
     }
 
     /// <summary>
+    /// Likes a post.
+    /// </summary>
+    /// <remarks>
+    /// Any signed-in user may call it, including on their own post. Liking a post the caller already likes changes nothing.
+    /// A post that is deleted, or whose author is deleted, is not found.
+    /// </remarks>
+    /// <param name="id" example="00000000-0000-0000-0000-000000000001">The post's id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="204">The caller likes the post.</response>
+    /// <response code="400">The id is empty; errors lists the field.</response>
+    /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="404">The post does not exist, is deleted, or was written by a deleted account.</response>
+    [HttpPut("{id:guid}/like")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Like(Guid id, CancellationToken cancellationToken)
+    {
+        Result result = await Sender.Send(new LikePostCommand(id), cancellationToken);
+
+        return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
+
+    /// <summary>
+    /// Removes the caller's like from a post.
+    /// </summary>
+    /// <remarks>
+    /// Any signed-in user may call it. Removing a like the caller does not have changes nothing.
+    /// A post that is deleted, or whose author is deleted, is not found.
+    /// </remarks>
+    /// <param name="id" example="00000000-0000-0000-0000-000000000001">The post's id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="204">The caller does not like the post.</response>
+    /// <response code="400">The id is empty; errors lists the field.</response>
+    /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="404">The post does not exist, is deleted, or was written by a deleted account.</response>
+    [HttpDelete("{id:guid}/like")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Unlike(Guid id, CancellationToken cancellationToken)
+    {
+        Result result = await Sender.Send(new UnlikePostCommand(id), cancellationToken);
+
+        return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
+
+    /// <summary>
     /// Gets a post by its id.
     /// </summary>
     /// <remarks>

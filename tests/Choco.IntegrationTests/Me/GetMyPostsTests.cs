@@ -84,8 +84,8 @@ public sealed class GetMyPostsTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         PageBody body = (await response.Content.ReadFromJsonAsync<PageBody>(TestContext.Current.CancellationToken))!;
         body.Items.Should().Equal(
-            new PostBody(newer.Id, caller.Id, new AuthorBody("username", "Display Name", null), "content-3", newer.CreatedAt, newer.CreatedAt),
-            new PostBody(older.Id, caller.Id, new AuthorBody("username", "Display Name", null), "content-1", older.CreatedAt, older.CreatedAt));
+            new PostBody(newer.Id, caller.Id, new AuthorBody("username", "Display Name", null), "content-3", 0, false, newer.CreatedAt, newer.CreatedAt),
+            new PostBody(older.Id, caller.Id, new AuthorBody("username", "Display Name", null), "content-1", 0, false, older.CreatedAt, older.CreatedAt));
         body.NextCursor.Should().BeNull();
     }
 
@@ -209,5 +209,5 @@ public sealed class GetMyPostsTests : IClassFixture<ChocoApiFactory>, IAsyncLife
 
     private sealed record AuthorBody(string Username, string DisplayName, string? AvatarUrl);
 
-    private sealed record PostBody(Guid Id, Guid AuthorId, AuthorBody Author, string Content, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
+    private sealed record PostBody(Guid Id, Guid AuthorId, AuthorBody Author, string Content, int LikeCount, bool IsLikedByMe, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
 }

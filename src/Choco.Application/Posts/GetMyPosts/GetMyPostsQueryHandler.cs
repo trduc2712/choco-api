@@ -2,8 +2,6 @@ using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Abstractions;
 using Choco.Contract.Posts;
-using Choco.Domain.Posts;
-using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
 
 namespace Choco.Application.Posts.GetMyPosts;
@@ -11,15 +9,12 @@ namespace Choco.Application.Posts.GetMyPosts;
 internal sealed class GetMyPostsQueryHandler : IQueryHandler<GetMyPostsQuery, PageResponse<PostResponse>>
 {
     private readonly ICurrentUser _currentUser;
-    private readonly IPostRepository _postRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly PostResponseReader _reader;
 
-    public GetMyPostsQueryHandler(
-        ICurrentUser currentUser, IPostRepository postRepository, IUserRepository userRepository)
+    public GetMyPostsQueryHandler(ICurrentUser currentUser, PostResponseReader reader)
     {
         _currentUser = currentUser;
-        _postRepository = postRepository;
-        _userRepository = userRepository;
+        _reader = reader;
     }
 
     public async Task<Result<PageResponse<PostResponse>>> Handle(GetMyPostsQuery query, CancellationToken cancellationToken)
@@ -31,8 +26,8 @@ internal sealed class GetMyPostsQueryHandler : IQueryHandler<GetMyPostsQuery, Pa
             return Result<PageResponse<PostResponse>>.Failure(userIdResult.Error);
         }
 
-        PageResponse<PostResponse> page = await PostPages.ReadByAuthorAsync(
-            _postRepository, _userRepository, userIdResult.Value, query.Cursor, query.Limit, cancellationToken);
+        PageResponse<PostResponse> page = await _reader.ReadByAuthorAsync(
+            userIdResult.Value, query.Cursor, query.Limit, userIdResult.Value, cancellationToken);
 
         return Result<PageResponse<PostResponse>>.Success(page);
     }

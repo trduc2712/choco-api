@@ -14,17 +14,20 @@ internal sealed class EditPostCommandHandler : ICommandHandler<EditPostCommand, 
     private readonly IPostRepository _postRepository;
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly PostResponseReader _reader;
 
     public EditPostCommandHandler(
         ICurrentUser currentUser,
         IPostRepository postRepository,
         IUserRepository userRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        PostResponseReader reader)
     {
         _currentUser = currentUser;
         _postRepository = postRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
+        _reader = reader;
     }
 
     public async Task<Result<PostResponse>> Handle(EditPostCommand command, CancellationToken cancellationToken)
@@ -59,6 +62,7 @@ internal sealed class EditPostCommandHandler : ICommandHandler<EditPostCommand, 
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result<PostResponse>.Success(post.ToResponse(author));
+        return Result<PostResponse>.Success(
+            await _reader.ReadOneAsync(post, author, editorIdResult.Value, cancellationToken));
     }
 }

@@ -57,7 +57,7 @@ public sealed class GetPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifetim
         PostBody body = (await response.Content.ReadFromJsonAsync<PostBody>(TestContext.Current.CancellationToken))!;
         body.Should().Be(new PostBody(
             post.Id, post.AuthorId, new AuthorBody("username", "Display Name", "https://example.com/avatar.png"),
-            "content", ChocoApiFactory.StartTime, ChocoApiFactory.StartTime));
+            "content", 0, false, ChocoApiFactory.StartTime, ChocoApiFactory.StartTime));
     }
 
     [Fact]
@@ -96,7 +96,8 @@ public sealed class GetPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifetim
     [Fact]
     public async Task PostOfDeletedAuthor_ReturnsNotFound()
     {
-        Post post = await AddPostAsync();
+        await AddUserAsync("identity-id", "username");
+        Post post = await AddPostAsync(identityId: "identity-id-2", username: "username-2");
         await _factory.ExecuteDbContextAsync(dbContext =>
         {
             dbContext.Remove(dbContext.Set<User>().Single(user => user.Id == post.AuthorId));
@@ -112,6 +113,7 @@ public sealed class GetPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifetim
     [Fact]
     public async Task UnknownPost_ReturnsNotFound()
     {
+        await AddUserAsync("identity-id", "username");
         using HttpRequestMessage request = CreateRequest(UnknownPostId);
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -151,9 +153,20 @@ public sealed class GetPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifetim
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be("Post.NotFound");
     }
 
-    private async Task<Post> AddPostAsync(string? avatarUrl = "https://example.com/avatar.png")
+    private async Task AddUserAsync(string identityId, string username)
     {
-        User user = User.Create("identity-id", "username", "Display Name", avatarUrl);
+        User user = User.Create(identityId, username, "Display Name", null);
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Add(user);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+    }
+
+    private async Task<Post> AddPostAsync(
+        string? avatarUrl = "https://example.com/avatar.png", string identityId = "identity-id", string username = "username")
+    {
+        User user = User.Create(identityId, username, "Display Name", avatarUrl);
         Post post = Post.Create("content", user.Id);
         await _factory.ExecuteDbContextAsync(dbContext =>
         {
@@ -166,5 +179,5 @@ public sealed class GetPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifetim
 
     private sealed record AuthorBody(string Username, string DisplayName, string? AvatarUrl);
 
-    private sealed record PostBody(Guid Id, Guid AuthorId, AuthorBody Author, string Content, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
+    private sealed record PostBody(Guid Id, Guid AuthorId, AuthorBody Author, string Content, int LikeCount, bool IsLikedByMe, DateTimeOffset CreatedAt, DateTimeOffset ModifiedAt);
 }

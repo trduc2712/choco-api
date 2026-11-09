@@ -2,16 +2,11 @@ using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Abstractions;
 using Choco.Contract.Posts;
-using Choco.Domain.Posts;
-using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
 
 namespace Choco.Application.Posts.GetFollowingFeed;
 
-internal sealed class GetFollowingFeedQueryHandler(
-    ICurrentUser currentUser,
-    IPostRepository postRepository,
-    IUserRepository userRepository)
+internal sealed class GetFollowingFeedQueryHandler(ICurrentUser currentUser, PostResponseReader reader)
     : IQueryHandler<GetFollowingFeedQuery, PageResponse<PostResponse>>
 {
     public async Task<Result<PageResponse<PostResponse>>> Handle(
@@ -23,8 +18,8 @@ internal sealed class GetFollowingFeedQueryHandler(
             return Result<PageResponse<PostResponse>>.Failure(caller.Error);
         }
 
-        PageResponse<PostResponse> page = await PostPages.ReadByFollowedAuthorsAsync(
-            postRepository, userRepository, caller.Value, query.Cursor, query.Limit, cancellationToken);
+        PageResponse<PostResponse> page = await reader.ReadByFollowedAuthorsAsync(
+            caller.Value, query.Cursor, query.Limit, cancellationToken);
 
         return Result<PageResponse<PostResponse>>.Success(page);
     }
