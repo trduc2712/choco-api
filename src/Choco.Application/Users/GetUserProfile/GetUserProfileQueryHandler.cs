@@ -1,6 +1,7 @@
 using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Users;
+using Choco.Domain.Posts;
 using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
@@ -10,7 +11,8 @@ namespace Choco.Application.Users.GetUserProfile;
 internal sealed class GetUserProfileQueryHandler(
     ICurrentUser currentUser,
     IUserRepository userRepository,
-    IUserFollowRepository followRepository)
+    IUserFollowRepository followRepository,
+    IPostRepository postRepository)
     : IQueryHandler<GetUserProfileQuery, UserProfileDetailsResponse>
 {
     public async Task<Result<UserProfileDetailsResponse>> Handle(
@@ -33,6 +35,8 @@ internal sealed class GetUserProfileQueryHandler(
         UserFollowSummary summary = await followRepository.GetSummaryForReadAsync(
             user.Id, userIdResult.Value, cancellationToken);
 
-        return Result<UserProfileDetailsResponse>.Success(user.ToProfileDetailsResponse(summary));
+        int postCount = await postRepository.CountByAuthorForReadAsync(user.Id, cancellationToken);
+
+        return Result<UserProfileDetailsResponse>.Success(user.ToProfileDetailsResponse(summary, postCount));
     }
 }

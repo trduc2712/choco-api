@@ -63,7 +63,7 @@ public sealed class UsersController : ApiController
     }
 
     /// <summary>Gets a user's basic profile by username.</summary>
-    /// <remarks>Any signed-in user with an active account may view this profile. The username match is exact and case-sensitive. Deleted users are not found. The profile shows whether the caller follows the user and how many users follow them and are followed by them; deleted accounts are not counted. A first request may create the caller's local account from their sign-in provider details. Session and role information is not returned.</remarks>
+    /// <remarks>Any signed-in user with an active account may view this profile. The username match is exact and case-sensitive. Deleted users are not found. The profile shows whether the caller follows the user, how many users follow them and are followed by them (deleted accounts are not counted), and how many posts they have published (deleted posts are not counted). A first request may create the caller's local account from their sign-in provider details. Session and role information is not returned.</remarks>
     /// <param name="username" example="username">The exact username, required and up to 64 characters.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="200">The user's profile.</response>
@@ -83,7 +83,7 @@ public sealed class UsersController : ApiController
     }
 
     /// <summary>Gets a user's basic profile.</summary>
-    /// <remarks>Any signed-in user with an active account may view this profile. Deleted users are not found. The profile shows whether the caller follows the user and how many users follow them and are followed by them; deleted accounts are not counted. Session and role information is not returned.</remarks>
+    /// <remarks>Any signed-in user with an active account may view this profile. Deleted users are not found. The profile shows whether the caller follows the user, how many users follow them and are followed by them (deleted accounts are not counted), and how many posts they have published (deleted posts are not counted). Session and role information is not returned.</remarks>
     /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The user's id.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="200">The user's profile.</response>
