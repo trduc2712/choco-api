@@ -92,7 +92,7 @@ public sealed class UserFollowPagesTests
         var page = UserFollowPages.ToPage([entry], 1, NoFollowed);
 
         page.Items.Should().ContainSingle().Which.Should().Be(
-            new Choco.Contract.Users.UserSearchItemResponse("username", "Display Name", "https://example.com/avatar.png", false));
+            new Choco.Contract.Users.UserSearchItemResponse(user.Id, "username", "Display Name", "https://example.com/avatar.png", false));
     }
 
     private static List<UserFollowEntry> Entries(int count)
