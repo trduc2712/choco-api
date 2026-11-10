@@ -26,6 +26,9 @@ public sealed class UserFollow : AggregateRoot
             return Result<UserFollow>.Failure(UserFollowErrors.SelfFollow);
         }
 
-        return Result<UserFollow>.Success(new UserFollow(Guid.NewGuid(), followerId, followedUserId, now));
+        UserFollow follow = new(Guid.NewGuid(), followerId, followedUserId, now);
+        follow.RaiseDomainEvent(new UserFollowed(followerId, followedUserId, now));
+
+        return Result<UserFollow>.Success(follow);
     }
 }

@@ -3,9 +3,11 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using Choco.Domain.Notifications;
 using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 using Choco.IntegrationTests.Authentication;
+using Choco.IntegrationTests.Notifications;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -54,7 +56,63 @@ public sealed class UserFollowTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         UserFollow follow = (await GetFollowsAsync(caller.Id)).Should().ContainSingle().Subject;
         follow.FollowedUserId.Should().Be(target.Id);
         follow.FollowedAt.Should().Be(_factory.TimeProvider.GetUtcNow());
+        (await NotificationTestData.GetNotificationsAsync(_factory, target.Id)).Should().ContainSingle();
         _factory.IdentityProvider.Requests.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Following_NotifiesTheFollowedUser()
+    {
+        User caller = await AddUserAsync("identity-id", "username");
+        User target = await AddUserAsync("identity-id-2", "username-2");
+        using HttpRequestMessage request = Request("PUT", target.Id);
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        Notification notification = (await NotificationTestData.GetNotificationsAsync(_factory, target.Id)).Should().ContainSingle().Subject;
+        notification.ActorId.Should().Be(caller.Id);
+        notification.Type.Should().Be(NotificationType.Followed);
+        notification.CreatedAt.Should().Be(_factory.TimeProvider.GetUtcNow());
+        notification.ReadAt.Should().BeNull();
+        (await NotificationTestData.GetNotificationsAsync(_factory, caller.Id)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RepeatedFollowRequests_CreateOneNotification()
+    {
+        await AddUserAsync("identity-id", "username");
+        User target = await AddUserAsync("identity-id-2", "username-2");
+        using HttpRequestMessage firstRequest = Request("PUT", target.Id);
+        using HttpRequestMessage secondRequest = Request("PUT", target.Id);
+
+        using HttpResponseMessage firstResponse = await _client.SendAsync(firstRequest, TestContext.Current.CancellationToken);
+        _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
+        using HttpResponseMessage secondResponse = await _client.SendAsync(secondRequest, TestContext.Current.CancellationToken);
+
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await NotificationTestData.GetNotificationsAsync(_factory, target.Id)).Should().ContainSingle()
+            .Which.CreatedAt.Should().Be(ChocoApiFactory.StartTime);
+    }
+
+    [Fact]
+    public async Task FollowingAgainAfterUnfollowing_NotifiesAgain()
+    {
+        await AddUserAsync("identity-id", "username");
+        User target = await AddUserAsync("identity-id-2", "username-2");
+        using HttpRequestMessage followRequest = Request("PUT", target.Id);
+        using HttpRequestMessage unfollowRequest = Request("DELETE", target.Id);
+        using HttpRequestMessage followAgainRequest = Request("PUT", target.Id);
+        await _client.SendAsync(followRequest, TestContext.Current.CancellationToken);
+        await _client.SendAsync(unfollowRequest, TestContext.Current.CancellationToken);
+        _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
+
+        using HttpResponseMessage response = await _client.SendAsync(followAgainRequest, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await NotificationTestData.GetNotificationsAsync(_factory, target.Id)).Select(notification => notification.CreatedAt)
+            .Should().Equal(ChocoApiFactory.StartTime, ChocoApiFactory.StartTime.AddHours(1));
     }
 
     [Fact]

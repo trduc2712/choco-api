@@ -1,6 +1,7 @@
 using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Users;
+using Choco.Domain.Primitives.Persistence;
 using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
@@ -12,17 +13,20 @@ internal sealed class FollowUserCommandHandler : ICommandHandler<FollowUserComma
     private readonly ICurrentUser _currentUser;
     private readonly IUserRepository _userRepository;
     private readonly IUserFollowRepository _followRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
 
     public FollowUserCommandHandler(
         ICurrentUser currentUser,
         IUserRepository userRepository,
         IUserFollowRepository followRepository,
+        IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
     {
         _currentUser = currentUser;
         _userRepository = userRepository;
         _followRepository = followRepository;
+        _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
     }
 
@@ -46,7 +50,16 @@ internal sealed class FollowUserCommandHandler : ICommandHandler<FollowUserComma
             return follow;
         }
 
-        await _followRepository.AddIfMissingAsync(follow.Value, cancellationToken);
+        await _unitOfWork.InTransactionAsync(async () =>
+        {
+            if (await _followRepository.AddIfMissingAsync(follow.Value, cancellationToken))
+            {
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+
+            return true;
+        }, cancellationToken);
+
         return Result.Success();
     }
 }

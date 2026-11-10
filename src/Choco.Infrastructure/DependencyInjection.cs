@@ -7,6 +7,7 @@ using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Authorization;
 using Choco.Application.Abstractions.Storage;
 using Choco.Domain.Comments;
+using Choco.Domain.Notifications;
 using Choco.Domain.PostLikes;
 using Choco.Domain.Posts;
 using Choco.Domain.Primitives.Persistence;
@@ -56,6 +57,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<ChocoDbContext>());
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserFollowRepository, UserFollowRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IPostRepository, PostRepository>();
         services.AddScoped<IPostLikeRepository, PostLikeRepository>();

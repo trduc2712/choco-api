@@ -141,6 +141,25 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
             .Should().OnlyContain(parameter => !string.IsNullOrWhiteSpace(parameter.GetProperty("description").GetString()));
     }
 
+    [Theory]
+    [InlineData("/api/v1/me/notifications", "get", new[] { "200", "400", "401" })]
+    [InlineData("/api/v1/me/notifications/unread-count", "get", new[] { "200", "401" })]
+    [InlineData("/api/v1/me/notifications/{notificationId}/read", "put", new[] { "204", "400", "401", "404" })]
+    [InlineData("/api/v1/me/notifications/read", "put", new[] { "204", "401" })]
+    public async Task OpenApi_DescribesNotifications(string path, string method, string[] statuses)
+    {
+        using HttpResponseMessage response = await _client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using JsonDocument document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken), cancellationToken: TestContext.Current.CancellationToken);
+        JsonElement operation = document.RootElement.GetProperty("paths").GetProperty(path).GetProperty(method);
+        operation.GetProperty("summary").GetString().Should().NotBeNullOrWhiteSpace();
+        operation.GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        operation.GetProperty("responses").EnumerateObject().Select(status => status.Name).Should().BeEquivalentTo(statuses);
+        IEnumerable<JsonElement> parameters = operation.TryGetProperty("parameters", out JsonElement found) ? found.EnumerateArray() : [];
+        parameters.Should().OnlyContain(parameter => !string.IsNullOrWhiteSpace(parameter.GetProperty("description").GetString()));
+    }
+
     [Fact]
     public async Task OpenApi_DescribesFollowStatusOnUserLists()
     {

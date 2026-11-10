@@ -15,6 +15,7 @@ namespace Choco.Infrastructure.Persistence;
 internal sealed class ChocoDbContext : DbContext, IUnitOfWork
 {
     private readonly IPublisher _publisher;
+    private readonly List<Func<CancellationToken, Task>> _afterCommitActions = [];
 
     public ChocoDbContext(DbContextOptions<ChocoDbContext> options, IPublisher publisher) : base(options)
     {
@@ -38,10 +39,43 @@ internal sealed class ChocoDbContext : DbContext, IUnitOfWork
 
     public async Task<T> InTransactionAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken)
     {
+        _afterCommitActions.Clear();
+
         await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
-        T result = await action();
-        await transaction.CommitAsync(cancellationToken);
+
+        T result;
+
+        try
+        {
+            result = await action();
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            _afterCommitActions.Clear();
+            throw;
+        }
+
+        List<Func<CancellationToken, Task>> actions = [.. _afterCommitActions];
+        _afterCommitActions.Clear();
+
+        foreach (Func<CancellationToken, Task> afterCommit in actions)
+        {
+            await afterCommit(cancellationToken);
+        }
+
         return result;
+    }
+
+    public async Task AfterCommitAsync(Func<CancellationToken, Task> action, CancellationToken cancellationToken)
+    {
+        if (Database.CurrentTransaction is null)
+        {
+            await action(cancellationToken);
+            return;
+        }
+
+        _afterCommitActions.Add(action);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

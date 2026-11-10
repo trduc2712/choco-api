@@ -11,13 +11,21 @@ internal sealed class UserFollowRepository : Repository<UserFollow>, IUserFollow
 {
     public UserFollowRepository(ChocoDbContext dbContext) : base(dbContext) { }
 
-    public async Task AddIfMissingAsync(UserFollow follow, CancellationToken cancellationToken)
+    public async Task<bool> AddIfMissingAsync(UserFollow follow, CancellationToken cancellationToken)
     {
-        await DbContext.Database.ExecuteSqlAsync($"""
+        int inserted = await DbContext.Database.ExecuteSqlAsync($"""
             INSERT INTO user_follows (id, follower_id, followed_user_id, followed_at)
             VALUES ({follow.Id}, {follow.FollowerId}, {follow.FollowedUserId}, {follow.FollowedAt})
             ON CONFLICT (follower_id, followed_user_id) DO NOTHING
             """, cancellationToken);
+
+        if (inserted == 0)
+        {
+            return false;
+        }
+
+        DbSet.Attach(follow);
+        return true;
     }
 
     public async Task RemoveIfPresentAsync(Guid followerId, Guid followedUserId, CancellationToken cancellationToken)
