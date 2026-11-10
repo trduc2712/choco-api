@@ -20,6 +20,6 @@ internal static class UserSearch
             : users.SearchForReadAsync(text, callerId, after, count, cancellationToken);
     }
 
-    public static UserSearchItemResponse ToResponse(this UserSearchMatch match) =>
-        new(match.Username, match.DisplayName, match.AvatarUrl);
+    public static UserSearchItemResponse ToResponse(this UserSearchMatch match, IReadOnlySet<Guid> followedUserIds) =>
+        new(match.Username, match.DisplayName, match.AvatarUrl, followedUserIds.Contains(match.Id));
 }

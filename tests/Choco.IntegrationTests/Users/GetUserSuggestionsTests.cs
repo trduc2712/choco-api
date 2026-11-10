@@ -49,6 +49,6 @@ public sealed class GetUserSuggestionsTests(ChocoApiFactory factory) : IClassFix
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         UserSearchItemResponse[] body = (await response.Content.ReadFromJsonAsync<UserSearchItemResponse[]>(cancellationToken))!;
-        body.Should().Equal(new UserSearchItemResponse(target.Username, target.DisplayName, target.AvatarUrl));
+        body.Should().Equal(new UserSearchItemResponse(target.Username, target.DisplayName, target.AvatarUrl, false));
     }
 }

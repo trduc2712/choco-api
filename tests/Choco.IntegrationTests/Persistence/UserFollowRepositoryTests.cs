@@ -124,6 +124,37 @@ public sealed class UserFollowRepositoryTests : IClassFixture<ChocoApiFactory>, 
     }
 
     [Fact]
+    public async Task FollowedUserIds_ReturnOnlyTheAskedUsersTheFollowerFollows()
+    {
+        User follower = await AddUserAsync("identity-id", "username");
+        User followedAsked = await AddUserAsync("identity-id-2", "username-2");
+        User notFollowedAsked = await AddUserAsync("identity-id-3", "username-3");
+        User followedNotAsked = await AddUserAsync("identity-id-4", "username-4");
+        User otherFollower = await AddUserAsync("identity-id-5", "username-5");
+        await AddFollowAsync("following", follower, followedAsked, 1);
+        await AddFollowAsync("following", follower, followedNotAsked, 2);
+        await AddFollowAsync("following", otherFollower, notFollowedAsked, 3);
+        await AddFollowAsync("followers", follower, otherFollower, 4);
+
+        IReadOnlySet<Guid> ids = await GetFollowedUserIdsAsync(
+            follower.Id, [followedAsked.Id, notFollowedAsked.Id, otherFollower.Id]);
+
+        ids.Should().BeEquivalentTo([followedAsked.Id]);
+    }
+
+    [Fact]
+    public async Task FollowedUserIds_WithoutAskedUsers_ReturnNothing()
+    {
+        User follower = await AddUserAsync("identity-id", "username");
+        User followed = await AddUserAsync("identity-id-2", "username-2");
+        await AddFollowAsync("following", follower, followed, 1);
+
+        IReadOnlySet<Guid> ids = await GetFollowedUserIdsAsync(follower.Id, []);
+
+        ids.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Summary_CountsEachDirectionSeparatelyAndSkipsDeletedUsers()
     {
         User viewer = await AddUserAsync("identity-id", "username");
@@ -212,6 +243,14 @@ public sealed class UserFollowRepositoryTests : IClassFixture<ChocoApiFactory>, 
         return list == "followers"
             ? await repository.ListFollowersForReadAsync(userId, after, count, TestContext.Current.CancellationToken)
             : await repository.ListFollowingForReadAsync(userId, after, count, TestContext.Current.CancellationToken);
+    }
+
+    private async Task<IReadOnlySet<Guid>> GetFollowedUserIdsAsync(Guid followerId, Guid[] userIds)
+    {
+        using IServiceScope scope = _factory.Services.CreateScope();
+        IUserFollowRepository repository = scope.ServiceProvider.GetRequiredService<IUserFollowRepository>();
+
+        return await repository.GetFollowedUserIdsForReadAsync(followerId, userIds, TestContext.Current.CancellationToken);
     }
 
     private async Task<UserFollowSummary> GetSummaryAsync(Guid userId, Guid viewerId)
