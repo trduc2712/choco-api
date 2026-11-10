@@ -13,7 +13,13 @@ internal static class UserFollowPages
             : null;
     }
 
-    public static PageResponse<UserSearchItemResponse> ToPage(IReadOnlyList<UserFollowEntry> entries, int limit)
+    public static Guid[] PageUserIds(IReadOnlyList<UserFollowEntry> entries, int limit)
+    {
+        return entries.Take(limit).Select(entry => entry.User.Id).ToArray();
+    }
+
+    public static PageResponse<UserSearchItemResponse> ToPage(
+        IReadOnlyList<UserFollowEntry> entries, int limit, IReadOnlySet<Guid> followedUserIds)
     {
         List<UserFollowEntry> page = entries.Take(limit).ToList();
         string? nextCursor = entries.Count > limit
@@ -22,7 +28,10 @@ internal static class UserFollowPages
 
         return new PageResponse<UserSearchItemResponse>(
             page.Select(entry => new UserSearchItemResponse(
-                entry.User.Username, entry.User.DisplayName, entry.User.AvatarUrl)).ToList(),
+                entry.User.Username,
+                entry.User.DisplayName,
+                entry.User.AvatarUrl,
+                followedUserIds.Contains(entry.User.Id))).ToList(),
             nextCursor);
     }
 }

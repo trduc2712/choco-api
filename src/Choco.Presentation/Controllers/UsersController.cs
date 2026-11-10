@@ -23,7 +23,7 @@ public sealed class UsersController : ApiController
     public UsersController(ISender sender) : base(sender) { }
 
     /// <summary>Suggests up to ten users as the caller types.</summary>
-    /// <remarks>Any signed-in user with an active account may call this endpoint. Results match the username or display name and exclude the caller and deleted accounts. An empty search returns an empty list.</remarks>
+    /// <remarks>Any signed-in user with an active account may call this endpoint. Results match the username or display name and exclude the caller and deleted accounts. Each user says whether the caller follows them. An empty search returns an empty list.</remarks>
     /// <param name="q" example="username">Search text, up to 256 characters after trimming. Matching starts at one character.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="200">User suggestions in relevance order.</response>
@@ -42,7 +42,7 @@ public sealed class UsersController : ApiController
     }
 
     /// <summary>Searches for users by username or display name.</summary>
-    /// <remarks>Any signed-in user with an active account may call this endpoint. Each page contains up to ten users, excluding the caller and deleted accounts. Use nextCursor with the same search text to get the next page.</remarks>
+    /// <remarks>Any signed-in user with an active account may call this endpoint. Each page contains up to ten users, excluding the caller and deleted accounts. Each user says whether the caller follows them. Use nextCursor with the same search text to get the next page.</remarks>
     /// <param name="q" example="username">Search text, up to 256 characters after trimming. Matching starts at one character.</param>
     /// <param name="cursor" example="MjowMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMToxNkY3OEE3RDYzMTdGMTAyQkJEOTVGQzlBNEYzRkYyRTMyNDkyODc2OTBCOEJEQUQ2Qjc4MTBGODJCMzRBQ0UzOnVzZXJuYW1lLTEw">The previous page's nextCursor. Omit it for the first page.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
@@ -196,6 +196,7 @@ public sealed class UsersController : ApiController
     /// <summary>Lists the users who follow a user, most recent follower first.</summary>
     /// <remarks>
     /// Any signed-in user with an active account may call this endpoint. Deleted accounts are excluded.
+    /// Each user says whether the caller follows them; it is always false for the caller's own row.
     /// A first request may create the caller's local account from their sign-in provider details.
     /// To get the next page, pass the previous page's nextCursor as cursor. It is null on the last page.
     /// </remarks>
@@ -227,6 +228,7 @@ public sealed class UsersController : ApiController
     /// <summary>Lists the users a user follows, most recently followed first.</summary>
     /// <remarks>
     /// Any signed-in user with an active account may call this endpoint. Deleted accounts are excluded.
+    /// Each user says whether the caller follows them; it is always false for the caller's own row.
     /// A first request may create the caller's local account from their sign-in provider details.
     /// To get the next page, pass the previous page's nextCursor as cursor. It is null on the last page.
     /// </remarks>

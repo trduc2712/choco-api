@@ -8,6 +8,9 @@ public interface IUserFollowRepository : IRepository<UserFollow>
     Task RemoveIfPresentAsync(Guid followerId, Guid followedUserId, CancellationToken cancellationToken);
     Task<UserFollowSummary> GetSummaryForReadAsync(Guid userId, Guid viewerId, CancellationToken cancellationToken);
 
+    Task<IReadOnlySet<Guid>> GetFollowedUserIdsForReadAsync(
+        Guid followerId, IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<UserFollowEntry>> ListFollowersForReadAsync(
         Guid userId,
         (DateTimeOffset FollowedAt, Guid FollowId)? after,

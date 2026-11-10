@@ -47,6 +47,17 @@ internal sealed class UserFollowRepository : Repository<UserFollow>, IUserFollow
         return new UserFollowSummary(isFollowedByViewer, followerCount, followingCount);
     }
 
+    public async Task<IReadOnlySet<Guid>> GetFollowedUserIdsForReadAsync(
+        Guid followerId, IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken)
+    {
+        List<Guid> followedUserIds = await DbSet.AsNoTracking()
+            .Where(follow => follow.FollowerId == followerId && userIds.Contains(follow.FollowedUserId))
+            .Select(follow => follow.FollowedUserId)
+            .ToListAsync(cancellationToken);
+
+        return followedUserIds.ToHashSet();
+    }
+
     public Task<IReadOnlyList<UserFollowEntry>> ListFollowersForReadAsync(
         Guid userId,
         (DateTimeOffset FollowedAt, Guid FollowId)? after,
