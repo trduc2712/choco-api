@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using Choco.Domain.Posts;
 using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 using Choco.IntegrationTests.Authentication;
@@ -81,7 +82,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
-            "id", "username", "displayName", "avatarUrl", "isFollowedByMe", "followerCount", "followingCount");
+            "id", "username", "displayName", "avatarUrl", "isFollowedByMe", "followerCount", "followingCount", "postCount");
         body.GetProperty("id").GetGuid().Should().Be(target.Id);
         body.GetProperty("username").GetString().Should().Be(target.Username);
         body.GetProperty("displayName").GetString().Should().Be("Display Name 2");
@@ -89,6 +90,7 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
         body.GetProperty("isFollowedByMe").GetBoolean().Should().BeFalse();
         body.GetProperty("followerCount").GetInt32().Should().Be(0);
         body.GetProperty("followingCount").GetInt32().Should().Be(0);
+        body.GetProperty("postCount").GetInt32().Should().Be(0);
         _factory.IdentityProvider.Requests.Should().BeEmpty();
     }
 
@@ -400,9 +402,70 @@ public sealed class GetUserByUsernameTests : IClassFixture<ChocoApiFactory>, IAs
         });
     }
 
-    private static HttpRequestMessage Request(string path)
+    [Fact]
+    public async Task PostCount_CountsTheUsersPostsAndSkipsDeletedAndOthersPosts()
     {
-        HttpRequestMessage request = new(HttpMethod.Get, path);
+        await AddUserAsync("identity-id", "username", null);
+        User target = await AddUserAsync("identity-id-2", "username-2", null);
+        User other = await AddUserAsync("identity-id-3", "username-3", null);
+        Post deleted = Post.Create("content-3", target.Id);
+        await _factory.ExecuteDbContextAsync(db =>
+        {
+            db.AddRange(
+                Post.Create("content-1", target.Id),
+                Post.Create("content-2", target.Id),
+                deleted,
+                Post.Create("content-4", other.Id));
+            return db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        await _factory.ExecuteDbContextAsync(db =>
+        {
+            db.Remove(db.Set<Post>().Single(post => post.Id == deleted.Id));
+            return db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        using HttpRequestMessage request = Request($"/api/v1/users/by-username/{target.Username}");
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        body.GetProperty("postCount").GetInt32().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task PublishingThenDeletingAPost_IsReflectedByTheNextProfileRequest()
+    {
+        User target = await AddUserAsync("identity-id", "username", null);
+
+        int before = await ReadPostCountAsync($"/api/v1/users/by-username/{target.Username}");
+        using HttpRequestMessage create = Request("/api/v1/posts", HttpMethod.Post);
+        create.Content = JsonContent.Create(new { content = "content" });
+        using HttpResponseMessage created = await _client.SendAsync(create, TestContext.Current.CancellationToken);
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        Guid postId = (await created.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken)).GetProperty("id").GetGuid();
+        int afterPublish = await ReadPostCountAsync($"/api/v1/users/by-username/{target.Username}");
+        using HttpRequestMessage delete = Request($"/api/v1/posts/{postId}", HttpMethod.Delete);
+        using HttpResponseMessage deleted = await _client.SendAsync(delete, TestContext.Current.CancellationToken);
+        deleted.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        int afterDelete = await ReadPostCountAsync($"/api/v1/users/by-username/{target.Username}");
+
+        before.Should().Be(0);
+        afterPublish.Should().Be(1);
+        afterDelete.Should().Be(0);
+    }
+
+    private async Task<int> ReadPostCountAsync(string path)
+    {
+        using HttpRequestMessage request = Request(path);
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        return body.GetProperty("postCount").GetInt32();
+    }
+
+    private static HttpRequestMessage Request(string path, HttpMethod? method = null)
+    {
+        HttpRequestMessage request = new(method ?? HttpMethod.Get, path);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", TestJwt.Create(DateTimeOffset.UtcNow));
         return request;
     }

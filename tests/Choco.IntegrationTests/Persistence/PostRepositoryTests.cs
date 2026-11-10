@@ -102,6 +102,32 @@ public sealed class PostRepositoryTests : IClassFixture<ChocoApiFactory>, IAsync
     }
 
     [Fact]
+    public async Task Count_ReturnsTheAuthorsPostsAndSkipsDeletedAndOthersPosts()
+    {
+        User author = await AddUserAsync("identity-id", "username");
+        User other = await AddUserAsync("identity-id-2", "username-2");
+        await AddPostAsync(author, "content-1");
+        await AddPostAsync(author, "content-2");
+        Post deleted = await AddPostAsync(author, "content-3");
+        await AddPostAsync(other, "content-4");
+        await DeletePostAsync(deleted.Id);
+
+        int count = await CountAsync(author.Id);
+
+        count.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Count_WithoutPosts_ReturnsZero()
+    {
+        User author = await AddUserAsync("identity-id", "username");
+
+        int count = await CountAsync(author.Id);
+
+        count.Should().Be(0);
+    }
+
+    [Fact]
     public async Task Recommended_ReturnsOthersPostsNewestFirst()
     {
         User viewer = await AddUserAsync("identity-id", "username");
@@ -299,6 +325,14 @@ public sealed class PostRepositoryTests : IClassFixture<ChocoApiFactory>, IAsync
         });
 
         return post;
+    }
+
+    private async Task<int> CountAsync(Guid authorId)
+    {
+        using IServiceScope scope = _factory.Services.CreateScope();
+        IPostRepository repository = scope.ServiceProvider.GetRequiredService<IPostRepository>();
+
+        return await repository.CountByAuthorForReadAsync(authorId, TestContext.Current.CancellationToken);
     }
 
     private Task DeletePostAsync(Guid id)

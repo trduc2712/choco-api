@@ -17,6 +17,13 @@ internal sealed class PostRepository : Repository<Post>, IPostRepository
             .FirstOrDefaultAsync(post => post.Id == id, cancellationToken);
     }
 
+    public Task<int> CountByAuthorForReadAsync(Guid authorId, CancellationToken cancellationToken = default)
+    {
+        return DbSet
+            .AsNoTracking()
+            .CountAsync(post => post.AuthorId == authorId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Post>> ListByAuthorForReadAsync(
         Guid authorId,
         (DateTimeOffset CreatedAt, Guid Id)? after,

@@ -11,7 +11,8 @@ internal static class UserMappings
         return new UserProfileResponse(user.Id, user.Username, user.DisplayName, user.AvatarUrl);
     }
 
-    public static UserProfileDetailsResponse ToProfileDetailsResponse(this User user, UserFollowSummary summary)
+    public static UserProfileDetailsResponse ToProfileDetailsResponse(
+        this User user, UserFollowSummary summary, int postCount)
     {
         return new UserProfileDetailsResponse(
             user.Id,
@@ -20,6 +21,7 @@ internal static class UserMappings
             user.AvatarUrl,
             summary.IsFollowedByViewer,
             summary.FollowerCount,
-            summary.FollowingCount);
+            summary.FollowingCount,
+            postCount);
     }
 }

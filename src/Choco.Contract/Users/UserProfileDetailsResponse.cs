@@ -10,7 +10,8 @@ namespace Choco.Contract.Users;
 /// <param name="IsFollowedByMe">Whether the caller follows this user.</param>
 /// <param name="FollowerCount">The number of users who follow this user, zero when nobody does.</param>
 /// <param name="FollowingCount">The number of users this user follows, zero when they follow nobody.</param>
-/// <example>{"id":"00000000-0000-0000-0000-000000000001","username":"username","displayName":"Display Name","avatarUrl":"https://example.com/avatar.png","isFollowedByMe":true,"followerCount":12,"followingCount":3}</example>
+/// <param name="PostCount">The number of posts the user has published, zero when they have none. Deleted posts are not counted.</param>
+/// <example>{"id":"00000000-0000-0000-0000-000000000001","username":"username","displayName":"Display Name","avatarUrl":"https://example.com/avatar.png","isFollowedByMe":true,"followerCount":12,"followingCount":3,"postCount":5}</example>
 public sealed record UserProfileDetailsResponse(
     Guid Id,
     string Username,
@@ -18,4 +19,5 @@ public sealed record UserProfileDetailsResponse(
     string? AvatarUrl,
     bool IsFollowedByMe,
     int FollowerCount,
-    int FollowingCount);
+    int FollowingCount,
+    int PostCount);
