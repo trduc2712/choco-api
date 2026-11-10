@@ -150,7 +150,7 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
         using JsonDocument document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken), cancellationToken: TestContext.Current.CancellationToken);
         JsonElement item = document.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("UserSearchItemResponse");
         item.GetProperty("properties").EnumerateObject().Select(property => property.Name)
-            .Should().BeEquivalentTo("username", "displayName", "avatarUrl", "isFollowedByMe");
+            .Should().BeEquivalentTo("id", "username", "displayName", "avatarUrl", "isFollowedByMe");
         item.GetProperty("properties").GetProperty("isFollowedByMe").GetProperty("description").GetString().Should().Contain("caller");
         item.GetProperty("required").EnumerateArray().Select(name => name.GetString()).Should().Contain("isFollowedByMe");
         item.GetProperty("example").GetProperty("isFollowedByMe").GetBoolean().Should().BeTrue();

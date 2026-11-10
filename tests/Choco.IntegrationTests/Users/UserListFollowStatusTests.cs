@@ -55,6 +55,13 @@ public sealed class UserListFollowStatusTests : IClassFixture<ChocoApiFactory>, 
                 ["target-b"] = false,
                 ["target-c"] = false,
             });
+        items.ToDictionary(item => item.GetProperty("username").GetString()!, item => item.GetProperty("id").GetGuid())
+            .Should().BeEquivalentTo(new Dictionary<string, Guid>
+            {
+                ["target-a"] = followedByCaller.Id,
+                ["target-b"] = notFollowed.Id,
+                ["target-c"] = alsoNotFollowed.Id,
+            });
     }
 
     [Theory]

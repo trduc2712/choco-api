@@ -58,6 +58,8 @@ public sealed class GetUserSearchResultsTests(ChocoApiFactory factory) : IClassF
         firstPage.Items.Select(item => item.Username).Should().Equal(
             [exactUsername.Username, exactName.Username, .. usernamePrefixes.Select(user => user.Username)]);
         firstPage.Items[1].DisplayName.Should().Be(exactName.DisplayName);
+        firstPage.Items.Select(item => item.Id).Should().Equal(
+            [exactUsername.Id, exactName.Id, .. usernamePrefixes.Select(user => user.Id)]);
         suggestions.Should().Equal(firstPage.Items);
         firstPage.NextCursor.Should().NotBeNullOrEmpty();
 

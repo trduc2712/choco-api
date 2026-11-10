@@ -61,7 +61,7 @@ public sealed class GetUserFollowListTests : IClassFixture<ChocoApiFactory>, IAs
         body.GetProperty("nextCursor").ValueKind.Should().Be(JsonValueKind.Null);
         JsonElement[] items = body.GetProperty("items").EnumerateArray().ToArray();
         items.Select(item => item.GetProperty("username").GetString()).Should().Equal(expectedUsernames.Split(','));
-        items[0].EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo("username", "displayName", "avatarUrl", "isFollowedByMe");
+        items[0].EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo("id", "username", "displayName", "avatarUrl", "isFollowedByMe");
         items[0].GetProperty("displayName").GetString().Should().Be("Display Name");
         items[0].GetProperty("avatarUrl").GetString().Should().Be("https://example.com/avatar.png");
         _factory.IdentityProvider.Requests.Should().BeEmpty();

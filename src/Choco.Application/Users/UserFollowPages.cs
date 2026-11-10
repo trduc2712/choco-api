@@ -28,6 +28,7 @@ internal static class UserFollowPages
 
         return new PageResponse<UserSearchItemResponse>(
             page.Select(entry => new UserSearchItemResponse(
+                entry.User.Id,
                 entry.User.Username,
                 entry.User.DisplayName,
                 entry.User.AvatarUrl,
