@@ -3,14 +3,17 @@ using System.Security.Claims;
 using Asp.Versioning;
 
 using Choco.Application.Abstractions.Authentication;
+using Choco.Application.Abstractions.Notifications;
 using Choco.Presentation.Authentication;
 using Choco.Presentation.Authorization;
+using Choco.Presentation.Notifications;
 using Choco.Presentation.OpenApi;
 using Choco.Presentation.Options;
 using Choco.Presentation.RateLimiting;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpLogging;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 
@@ -74,6 +77,18 @@ public static class DependencyInjection
 
                 jwtBearerOptions.Events = new JwtBearerEvents
                 {
+                    OnMessageReceived = context =>
+                    {
+                        string? accessToken = context.Request.Query["access_token"];
+
+                        if (!string.IsNullOrEmpty(accessToken)
+                            && context.HttpContext.Request.Path.StartsWithSegments(NotificationsHub.Path))
+                        {
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    },
                     OnTokenValidated = context =>
                     {
                         string? azp = context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Azp);
@@ -94,6 +109,10 @@ public static class DependencyInjection
                     }
                 };
             });
+
+        services.AddSignalR();
+        services.AddSingleton<IUserIdProvider, IdentityUserIdProvider>();
+        services.AddSingleton<INotificationRealtimePublisher, NotificationRealtimePublisher>();
 
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext, UserContext>();

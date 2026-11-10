@@ -2,15 +2,16 @@
 
 ## Tables
 
-| Name                                          | Columns | Comment                                                                                                      | Type       |
-| --------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ | ---------- |
-| [public.comments](public.comments.md)         | 8       | Comments that users write on posts.                                                                          | BASE TABLE |
-| [public.post_likes](public.post_likes.md)     | 4       | Active likes that users give to posts.                                                                       | BASE TABLE |
-| [public.posts](public.posts.md)               | 7       | Text posts that users publish.                                                                               | BASE TABLE |
-| [public.roles](public.roles.md)               | 7       | Named sets of permissions that users can hold. Roles and their permissions can change while the system runs. | BASE TABLE |
-| [public.user_follows](public.user_follows.md) | 4       | Active follow relationships between users.                                                                   | BASE TABLE |
-| [public.user_roles](public.user_roles.md)     | 5       | Roles assigned to users, besides the default role that every signed-in user has.                             | BASE TABLE |
-| [public.users](public.users.md)               | 9       | People who use choco-api. Sign-in lives in Clerk; each row is the local copy of one Clerk user.              | BASE TABLE |
+| Name                                            | Columns | Comment                                                                                                      | Type       |
+| ----------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ | ---------- |
+| [public.comments](public.comments.md)           | 8       | Comments that users write on posts.                                                                          | BASE TABLE |
+| [public.notifications](public.notifications.md) | 6       | Things that happened to a user, such as a new follower, shown to that user.                                  | BASE TABLE |
+| [public.post_likes](public.post_likes.md)       | 4       | Active likes that users give to posts.                                                                       | BASE TABLE |
+| [public.posts](public.posts.md)                 | 7       | Text posts that users publish.                                                                               | BASE TABLE |
+| [public.roles](public.roles.md)                 | 7       | Named sets of permissions that users can hold. Roles and their permissions can change while the system runs. | BASE TABLE |
+| [public.user_follows](public.user_follows.md)   | 4       | Active follow relationships between users.                                                                   | BASE TABLE |
+| [public.user_roles](public.user_roles.md)       | 5       | Roles assigned to users, besides the default role that every signed-in user has.                             | BASE TABLE |
+| [public.users](public.users.md)                 | 9       | People who use choco-api. Sign-in lives in Clerk; each row is the local copy of one Clerk user.              | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -28,6 +29,8 @@ erDiagram
 
 "public.comments" }o--|| "public.users" : "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.comments" }o--|| "public.posts" : "FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE RESTRICT"
+"public.notifications" }o--|| "public.users" : "FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.notifications" }o--|| "public.users" : "FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.post_likes" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.post_likes" }o--|| "public.posts" : "FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE RESTRICT"
 "public.posts" }o--|| "public.users" : "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT"
@@ -46,6 +49,14 @@ erDiagram
   boolean is_deleted
   timestamp_with_time_zone modified_at
   uuid post_id FK
+}
+"public.notifications" {
+  uuid actor_id FK
+  timestamp_with_time_zone created_at
+  uuid id
+  timestamp_with_time_zone read_at
+  uuid recipient_id FK
+  varchar_32_ type
 }
 "public.post_likes" {
   uuid id

@@ -23,6 +23,17 @@ public sealed class UserFollowTests
     }
 
     [Fact]
+    public void Create_WithDifferentUsers_RaisesUserFollowed()
+    {
+        Guid followedUserId = new("00000000-0000-0000-0000-000000000002");
+
+        Result<UserFollow> result = UserFollow.Create(FollowerId, followedUserId, FollowedAt);
+
+        result.Value.DomainEvents.Should().ContainSingle()
+            .Which.Should().Be(new UserFollowed(FollowerId, followedUserId, FollowedAt));
+    }
+
+    [Fact]
     public void Create_WithSameUser_ReturnsSelfFollowError()
     {
         Result<UserFollow> result = UserFollow.Create(FollowerId, FollowerId, FollowedAt);

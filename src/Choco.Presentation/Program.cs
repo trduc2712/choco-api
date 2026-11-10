@@ -1,6 +1,7 @@
 using Choco.Application;
 using Choco.Infrastructure;
 using Choco.Presentation;
+using Choco.Presentation.Notifications;
 using Choco.Presentation.OpenApi;
 
 using Microsoft.AspNetCore.HttpLogging;
@@ -25,6 +26,7 @@ app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<NotificationsHub>(NotificationsHub.Path);
 app.MapHealthChecks("/health").WithHttpLogging(HttpLoggingFields.None);
 
 app.Run();
