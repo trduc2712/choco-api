@@ -39,7 +39,7 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
     }
 
     [Fact]
-    public async Task Listing_ReturnsFeedbackNewestFirstByCursorWithAuthorAndContext()
+    public async Task Listing_ReturnsFeedbackNewestFirstByPageWithAuthorAndContext()
     {
         await AddAdminAsync("identity-id", "username");
         User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
@@ -49,13 +49,17 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
         _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
         FeedbackEntry third = await AddFeedbackAsync(author, FeedbackCategory.Other, "third message");
 
-        PageResponse<FeedbackResponse> firstPage = await GetPageAsync($"{Path}?limit=2");
-        PageResponse<FeedbackResponse> secondPage = await GetPageAsync($"{Path}?limit=2&cursor={firstPage.NextCursor}");
+        OffsetPageResponse<FeedbackResponse> firstPage = await GetPageAsync($"{Path}?pageSize=2");
+        OffsetPageResponse<FeedbackResponse> secondPage = await GetPageAsync($"{Path}?pageSize=2&page=2");
 
         firstPage.Items.Select(item => item.Id).Should().Equal(third.Id, second.Id);
-        firstPage.NextCursor.Should().NotBeNull();
+        firstPage.Page.Should().Be(1);
+        firstPage.PageSize.Should().Be(2);
+        firstPage.TotalCount.Should().Be(3);
         secondPage.Items.Select(item => item.Id).Should().Equal(first.Id);
-        secondPage.NextCursor.Should().BeNull();
+        secondPage.Page.Should().Be(2);
+        secondPage.PageSize.Should().Be(2);
+        secondPage.TotalCount.Should().Be(3);
         FeedbackResponse item = secondPage.Items.Single();
         item.Author.Should().Be(new FeedbackAuthorResponse(author.Id, "username-2", "username-2"));
         item.Category.Should().Be("bug");
@@ -65,6 +69,94 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
             "/path", "ja", "dark", "user-agent", new FeedbackViewportDto(1280, 720), "app-version"));
         item.CreatedAt.Should().Be(first.CreatedAt);
         item.UpdatedAt.Should().Be(first.ModifiedAt);
+    }
+
+    [Fact]
+    public async Task Listing_WithoutQuery_UsesTheFirstPageOfTwentyAndCamelCaseNames()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message");
+        using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Get, Path);
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+            "items", "page", "pageSize", "totalCount");
+        body.GetProperty("page").GetInt32().Should().Be(1);
+        body.GetProperty("pageSize").GetInt32().Should().Be(20);
+        body.GetProperty("totalCount").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Listing_ReturnsTheMiddleAndLastPagesAndAnEmptyPagePastTheEnd()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        List<FeedbackEntry> entries = [];
+        for (int index = 0; index < 5; index++)
+        {
+            entries.Add(await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message"));
+            _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
+        }
+
+        OffsetPageResponse<FeedbackResponse> middle = await GetPageAsync($"{Path}?pageSize=2&page=2");
+        OffsetPageResponse<FeedbackResponse> last = await GetPageAsync($"{Path}?pageSize=2&page=3");
+        OffsetPageResponse<FeedbackResponse> pastEnd = await GetPageAsync($"{Path}?pageSize=2&page=99");
+        OffsetPageResponse<FeedbackResponse> hugePage = await GetPageAsync($"{Path}?pageSize=50&page={int.MaxValue}");
+
+        middle.Items.Select(item => item.Id).Should().Equal(entries[2].Id, entries[1].Id);
+        last.Items.Select(item => item.Id).Should().Equal(entries[0].Id);
+        pastEnd.Items.Should().BeEmpty();
+        pastEnd.Page.Should().Be(99);
+        pastEnd.TotalCount.Should().Be(5);
+        hugePage.Items.Should().BeEmpty();
+        hugePage.TotalCount.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Listing_AcceptsTheSmallestAndLargestPageSize()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        for (int index = 0; index < 3; index++)
+        {
+            await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message");
+            _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
+        }
+
+        OffsetPageResponse<FeedbackResponse> smallest = await GetPageAsync($"{Path}?pageSize=1");
+        OffsetPageResponse<FeedbackResponse> largest = await GetPageAsync($"{Path}?pageSize=50");
+
+        smallest.Items.Should().ContainSingle();
+        smallest.TotalCount.Should().Be(3);
+        largest.Items.Should().HaveCount(3);
+        largest.PageSize.Should().Be(50);
+    }
+
+    [Fact]
+    public async Task Listing_OrdersEntriesCreatedAtTheSameInstantByIdDescendingOnEveryPage()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        List<FeedbackEntry> entries = [];
+        for (int index = 0; index < 5; index++)
+        {
+            entries.Add(await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message"));
+        }
+
+        List<Guid> expected = entries.Select(entry => entry.Id).OrderDescending().ToList();
+
+        OffsetPageResponse<FeedbackResponse> firstPage = await GetPageAsync($"{Path}?pageSize=2&page=1");
+        OffsetPageResponse<FeedbackResponse> secondPage = await GetPageAsync($"{Path}?pageSize=2&page=2");
+        OffsetPageResponse<FeedbackResponse> thirdPage = await GetPageAsync($"{Path}?pageSize=2&page=3");
+        OffsetPageResponse<FeedbackResponse> repeated = await GetPageAsync($"{Path}?pageSize=2&page=1");
+
+        firstPage.Items.Concat(secondPage.Items).Concat(thirdPage.Items).Select(item => item.Id)
+            .Should().Equal(expected);
+        repeated.Items.Select(item => item.Id).Should().Equal(firstPage.Items.Select(item => item.Id));
     }
 
     [Fact]
@@ -78,16 +170,38 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
         _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
         FeedbackEntry resolvedSuggestion = await AddFeedbackAsync(author, FeedbackCategory.Suggestion, "resolved suggestion message", FeedbackStatus.Resolved);
 
-        PageResponse<FeedbackResponse> resolved = await GetPageAsync($"{Path}?status=resolved");
-        PageResponse<FeedbackResponse> bugs = await GetPageAsync($"{Path}?category=bug");
-        PageResponse<FeedbackResponse> resolvedBugs = await GetPageAsync($"{Path}?status=resolved&category=bug");
-        PageResponse<FeedbackResponse> inProgress = await GetPageAsync($"{Path}?status=in_progress");
+        OffsetPageResponse<FeedbackResponse> resolved = await GetPageAsync($"{Path}?status=resolved");
+        OffsetPageResponse<FeedbackResponse> bugs = await GetPageAsync($"{Path}?category=bug");
+        OffsetPageResponse<FeedbackResponse> resolvedBugs = await GetPageAsync($"{Path}?status=resolved&category=bug");
+        OffsetPageResponse<FeedbackResponse> inProgress = await GetPageAsync($"{Path}?status=in_progress");
 
         resolved.Items.Select(item => item.Id).Should().Equal(resolvedSuggestion.Id, resolvedBug.Id);
+        resolved.TotalCount.Should().Be(2);
         bugs.Items.Select(item => item.Id).Should().Equal(resolvedBug.Id, newBug.Id);
+        bugs.TotalCount.Should().Be(2);
         resolvedBugs.Items.Select(item => item.Id).Should().Equal(resolvedBug.Id);
+        resolvedBugs.TotalCount.Should().Be(1);
         inProgress.Items.Should().BeEmpty();
-        inProgress.NextCursor.Should().BeNull();
+        inProgress.TotalCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Listing_CountsAllMatchesAcrossPagesWhenFiltered()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        for (int index = 0; index < 3; index++)
+        {
+            await AddFeedbackAsync(author, FeedbackCategory.Bug, "bug message", FeedbackStatus.Resolved);
+            _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
+        }
+
+        await AddFeedbackAsync(author, FeedbackCategory.Other, "other message");
+
+        OffsetPageResponse<FeedbackResponse> page = await GetPageAsync($"{Path}?status=resolved&category=bug&pageSize=2");
+
+        page.Items.Should().HaveCount(2);
+        page.TotalCount.Should().Be(3);
     }
 
     [Theory]
@@ -95,9 +209,10 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
     [InlineData("?status=unknown", "status")]
     [InlineData("?category=Bug", "category")]
     [InlineData("?category=unknown", "category")]
-    [InlineData("?cursor=invalid", "cursor")]
-    [InlineData("?limit=0", "limit")]
-    [InlineData("?limit=51", "limit")]
+    [InlineData("?page=0", "page")]
+    [InlineData("?page=-1", "page")]
+    [InlineData("?pageSize=0", "pageSize")]
+    [InlineData("?pageSize=51", "pageSize")]
     public async Task Listing_WithInvalidQuery_ReturnsValidationProblem(string query, string field)
     {
         await AddAdminAsync("identity-id", "username");
@@ -307,13 +422,13 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be(code);
     }
 
-    private async Task<PageResponse<FeedbackResponse>> GetPageAsync(string uri)
+    private async Task<OffsetPageResponse<FeedbackResponse>> GetPageAsync(string uri)
     {
         using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Get, uri);
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        return (await response.Content.ReadFromJsonAsync<PageResponse<FeedbackResponse>>(TestContext.Current.CancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync<OffsetPageResponse<FeedbackResponse>>(TestContext.Current.CancellationToken))!;
     }
 
     private async Task<User> AddAdminAsync(string identityId, string username)

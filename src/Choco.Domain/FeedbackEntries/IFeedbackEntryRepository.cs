@@ -9,8 +9,13 @@ public interface IFeedbackEntryRepository : IRepository<FeedbackEntry>
     Task<IReadOnlyList<FeedbackEntry>> ListForReadAsync(
         FeedbackStatus? status,
         FeedbackCategory? category,
-        (DateTimeOffset CreatedAt, Guid Id)? after,
-        int count,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default);
+
+    Task<int> CountForReadAsync(
+        FeedbackStatus? status,
+        FeedbackCategory? category,
         CancellationToken cancellationToken = default);
 
     Task<int> CountByStatusAsync(FeedbackStatus status, CancellationToken cancellationToken = default);
