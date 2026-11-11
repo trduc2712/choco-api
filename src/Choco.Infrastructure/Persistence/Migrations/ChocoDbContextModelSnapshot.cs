@@ -94,10 +94,20 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .HasColumnName("actor_id")
                         .HasComment("User whose action caused the notification.");
 
+                    b.Property<Guid?>("CommentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("comment_id")
+                        .HasComment("Comment the notification is about; null when it is not about a comment.");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasComment("When it happened.");
+
+                    b.Property<Guid?>("PostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("post_id")
+                        .HasComment("Post the notification is about; null when it is not about a post.");
 
                     b.Property<DateTimeOffset?>("ReadAt")
                         .HasColumnType("timestamp with time zone")
@@ -114,13 +124,19 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("type")
-                        .HasComment("What happened, such as Followed.");
+                        .HasComment("What happened, such as Followed, PostLiked or PostCommented.");
 
                     b.HasKey("Id")
                         .HasName("pk_notifications");
 
                     b.HasIndex("ActorId")
                         .HasDatabaseName("ix_notifications_actor_id");
+
+                    b.HasIndex("CommentId")
+                        .HasDatabaseName("ix_notifications_comment_id");
+
+                    b.HasIndex("PostId")
+                        .HasDatabaseName("ix_notifications_post_id");
 
                     b.HasIndex("RecipientId")
                         .HasDatabaseName("ix_notifications_recipient_id_unread")
@@ -465,6 +481,18 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_notifications_user_actor_id");
+
+                    b.HasOne("Choco.Domain.Comments.Comment", null)
+                        .WithMany()
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_notifications_comments_comment_id");
+
+                    b.HasOne("Choco.Domain.Posts.Post", null)
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_notifications_post_post_id");
 
                     b.HasOne("Choco.Domain.Users.User", null)
                         .WithMany()

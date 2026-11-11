@@ -3,6 +3,7 @@ using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Posts;
 using Choco.Domain.PostLikes;
 using Choco.Domain.Posts;
+using Choco.Domain.Primitives.Persistence;
 using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
 
@@ -13,6 +14,7 @@ internal sealed class LikePostCommandHandler(
     IPostRepository postRepository,
     IUserRepository userRepository,
     IPostLikeRepository likeRepository,
+    IUnitOfWork unitOfWork,
     TimeProvider timeProvider) : ICommandHandler<LikePostCommand>
 {
     public async Task<Result> Handle(LikePostCommand command, CancellationToken cancellationToken)
@@ -29,8 +31,17 @@ internal sealed class LikePostCommandHandler(
             return Result.Failure(PostErrors.NotFound);
         }
 
-        await likeRepository.AddIfMissingAsync(
-            PostLike.Create(post.Id, caller.Value, timeProvider.GetUtcNow()), cancellationToken);
+        PostLike like = PostLike.Create(post.Id, caller.Value, timeProvider.GetUtcNow());
+
+        await unitOfWork.InTransactionAsync(async () =>
+        {
+            if (await likeRepository.AddIfMissingAsync(like, cancellationToken))
+            {
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+
+            return true;
+        }, cancellationToken);
 
         return Result.Success();
     }

@@ -1,4 +1,6 @@
+using Choco.Domain.Comments;
 using Choco.Domain.Notifications;
+using Choco.Domain.Posts;
 using Choco.Domain.Users;
 
 using Microsoft.EntityFrameworkCore;
@@ -32,15 +34,31 @@ internal sealed class NotificationRepository : Repository<Notification>, INotifi
                 ValueTuple.Create(position.CreatedAt, position.NotificationId)));
         }
 
-        var rows = await notifications
-            .Join(DbContext.Set<User>().AsNoTracking(), notification => notification.ActorId, user => user.Id,
-                (notification, user) => new { Notification = notification, Actor = user })
-            .OrderByDescending(row => row.Notification.CreatedAt)
-            .ThenByDescending(row => row.Notification.Id)
+        var rows = await (
+            from notification in notifications
+            join actor in DbContext.Set<User>().AsNoTracking() on notification.ActorId equals actor.Id
+            join post in DbContext.Set<Post>().AsNoTracking() on notification.PostId equals (Guid?)post.Id into posts
+            from post in posts.DefaultIfEmpty()
+            join comment in DbContext.Set<Comment>().AsNoTracking() on notification.CommentId equals (Guid?)comment.Id into comments
+            from comment in comments.DefaultIfEmpty()
+            orderby notification.CreatedAt descending, notification.Id descending
+            select new { Notification = notification, Actor = actor, Post = post, Comment = comment })
             .Take(count)
             .ToListAsync(cancellationToken);
 
-        return rows.Select(row => new NotificationEntry(row.Notification, row.Actor)).ToList();
+        return rows.Select(row => new NotificationEntry(row.Notification, row.Actor, row.Post, row.Comment)).ToList();
+    }
+
+    public Task<bool> ExistsAsync(
+        Guid recipientId, Guid actorId, NotificationType type, Guid postId,
+        CancellationToken cancellationToken = default)
+    {
+        return DbSet.AsNoTracking().AnyAsync(
+            notification => notification.RecipientId == recipientId
+                && notification.ActorId == actorId
+                && notification.Type == type
+                && notification.PostId == postId,
+            cancellationToken);
     }
 
     public Task<int> CountUnreadForReadAsync(Guid recipientId, CancellationToken cancellationToken = default)

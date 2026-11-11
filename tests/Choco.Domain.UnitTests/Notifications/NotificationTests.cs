@@ -21,6 +21,33 @@ public sealed class NotificationTests
         notification.Type.Should().Be(NotificationType.Followed);
         notification.CreatedAt.Should().Be(CreatedAt);
         notification.ReadAt.Should().BeNull();
+        notification.PostId.Should().BeNull();
+        notification.CommentId.Should().BeNull();
+    }
+
+    [Fact]
+    public void Create_WithCommentId_SetsCommentId()
+    {
+        Guid postId = new("00000000-0000-0000-0000-000000000003");
+        Guid commentId = new("00000000-0000-0000-0000-000000000004");
+
+        Notification notification = Notification.Create(
+            RecipientId, ActorId, NotificationType.PostCommented, CreatedAt, postId, commentId);
+
+        notification.PostId.Should().Be(postId);
+        notification.CommentId.Should().Be(commentId);
+    }
+
+    [Fact]
+    public void Create_WithPostId_SetsPostId()
+    {
+        Guid postId = new("00000000-0000-0000-0000-000000000003");
+
+        Notification notification = Notification.Create(
+            RecipientId, ActorId, NotificationType.PostLiked, CreatedAt, postId);
+
+        notification.Type.Should().Be(NotificationType.PostLiked);
+        notification.PostId.Should().Be(postId);
     }
 
     [Fact]

@@ -4,6 +4,8 @@ namespace Choco.Domain.Comments;
 
 public interface ICommentRepository : IRepository<Comment>
 {
+    Task<Comment?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Comment>> ListByPostForReadAsync(
         Guid postId,
         (DateTimeOffset CreatedAt, Guid Id)? after,

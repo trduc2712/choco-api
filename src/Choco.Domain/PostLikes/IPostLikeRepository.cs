@@ -4,7 +4,7 @@ namespace Choco.Domain.PostLikes;
 
 public interface IPostLikeRepository : IRepository<PostLike>
 {
-    Task AddIfMissingAsync(PostLike like, CancellationToken cancellationToken);
+    Task<bool> AddIfMissingAsync(PostLike like, CancellationToken cancellationToken);
 
     Task RemoveIfPresentAsync(Guid postId, Guid userId, CancellationToken cancellationToken);
 

@@ -20,6 +20,9 @@ public sealed class PostLike : AggregateRoot
 
     public static PostLike Create(Guid postId, Guid userId, DateTimeOffset now)
     {
-        return new PostLike(Guid.NewGuid(), postId, userId, now);
+        PostLike like = new(Guid.NewGuid(), postId, userId, now);
+        like.RaiseDomainEvent(new PostLiked(postId, userId, now));
+
+        return like;
     }
 }

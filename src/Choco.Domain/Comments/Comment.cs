@@ -43,7 +43,10 @@ public sealed class Comment : AggregateRoot, IAuditable, ISoftDeletable
         string trimmedContent = content.Trim();
         ArgumentOutOfRangeException.ThrowIfGreaterThan(trimmedContent.Length, ContentMaxLength, nameof(content));
 
-        return new Comment(Guid.NewGuid(), postId, authorId, trimmedContent);
+        Comment comment = new(Guid.NewGuid(), postId, authorId, trimmedContent);
+        comment.RaiseDomainEvent(new CommentCreated(comment.Id, postId, authorId));
+
+        return comment;
     }
 
     public Result CheckCanDelete(Guid userId, bool canDeleteAnyComment)

@@ -9,6 +9,11 @@ internal sealed class CommentRepository : Repository<Comment>, ICommentRepositor
 {
     public CommentRepository(ChocoDbContext dbContext) : base(dbContext) { }
 
+    public Task<Comment?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return DbSet.AsNoTracking().FirstOrDefaultAsync(comment => comment.Id == id, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Comment>> ListByPostForReadAsync(
         Guid postId,
         (DateTimeOffset CreatedAt, Guid Id)? after,
