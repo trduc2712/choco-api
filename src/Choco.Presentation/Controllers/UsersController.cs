@@ -2,6 +2,7 @@ using Asp.Versioning;
 
 using Choco.Contract.Abstractions;
 using Choco.Contract.Posts;
+using Choco.Contract.Reports;
 using Choco.Contract.Users;
 using Choco.Presentation.Abstractions;
 using Choco.SharedKernel.Results;
@@ -317,6 +318,28 @@ public sealed class UsersController : ApiController
         Result result = await Sender.Send(new BlockUserCommand(userId), cancellationToken);
 
         return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
+
+    /// <summary>Reports a user to the administrators.</summary>
+    /// <remarks>Any signed-in user with an active account may call this endpoint. Reporting a user the caller already has an open report on changes nothing and still returns 201. Once an administrator resolves that report, the caller may report the user again.</remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The reported user's id.</param>
+    /// <param name="command">The reason and an optional explanation.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="201">The report is open.</response>
+    /// <response code="400">The reason is not one of the listed values, the explanation is too long, or the caller tried to report their own account.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">The reported user does not exist or is deleted.</response>
+    [HttpPost("{userId:guid}/reports")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Report(
+        Guid userId, [FromBody] ReportUserCommand command, CancellationToken cancellationToken)
+    {
+        Result result = await Sender.Send(command with { UserId = userId }, cancellationToken);
+
+        return result.IsSuccess ? StatusCode(StatusCodes.Status201Created) : HandleFailure(result);
     }
 
     /// <summary>Unblocks another user.</summary>

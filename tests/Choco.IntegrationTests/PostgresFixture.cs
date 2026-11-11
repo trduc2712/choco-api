@@ -19,7 +19,9 @@ public sealed partial class PostgresFixture : IAsyncLifetime
 {
     private const string TemplateDatabase = "choco_template";
 
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder(FindComposePostgresImage()).Build();
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder(FindComposePostgresImage())
+        .WithCommand("-c", "max_connections=300")
+        .Build();
     private readonly SemaphoreSlim _createDatabaseLock = new(1, 1);
 
     public async ValueTask InitializeAsync()

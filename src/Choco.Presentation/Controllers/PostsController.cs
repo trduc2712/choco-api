@@ -3,6 +3,7 @@ using Asp.Versioning;
 using Choco.Contract.Abstractions;
 using Choco.Contract.Comments;
 using Choco.Contract.Posts;
+using Choco.Contract.Reports;
 using Choco.Presentation.Abstractions;
 using Choco.SharedKernel.Results;
 
@@ -100,6 +101,34 @@ public sealed class PostsController : ApiController
         Result result = await Sender.Send(new DeletePostCommand(id), cancellationToken);
 
         return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
+
+    /// <summary>
+    /// Reports a post to the administrators.
+    /// </summary>
+    /// <remarks>
+    /// Any signed-in user may call it, except on their own post. Reporting a post the caller already has an open report on changes nothing and still returns 201.
+    /// Once an administrator resolves that report, the caller may report the post again.
+    /// A post that is deleted, or whose author is deleted, is not found.
+    /// </remarks>
+    /// <param name="id" example="00000000-0000-0000-0000-000000000001">The post's id.</param>
+    /// <param name="command">The reason and an optional explanation.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="201">The report is open.</response>
+    /// <response code="400">The reason is not one of the listed values, the explanation is too long, or the post is the caller's own.</response>
+    /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="404">No post has this id.</response>
+    [HttpPost("{id:guid}/reports")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Report(
+        Guid id, [FromBody] ReportPostCommand command, CancellationToken cancellationToken)
+    {
+        Result result = await Sender.Send(command with { PostId = id }, cancellationToken);
+
+        return result.IsSuccess ? StatusCode(StatusCodes.Status201Created) : HandleFailure(result);
     }
 
     /// <summary>

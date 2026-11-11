@@ -11,6 +11,7 @@ using Choco.Domain.Notifications;
 using Choco.Domain.PostLikes;
 using Choco.Domain.Posts;
 using Choco.Domain.Primitives.Persistence;
+using Choco.Domain.Reports;
 using Choco.Domain.Roles;
 using Choco.Domain.UserBlocks;
 using Choco.Domain.UserFollows;
@@ -59,6 +60,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserFollowRepository, UserFollowRepository>();
         services.AddScoped<IUserBlockRepository, UserBlockRepository>();
+        services.AddScoped<IReportRepository, ReportRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IPostRepository, PostRepository>();
