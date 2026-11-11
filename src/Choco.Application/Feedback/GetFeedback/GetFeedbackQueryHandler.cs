@@ -20,12 +20,18 @@ internal sealed class GetFeedbackQueryHandler(
         FeedbackCategory? category = FeedbackWire.TryParse(query.Category, out FeedbackCategory parsedCategory)
             ? parsedCategory
             : null;
+        string[] terms = (query.Q ?? string.Empty)
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Take(GetFeedbackQuery.MaxSearchTerms)
+            .ToArray();
+        string? author = string.IsNullOrWhiteSpace(query.Author) ? null : query.Author.Trim();
+        var filter = new FeedbackFilter(status, category, terms, author);
         long skip = (long)(query.Page - 1) * query.PageSize;
 
-        int totalCount = await feedbackRepository.CountForReadAsync(status, category, cancellationToken);
+        int totalCount = await feedbackRepository.CountForReadAsync(filter, cancellationToken);
         IReadOnlyList<FeedbackEntry> entries = skip >= totalCount
             ? []
-            : await feedbackRepository.ListForReadAsync(status, category, (int)skip, query.PageSize, cancellationToken);
+            : await feedbackRepository.ListForReadAsync(filter, (int)skip, query.PageSize, cancellationToken);
 
         IReadOnlyList<FeedbackResponse> items = await entries.ToResponsesAsync(userRepository, cancellationToken);
 

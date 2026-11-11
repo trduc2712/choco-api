@@ -7,16 +7,12 @@ public interface IFeedbackEntryRepository : IRepository<FeedbackEntry>
     Task<FeedbackEntry?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<FeedbackEntry>> ListForReadAsync(
-        FeedbackStatus? status,
-        FeedbackCategory? category,
+        FeedbackFilter filter,
         int skip,
         int take,
         CancellationToken cancellationToken = default);
 
-    Task<int> CountForReadAsync(
-        FeedbackStatus? status,
-        FeedbackCategory? category,
-        CancellationToken cancellationToken = default);
+    Task<int> CountForReadAsync(FeedbackFilter filter, CancellationToken cancellationToken = default);
 
     Task<int> CountByStatusAsync(FeedbackStatus status, CancellationToken cancellationToken = default);
 }

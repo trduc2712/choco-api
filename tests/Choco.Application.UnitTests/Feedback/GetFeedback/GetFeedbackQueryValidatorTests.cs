@@ -49,6 +49,32 @@ public sealed class GetFeedbackQueryValidatorTests
         result.ShouldHaveValidationErrorFor(query => query.Category).Only();
     }
 
+    [Fact]
+    public void Validate_WithSearchTextAtTheLimit_AcceptsIt()
+    {
+        string text = new('a', GetFeedbackQuery.SearchMaxLength);
+
+        var result = _validator.TestValidate(ValidQuery with { Q = $" {text} ", Author = text });
+
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Validate_WithQPastTheLimit_RejectsQ()
+    {
+        var result = _validator.TestValidate(ValidQuery with { Q = new string('a', GetFeedbackQuery.SearchMaxLength + 1) });
+
+        result.ShouldHaveValidationErrorFor(query => query.Q).Only();
+    }
+
+    [Fact]
+    public void Validate_WithAuthorPastTheLimit_RejectsAuthor()
+    {
+        var result = _validator.TestValidate(ValidQuery with { Author = new string('a', GetFeedbackQuery.SearchMaxLength + 1) });
+
+        result.ShouldHaveValidationErrorFor(query => query.Author).Only();
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

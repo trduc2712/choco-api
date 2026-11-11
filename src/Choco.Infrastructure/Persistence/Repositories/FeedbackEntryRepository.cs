@@ -1,4 +1,5 @@
 using Choco.Domain.FeedbackEntries;
+using Choco.Domain.Users;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -14,13 +15,12 @@ internal sealed class FeedbackEntryRepository : Repository<FeedbackEntry>, IFeed
     }
 
     public async Task<IReadOnlyList<FeedbackEntry>> ListForReadAsync(
-        FeedbackStatus? status,
-        FeedbackCategory? category,
+        FeedbackFilter filter,
         int skip,
         int take,
         CancellationToken cancellationToken = default)
     {
-        return await Filter(status, category)
+        return await Filter(filter)
             .OrderByDescending(entry => entry.CreatedAt)
             .ThenByDescending(entry => entry.Id)
             .Skip(skip)
@@ -28,29 +28,52 @@ internal sealed class FeedbackEntryRepository : Repository<FeedbackEntry>, IFeed
             .ToListAsync(cancellationToken);
     }
 
-    public Task<int> CountForReadAsync(
-        FeedbackStatus? status,
-        FeedbackCategory? category,
-        CancellationToken cancellationToken = default)
+    public Task<int> CountForReadAsync(FeedbackFilter filter, CancellationToken cancellationToken = default)
     {
-        return Filter(status, category).CountAsync(cancellationToken);
+        return Filter(filter).CountAsync(cancellationToken);
     }
 
-    private IQueryable<FeedbackEntry> Filter(FeedbackStatus? status, FeedbackCategory? category)
+    private IQueryable<FeedbackEntry> Filter(FeedbackFilter filter)
     {
         IQueryable<FeedbackEntry> entries = DbSet.AsNoTracking();
 
-        if (status is { } statusFilter)
+        if (filter.Status is { } status)
         {
-            entries = entries.Where(entry => entry.Status == statusFilter);
+            entries = entries.Where(entry => entry.Status == status);
         }
 
-        if (category is { } categoryFilter)
+        if (filter.Category is { } category)
         {
-            entries = entries.Where(entry => entry.Category == categoryFilter);
+            entries = entries.Where(entry => entry.Category == category);
+        }
+
+        foreach (string term in filter.MessageTerms)
+        {
+            string pattern = ContainsPattern(term);
+            entries = entries.Where(entry => EF.Functions.ILike(
+                EF.Functions.Unaccent(entry.Message), EF.Functions.Unaccent(pattern), LikeEscape));
+        }
+
+        if (filter.Author is { } author)
+        {
+            string pattern = ContainsPattern(author);
+            IQueryable<Guid> authorIds = DbContext.Set<User>()
+                .Where(user =>
+                    EF.Functions.ILike(EF.Functions.Unaccent(user.Username), EF.Functions.Unaccent(pattern), LikeEscape)
+                    || EF.Functions.ILike(EF.Functions.Unaccent(user.DisplayName), EF.Functions.Unaccent(pattern), LikeEscape))
+                .Select(user => user.Id);
+            entries = entries.Where(entry => authorIds.Contains(entry.AuthorId));
         }
 
         return entries;
+    }
+
+    private const string LikeEscape = "\\";
+
+    private static string ContainsPattern(string text)
+    {
+        string escaped = text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+        return $"%{escaped}%";
     }
 
     public Task<int> CountByStatusAsync(FeedbackStatus status, CancellationToken cancellationToken = default)
