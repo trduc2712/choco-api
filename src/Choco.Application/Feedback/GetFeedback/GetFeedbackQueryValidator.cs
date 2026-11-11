@@ -22,5 +22,17 @@ internal sealed class GetFeedbackQueryValidator : AbstractValidator<GetFeedbackQ
             .Must(category => FeedbackWire.TryParse<FeedbackCategory>(category, out _))
             .When(query => query.Category is not null)
             .WithMessage($"'{{PropertyName}}' must be one of: {FeedbackWire.Options<FeedbackCategory>()}.");
+
+        RuleFor(query => query.Q)
+            .Must(text => text!.Trim().Length <= GetFeedbackQuery.SearchMaxLength)
+            .When(query => query.Q is not null)
+            .WithErrorCode("TooLong")
+            .WithMessage($"'{{PropertyName}}' must be {GetFeedbackQuery.SearchMaxLength} characters or fewer after trimming.");
+
+        RuleFor(query => query.Author)
+            .Must(text => text!.Trim().Length <= GetFeedbackQuery.SearchMaxLength)
+            .When(query => query.Author is not null)
+            .WithErrorCode("TooLong")
+            .WithMessage($"'{{PropertyName}}' must be {GetFeedbackQuery.SearchMaxLength} characters or fewer after trimming.");
     }
 }
