@@ -12,4 +12,6 @@ public interface IFeedbackEntryRepository : IRepository<FeedbackEntry>
         (DateTimeOffset CreatedAt, Guid Id)? after,
         int count,
         CancellationToken cancellationToken = default);
+
+    Task<int> CountByStatusAsync(FeedbackStatus status, CancellationToken cancellationToken = default);
 }
