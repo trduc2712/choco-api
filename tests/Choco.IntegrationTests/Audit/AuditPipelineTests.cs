@@ -66,19 +66,6 @@ public sealed class AuditPipelineTests(ChocoApiFactory factory) : AuditTestsBase
         entry.TraceId.Should().MatchRegex("^[0-9a-f]{32}$");
     }
 
-    [Fact]
-    public async Task ForwardedForHeader_WhenForwardingIsOff_IsNotRecorded()
-    {
-        await AddUserAsync("identity-id", "username");
-        using HttpRequestMessage request = Request(HttpMethod.Post, "/api/v1/posts", new { content = "content" });
-        request.Headers.TryAddWithoutValidation("X-Forwarded-For", "203.0.113.7");
-
-        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
-        entry.IpAddress.Should().NotBe(System.Net.IPAddress.Parse("203.0.113.7"));
-    }
 
     [Fact]
     public async Task UserAgentOverMaxLength_IsCutAndTheCommandStillSucceeds()

@@ -8,7 +8,6 @@ using Choco.Application.Abstractions.Notifications;
 using Choco.Application.Abstractions.Requests;
 using Choco.Presentation.Authentication;
 using Choco.Presentation.Authorization;
-using Choco.Presentation.ForwardedHeaders;
 using Choco.Presentation.Notifications;
 using Choco.Presentation.OpenApi;
 using Choco.Presentation.Options;
@@ -97,7 +96,6 @@ public static class DependencyInjection
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();
 
-        services.AddConfiguredForwardedHeaders(configuration);
         services.AddUserRateLimiting(configuration);
 
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
