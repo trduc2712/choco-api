@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Choco.IntegrationTests.Audit;
 
-public sealed class ForwardedHeadersTests(ForwardedHeadersApiFactory factory)
-    : IClassFixture<ForwardedHeadersApiFactory>, IAsyncLifetime
+public sealed class HostForwardedHeadersTests(HostForwardedHeadersApiFactory factory)
+    : IClassFixture<HostForwardedHeadersApiFactory>, IAsyncLifetime
 {
     private readonly HttpClient _client = factory.CreateClient();
 
@@ -28,20 +28,6 @@ public sealed class ForwardedHeadersTests(ForwardedHeadersApiFactory factory)
     }
 
     [Fact]
-    public async Task ForwardedFor_RecordsTheAddressTheTrustedProxyAdded_NotWhatTheClientSent()
-    {
-        await AddUserAsync();
-        using HttpRequestMessage request = CreatePostRequest();
-        request.Headers.TryAddWithoutValidation("X-Forwarded-For", "198.51.100.9, 203.0.113.7");
-
-        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        AuditLogEntry entry = await ReadSingleEntryAsync();
-        entry.IpAddress.Should().Be(IPAddress.Parse("203.0.113.7"));
-    }
-
-    [Fact]
     public async Task ForwardedProto_MakesTheLocationOfACreatedResourceHttps()
     {
         await AddUserAsync();
@@ -52,6 +38,22 @@ public sealed class ForwardedHeadersTests(ForwardedHeadersApiFactory factory)
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         response.Headers.Location!.Scheme.Should().Be("https");
+    }
+
+    [Fact]
+    public async Task ForwardedFor_RecordsTheAddressTheProxyAdded_NotWhatTheClientSent()
+    {
+        await AddUserAsync();
+        using HttpRequestMessage request = CreatePostRequest();
+        request.Headers.TryAddWithoutValidation("X-Forwarded-For", "198.51.100.9, 203.0.113.7");
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        AuditLogEntry entry = await factory.ExecuteDbContextAsync(dbContext => dbContext.Set<AuditLogEntry>()
+            .AsNoTracking()
+            .SingleAsync(TestContext.Current.CancellationToken));
+        entry.IpAddress.Should().Be(IPAddress.Parse("203.0.113.7"));
     }
 
     private static HttpRequestMessage CreatePostRequest()
@@ -74,12 +76,5 @@ public sealed class ForwardedHeadersTests(ForwardedHeadersApiFactory factory)
             dbContext.Add(user);
             return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
-    }
-
-    private Task<AuditLogEntry> ReadSingleEntryAsync()
-    {
-        return factory.ExecuteDbContextAsync(dbContext => dbContext.Set<AuditLogEntry>()
-            .AsNoTracking()
-            .SingleAsync(TestContext.Current.CancellationToken));
     }
 }

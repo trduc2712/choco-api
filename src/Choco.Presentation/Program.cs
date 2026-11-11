@@ -14,7 +14,6 @@ builder.Services.AddPresentation(builder.Configuration);
 
 WebApplication app = builder.Build();
 
-app.UseForwardedHeaders();
 app.UseResponseCompression();
 app.UseHttpLogging();
 app.UseExceptionHandler();
