@@ -111,7 +111,7 @@ public sealed class MarkNotificationReadTests : IClassFixture<ChocoApiFactory>, 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("NotificationId");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("notificationId");
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be("Validation.Failed");
     }
 

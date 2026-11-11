@@ -55,7 +55,7 @@ public sealed class GetUserPostsTests(ChocoApiFactory factory) : IClassFixture<C
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ValidationProblemDetails body = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
         body.Status.Should().Be(400);
-        body.Errors.Keys.Should().ContainSingle().Which.Should().Be("UserId");
+        body.Errors.Keys.Should().ContainSingle().Which.Should().Be("userId");
         body.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be("Validation.Failed");
     }
 

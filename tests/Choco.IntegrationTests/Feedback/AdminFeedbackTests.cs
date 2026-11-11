@@ -91,13 +91,13 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
     }
 
     [Theory]
-    [InlineData("?status=New", "Status")]
-    [InlineData("?status=unknown", "Status")]
-    [InlineData("?category=Bug", "Category")]
-    [InlineData("?category=unknown", "Category")]
-    [InlineData("?cursor=invalid", "Cursor")]
-    [InlineData("?limit=0", "Limit")]
-    [InlineData("?limit=51", "Limit")]
+    [InlineData("?status=New", "status")]
+    [InlineData("?status=unknown", "status")]
+    [InlineData("?category=Bug", "category")]
+    [InlineData("?category=unknown", "category")]
+    [InlineData("?cursor=invalid", "cursor")]
+    [InlineData("?limit=0", "limit")]
+    [InlineData("?limit=51", "limit")]
     public async Task Listing_WithInvalidQuery_ReturnsValidationProblem(string query, string field)
     {
         await AddAdminAsync("identity-id", "username");
@@ -168,7 +168,7 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("Id");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("id");
     }
 
     [Theory]
@@ -233,7 +233,7 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("Status");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("status");
         (await GetEntriesAsync()).Should().ContainSingle().Which.Status.Should().Be(FeedbackStatus.New);
     }
 

@@ -190,7 +190,7 @@ public sealed class LikePostTests : IClassFixture<ChocoApiFactory>, IAsyncLifeti
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("PostId");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("postId");
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be("Validation.Failed");
     }
 

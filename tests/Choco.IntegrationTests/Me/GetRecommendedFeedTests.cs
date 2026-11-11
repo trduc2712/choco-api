@@ -172,7 +172,7 @@ public sealed class GetRecommendedFeedTests : IClassFixture<ChocoApiFactory>, IA
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        await ShouldBeValidationProblemAsync(response, "Limit");
+        await ShouldBeValidationProblemAsync(response, "limit");
     }
 
     [Fact]
@@ -183,7 +183,7 @@ public sealed class GetRecommendedFeedTests : IClassFixture<ChocoApiFactory>, IA
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        await ShouldBeValidationProblemAsync(response, "Cursor");
+        await ShouldBeValidationProblemAsync(response, "cursor");
     }
 
     [Fact]

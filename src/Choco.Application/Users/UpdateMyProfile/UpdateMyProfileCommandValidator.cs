@@ -14,6 +14,7 @@ internal sealed class UpdateMyProfileCommandValidator : AbstractValidator<Update
         RuleFor(command => command.LastName)
             .Must((command, lastName) => string.IsNullOrWhiteSpace(lastName)
                 || (command.FirstName?.Trim().Length ?? 0) + 1 + lastName.Trim().Length <= User.DisplayNameMaxLength)
+            .WithErrorCode("TooLong")
             .WithMessage($"The full display name must be at most {User.DisplayNameMaxLength} characters.");
     }
 }

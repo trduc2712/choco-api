@@ -144,7 +144,7 @@ public sealed class ClerkWebhooksTests : IClassFixture<ChocoApiFactory>, IAsyncL
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().BeEquivalentTo(["Username"]);
+        problem.Errors.Keys.Should().BeEquivalentTo(["username"]);
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be("Validation.Failed");
         (await GetUsersAsync()).Should().BeEmpty();
     }

@@ -10,6 +10,7 @@ internal sealed class UploadMyAvatarCommandValidator : AbstractValidator<UploadM
     {
         RuleFor(command => command.Image)
             .Must(image => image.Length is > 0 and <= UploadMyAvatarCommand.MaxImageBytes)
+            .WithErrorCode("OutOfRange")
             .WithMessage($"The image must contain between 1 and {UploadMyAvatarCommand.MaxImageBytes} bytes.");
     }
 }

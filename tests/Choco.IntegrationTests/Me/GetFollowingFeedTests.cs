@@ -195,7 +195,7 @@ public sealed class GetFollowingFeedTests : IClassFixture<ChocoApiFactory>, IAsy
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        await ShouldBeValidationProblemAsync(response, "Limit");
+        await ShouldBeValidationProblemAsync(response, "limit");
     }
 
     [Fact]
@@ -206,7 +206,7 @@ public sealed class GetFollowingFeedTests : IClassFixture<ChocoApiFactory>, IAsy
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        await ShouldBeValidationProblemAsync(response, "Cursor");
+        await ShouldBeValidationProblemAsync(response, "cursor");
     }
 
     [Fact]

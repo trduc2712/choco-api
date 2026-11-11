@@ -68,7 +68,7 @@ public sealed class EditMyProfileTests(ChocoApiFactory factory) : IClassFixture<
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("FirstName");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("firstName");
         ((JsonElement)problem.Extensions["code"]!).GetString().Should().Be("Validation.Failed");
         (await ReadProfileAsync(ProfilePath)).DisplayName.Should().Be("Display Name");
         factory.IdentityProvider.Requests.Should().BeEmpty();
@@ -143,7 +143,7 @@ public sealed class EditMyProfileTests(ChocoApiFactory factory) : IClassFixture<
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("Image");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("image");
         (await ReadProfileAsync(ProfilePath)).AvatarUrl.Should().Be(AvatarUrl);
         factory.IdentityProvider.Requests.Should().ContainSingle();
     }

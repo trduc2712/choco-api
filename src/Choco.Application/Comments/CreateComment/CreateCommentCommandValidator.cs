@@ -15,6 +15,7 @@ internal sealed class CreateCommentCommandValidator : AbstractValidator<CreateCo
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .Must(content => content.Trim().Length <= Comment.ContentMaxLength)
+            .WithErrorCode("TooLong")
             .WithMessage($"'{{PropertyName}}' must be {Comment.ContentMaxLength} characters or fewer once leading and trailing whitespace is removed.");
     }
 }

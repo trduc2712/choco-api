@@ -11,9 +11,13 @@ using Choco.Presentation.Notifications;
 using Choco.Presentation.OpenApi;
 using Choco.Presentation.Options;
 using Choco.Presentation.RateLimiting;
+using Choco.Presentation.Validation;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpLogging;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
@@ -38,7 +42,24 @@ public static class DependencyInjection
             .AllowAnyMethod()
             .AllowCredentials()));
 
-        services.AddControllers();
+        services.AddControllers()
+            .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = context =>
+            {
+                ProblemDetailsFactory factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
+                string[] bodyParameterNames = context.ActionDescriptor.Parameters
+                    .Where(parameter => parameter.BindingInfo?.BindingSource == BindingSource.Body)
+                    .Select(parameter => parameter.Name)
+                    .ToArray();
+                ValidationProblemDetails problem = ValidationProblems.Create(
+                    factory,
+                    context.HttpContext,
+                    ValidationProblems.FromModelState(context.ModelState, bodyParameterNames),
+                    StatusCodes.Status400BadRequest,
+                    detail: null);
+                problem.Extensions["code"] = "Validation.Failed";
+
+                return new BadRequestObjectResult(problem);
+            });
 
         services.AddResponseCompression(options => options.EnableForHttps = true);
         services.Configure<BrotliCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);

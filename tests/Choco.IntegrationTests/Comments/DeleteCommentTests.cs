@@ -175,7 +175,7 @@ public sealed class DeleteCommentTests : IClassFixture<ChocoApiFactory>, IAsyncL
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("CommentId");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("commentId");
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be("Validation.Failed");
     }
 

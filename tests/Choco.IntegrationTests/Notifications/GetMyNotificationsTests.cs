@@ -253,9 +253,9 @@ public sealed class GetMyNotificationsTests : IClassFixture<ChocoApiFactory>, IA
     }
 
     [Theory]
-    [InlineData("limit=0", "Limit")]
-    [InlineData("limit=51", "Limit")]
-    [InlineData("cursor=not-a-cursor", "Cursor")]
+    [InlineData("limit=0", "limit")]
+    [InlineData("limit=51", "limit")]
+    [InlineData("cursor=not-a-cursor", "cursor")]
     public async Task InvalidQuery_ReturnsValidationProblem(string query, string field)
     {
         await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");

@@ -162,7 +162,7 @@ public sealed class GetMyProfileTests : IClassFixture<ChocoApiFactory>, IAsyncLi
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ValidationProblemDetails body = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
         body.Status.Should().Be(400);
-        body.Errors.Keys.Should().ContainSingle().Which.Should().Be("Username");
+        body.Errors.Keys.Should().ContainSingle().Which.Should().Be("username");
         body.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be("Validation.Failed");
         (await _factory.ExecuteDbContextAsync(db => db.Set<User>().IgnoreQueryFilters().AsNoTracking()
             .ToListAsync(TestContext.Current.CancellationToken))).Should().BeEmpty();

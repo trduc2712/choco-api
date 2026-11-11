@@ -1,11 +1,11 @@
 using Choco.Presentation.Extensions;
+using Choco.Presentation.Validation;
 using Choco.SharedKernel.Results;
 
 using MediatR;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Choco.Presentation.Abstractions;
 
@@ -40,20 +40,11 @@ public abstract class ApiController : ControllerBase
 
     private ValidationProblemDetails CreateValidationProblemDetails(ValidationError validationError, int statusCode)
     {
-        ModelStateDictionary modelState = new();
-
-        foreach ((string propertyName, string[] messages) in validationError.Errors)
-        {
-            foreach (string message in messages)
-            {
-                modelState.AddModelError(propertyName, message);
-            }
-        }
-
-        return ProblemDetailsFactory.CreateValidationProblemDetails(
+        return ValidationProblems.Create(
+            ProblemDetailsFactory,
             HttpContext,
-            modelState,
-            statusCode: statusCode,
-            detail: validationError.Description);
+            validationError.Errors,
+            statusCode,
+            validationError.Description);
     }
 }

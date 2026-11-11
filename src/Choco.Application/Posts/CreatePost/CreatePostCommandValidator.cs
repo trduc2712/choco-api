@@ -13,6 +13,7 @@ internal sealed class CreatePostCommandValidator : AbstractValidator<CreatePostC
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .Must(content => content.Trim().Length <= Post.ContentMaxLength)
+            .WithErrorCode("TooLong")
             .WithMessage($"'{{PropertyName}}' must be {Post.ContentMaxLength} characters or fewer once leading and trailing whitespace is removed.");
     }
 }
