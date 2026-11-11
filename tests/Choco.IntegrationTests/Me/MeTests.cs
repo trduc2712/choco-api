@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
 
+using Choco.Domain.Roles;
 using Choco.Domain.Users;
 using Choco.IntegrationTests.Authentication;
 
@@ -111,8 +112,53 @@ public sealed class MeTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         MeResponse body = (await response.Content.ReadFromJsonAsync<MeResponse>(TestContext.Current.CancellationToken))!;
-        body.Should().Be(new MeResponse(user.Id, "identity-id", "session-id", TestJwt.AuthorizedParty));
+        body.Should().BeEquivalentTo(new MeResponse(user.Id, "identity-id", "session-id", TestJwt.AuthorizedParty, []));
         _factory.IdentityProvider.Requests.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Administrator_ReturnsSortedAdministratorPermissions()
+    {
+        Guid adminRoleId = await _factory.ExecuteDbContextAsync(dbContext => dbContext.Set<Role>()
+            .Where(role => role.SystemKey == SystemRoles.Admin)
+            .Select(role => role.Id)
+            .SingleAsync(TestContext.Current.CancellationToken));
+        User user = User.Create("identity-id", "username", "Display Name", null);
+        user.AssignRole(adminRoleId, null, ChocoApiFactory.StartTime);
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Add(user);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        using HttpRequestMessage request = CreateRequest(TestJwt.Create(DateTimeOffset.UtcNow));
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        string[] permissions = body.GetProperty("permissions").EnumerateArray().Select(item => item.GetString()!).ToArray();
+        permissions.Should().Equal(SystemRoles.All.Single(role => role.Key == SystemRoles.Admin)
+            .Permissions.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task Member_ReturnsEmptyPermissions()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Add(user);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        using HttpRequestMessage request = CreateRequest(TestJwt.Create(DateTimeOffset.UtcNow));
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        body.EnumerateObject().Select(property => property.Name)
+            .Should().BeEquivalentTo("id", "identityId", "sessionId", "authorizedParty", "permissions");
+        body.GetProperty("permissions").GetArrayLength().Should().Be(0);
     }
 
     [Fact]
@@ -136,7 +182,7 @@ public sealed class MeTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         MeResponse body = (await response.Content.ReadFromJsonAsync<MeResponse>(TestContext.Current.CancellationToken))!;
         User user = (await GetUsersAsync()).Should().ContainSingle().Subject;
-        body.Should().Be(new MeResponse(user.Id, "identity-id", "session-id", TestJwt.AuthorizedParty));
+        body.Should().BeEquivalentTo(new MeResponse(user.Id, "identity-id", "session-id", TestJwt.AuthorizedParty, []));
         user.IdentityId.Should().Be("identity-id");
         user.Username.Should().Be("username");
         user.DisplayName.Should().Be("first-name last-name");
@@ -206,5 +252,5 @@ public sealed class MeTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
             .ToListAsync(TestContext.Current.CancellationToken));
     }
 
-    private sealed record MeResponse(Guid Id, string IdentityId, string SessionId, string AuthorizedParty);
+    private sealed record MeResponse(Guid Id, string IdentityId, string SessionId, string AuthorizedParty, string[] Permissions);
 }
