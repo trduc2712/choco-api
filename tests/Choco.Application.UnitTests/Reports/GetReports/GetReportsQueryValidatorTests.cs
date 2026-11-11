@@ -1,4 +1,3 @@
-using Choco.Application.Reports;
 using Choco.Application.Reports.GetReports;
 using Choco.Contract.Reports;
 
@@ -8,37 +7,24 @@ namespace Choco.Application.UnitTests.Reports.GetReports;
 
 public sealed class GetReportsQueryValidatorTests
 {
-    private static readonly GetReportsQuery ValidQuery = new(null, GetReportsQuery.DefaultLimit);
+    private static readonly GetReportsQuery ValidQuery = new(GetReportsQuery.DefaultPage, GetReportsQuery.DefaultPageSize);
 
     private readonly GetReportsQueryValidator _validator = new();
 
     [Fact]
-    public void Validate_WithoutCursor_HasNoErrors()
+    public void Validate_WithDefaults_HasNoErrors()
     {
         TestValidationResult<GetReportsQuery> result = _validator.TestValidate(ValidQuery);
 
         result.ShouldNotHaveAnyValidationErrors();
     }
 
-    [Fact]
-    public void Validate_WithValidCursor_HasNoErrors()
-    {
-        string cursor = new ReportCursor(
-            new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
-            new Guid("3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f")).Encode();
-        GetReportsQuery query = ValidQuery with { Cursor = cursor };
-
-        TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
-
-        result.ShouldNotHaveAnyValidationErrors();
-    }
-
     [Theory]
     [InlineData(1)]
-    [InlineData(GetReportsQuery.MaxLimit)]
-    public void Validate_WithLimitAtBound_HasNoErrors(int limit)
+    [InlineData(int.MaxValue)]
+    public void Validate_WithPageAtOrAboveOne_HasNoErrors(int page)
     {
-        GetReportsQuery query = ValidQuery with { Limit = limit };
+        GetReportsQuery query = ValidQuery with { Page = page };
 
         TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
 
@@ -47,25 +33,37 @@ public sealed class GetReportsQueryValidatorTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(GetReportsQuery.MaxLimit + 1)]
-    public void Validate_WithLimitOutOfRange_HasLimitError(int limit)
+    [InlineData(-1)]
+    public void Validate_WithPageBelowOne_HasPageError(int page)
     {
-        GetReportsQuery query = ValidQuery with { Limit = limit };
+        GetReportsQuery query = ValidQuery with { Page = page };
 
         TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
 
-        result.ShouldHaveValidationErrorFor(q => q.Limit).Only();
+        result.ShouldHaveValidationErrorFor(q => q.Page).Only();
     }
 
     [Theory]
-    [InlineData("")]
-    [InlineData("not a cursor")]
-    public void Validate_WithInvalidCursor_HasCursorError(string cursor)
+    [InlineData(1)]
+    [InlineData(GetReportsQuery.MaxPageSize)]
+    public void Validate_WithPageSizeAtBound_HasNoErrors(int pageSize)
     {
-        GetReportsQuery query = ValidQuery with { Cursor = cursor };
+        GetReportsQuery query = ValidQuery with { PageSize = pageSize };
 
         TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
 
-        result.ShouldHaveValidationErrorFor(q => q.Cursor).Only();
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(GetReportsQuery.MaxPageSize + 1)]
+    public void Validate_WithPageSizeOutOfRange_HasPageSizeError(int pageSize)
+    {
+        GetReportsQuery query = ValidQuery with { PageSize = pageSize };
+
+        TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
+
+        result.ShouldHaveValidationErrorFor(q => q.PageSize).Only();
     }
 }

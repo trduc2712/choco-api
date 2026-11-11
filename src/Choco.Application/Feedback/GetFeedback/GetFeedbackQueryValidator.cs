@@ -9,7 +9,9 @@ internal sealed class GetFeedbackQueryValidator : AbstractValidator<GetFeedbackQ
 {
     public GetFeedbackQueryValidator()
     {
-        RuleFor(query => query.Limit).InclusiveBetween(1, GetFeedbackQuery.MaxLimit);
+        RuleFor(query => query.Page).GreaterThanOrEqualTo(1);
+
+        RuleFor(query => query.PageSize).InclusiveBetween(1, GetFeedbackQuery.MaxPageSize);
 
         RuleFor(query => query.Status)
             .Must(status => FeedbackWire.TryParse<FeedbackStatus>(status, out _))
@@ -20,10 +22,5 @@ internal sealed class GetFeedbackQueryValidator : AbstractValidator<GetFeedbackQ
             .Must(category => FeedbackWire.TryParse<FeedbackCategory>(category, out _))
             .When(query => query.Category is not null)
             .WithMessage($"'{{PropertyName}}' must be one of: {FeedbackWire.Options<FeedbackCategory>()}.");
-
-        RuleFor(query => query.Cursor)
-            .Must(cursor => FeedbackCursor.TryDecode(cursor, out _))
-            .When(query => query.Cursor is not null)
-            .WithMessage("'{PropertyName}' is not a valid cursor.");
     }
 }

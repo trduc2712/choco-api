@@ -8,29 +8,23 @@ using Choco.SharedKernel.Results;
 namespace Choco.Application.Reports.GetReports;
 
 internal sealed class GetReportsQueryHandler(IReportRepository reportRepository, IUserRepository userRepository)
-    : IQueryHandler<GetReportsQuery, PageResponse<ReportResponse>>
+    : IQueryHandler<GetReportsQuery, OffsetPageResponse<ReportResponse>>
 {
-    public async Task<Result<PageResponse<ReportResponse>>> Handle(
+    public async Task<Result<OffsetPageResponse<ReportResponse>>> Handle(
         GetReportsQuery query, CancellationToken cancellationToken)
     {
-        (DateTimeOffset CreatedAt, Guid Id)? after =
-            ReportCursor.TryDecode(query.Cursor, out ReportCursor? position)
-                ? (position!.CreatedAt, position.ReportId)
-                : null;
+        long skip = (long)(query.Page - 1) * query.PageSize;
 
-        IReadOnlyList<Report> reports = await reportRepository.ListOpenForReadAsync(
-            after, query.Limit + 1, cancellationToken);
-
-        List<Report> page = reports.Take(query.Limit).ToList();
-        string? nextCursor = reports.Count > query.Limit
-            ? new ReportCursor(page[^1].CreatedAt, page[^1].Id).Encode()
-            : null;
+        int totalCount = await reportRepository.CountOpenAsync(cancellationToken);
+        IReadOnlyList<Report> reports = skip >= totalCount
+            ? []
+            : await reportRepository.ListOpenForReadAsync((int)skip, query.PageSize, cancellationToken);
 
         IReadOnlyList<User> reporters = await userRepository.ListByIdsForReadAsync(
-            page.Select(report => report.ReporterId).Distinct().ToList(), cancellationToken);
+            reports.Select(report => report.ReporterId).Distinct().ToList(), cancellationToken);
         Dictionary<Guid, string> usernames = reporters.ToDictionary(user => user.Id, user => user.Username);
 
-        List<ReportResponse> items = page
+        List<ReportResponse> items = reports
             .Select(report => new ReportResponse(
                 report.Id,
                 report.TargetType.ToString(),
@@ -43,6 +37,7 @@ internal sealed class GetReportsQueryHandler(IReportRepository reportRepository,
                 report.CreatedAt))
             .ToList();
 
-        return Result<PageResponse<ReportResponse>>.Success(new PageResponse<ReportResponse>(items, nextCursor));
+        return Result<OffsetPageResponse<ReportResponse>>.Success(
+            new OffsetPageResponse<ReportResponse>(items, query.Page, query.PageSize, totalCount));
     }
 }

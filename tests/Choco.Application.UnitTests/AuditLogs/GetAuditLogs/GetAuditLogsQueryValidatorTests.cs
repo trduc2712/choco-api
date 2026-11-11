@@ -1,4 +1,3 @@
-using Choco.Application.AuditLogs;
 using Choco.Application.AuditLogs.GetAuditLogs;
 using Choco.Contract.AuditLogs;
 
@@ -11,7 +10,7 @@ public sealed class GetAuditLogsQueryValidatorTests
     private static readonly DateTimeOffset From = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
     private static readonly GetAuditLogsQuery ValidQuery = new(
-        null, null, null, null, null, null, null, null, GetAuditLogsQuery.DefaultLimit);
+        null, null, null, null, null, null, null, GetAuditLogsQuery.DefaultPage, GetAuditLogsQuery.DefaultPageSize);
 
     private readonly GetAuditLogsQueryValidator _validator = new();
 
@@ -44,10 +43,10 @@ public sealed class GetAuditLogsQueryValidatorTests
 
     [Theory]
     [InlineData(1)]
-    [InlineData(GetAuditLogsQuery.MaxLimit)]
-    public void Validate_WithLimitAtBound_HasNoErrors(int limit)
+    [InlineData(int.MaxValue)]
+    public void Validate_WithPageAtOrAboveOne_HasNoErrors(int page)
     {
-        GetAuditLogsQuery query = ValidQuery with { Limit = limit };
+        GetAuditLogsQuery query = ValidQuery with { Page = page };
 
         TestValidationResult<GetAuditLogsQuery> result = _validator.TestValidate(query);
 
@@ -56,14 +55,38 @@ public sealed class GetAuditLogsQueryValidatorTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(GetAuditLogsQuery.MaxLimit + 1)]
-    public void Validate_WithLimitOutOfRange_HasLimitError(int limit)
+    [InlineData(-1)]
+    public void Validate_WithPageBelowOne_HasPageError(int page)
     {
-        GetAuditLogsQuery query = ValidQuery with { Limit = limit };
+        GetAuditLogsQuery query = ValidQuery with { Page = page };
 
         TestValidationResult<GetAuditLogsQuery> result = _validator.TestValidate(query);
 
-        result.ShouldHaveValidationErrorFor(q => q.Limit).Only();
+        result.ShouldHaveValidationErrorFor(q => q.Page).Only();
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(GetAuditLogsQuery.MaxPageSize)]
+    public void Validate_WithPageSizeAtBound_HasNoErrors(int pageSize)
+    {
+        GetAuditLogsQuery query = ValidQuery with { PageSize = pageSize };
+
+        TestValidationResult<GetAuditLogsQuery> result = _validator.TestValidate(query);
+
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(GetAuditLogsQuery.MaxPageSize + 1)]
+    public void Validate_WithPageSizeOutOfRange_HasPageSizeError(int pageSize)
+    {
+        GetAuditLogsQuery query = ValidQuery with { PageSize = pageSize };
+
+        TestValidationResult<GetAuditLogsQuery> result = _validator.TestValidate(query);
+
+        result.ShouldHaveValidationErrorFor(q => q.PageSize).Only();
     }
 
     [Fact]
@@ -142,28 +165,5 @@ public sealed class GetAuditLogsQueryValidatorTests
         TestValidationResult<GetAuditLogsQuery> result = _validator.TestValidate(query);
 
         result.ShouldHaveValidationErrorFor(q => q.To).Only();
-    }
-
-    [Fact]
-    public void Validate_WithValidCursor_HasNoErrors()
-    {
-        string cursor = new AuditLogCursor(From, new Guid("3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f")).Encode();
-        GetAuditLogsQuery query = ValidQuery with { Cursor = cursor };
-
-        TestValidationResult<GetAuditLogsQuery> result = _validator.TestValidate(query);
-
-        result.ShouldNotHaveAnyValidationErrors();
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("not a cursor")]
-    public void Validate_WithInvalidCursor_HasCursorError(string cursor)
-    {
-        GetAuditLogsQuery query = ValidQuery with { Cursor = cursor };
-
-        TestValidationResult<GetAuditLogsQuery> result = _validator.TestValidate(query);
-
-        result.ShouldHaveValidationErrorFor(q => q.Cursor).Only();
     }
 }

@@ -115,13 +115,13 @@ public sealed class ValidatorErrorCodesTests
     [Fact]
     public void GetFeedback_WithInvalidFilters_ReturnsInvalidAndOutOfRange()
     {
-        CodesOf(new GetFeedbackQueryValidator(), new GetFeedbackQuery("New", "Bug", "cursor", 0))
+        CodesOf(new GetFeedbackQueryValidator(), new GetFeedbackQuery("New", "Bug", 0, 0))
             .Should().BeEquivalentTo(
             [
-                ("Limit", "Feedback.Limit.OutOfRange"),
+                ("Page", "Feedback.Page.OutOfRange"),
+                ("PageSize", "Feedback.PageSize.OutOfRange"),
                 ("Status", "Feedback.Status.Invalid"),
-                ("Category", "Feedback.Category.Invalid"),
-                ("Cursor", "Feedback.Cursor.Invalid")
+                ("Category", "Feedback.Category.Invalid")
             ]);
     }
 

@@ -16,9 +16,27 @@ internal sealed class FeedbackEntryRepository : Repository<FeedbackEntry>, IFeed
     public async Task<IReadOnlyList<FeedbackEntry>> ListForReadAsync(
         FeedbackStatus? status,
         FeedbackCategory? category,
-        (DateTimeOffset CreatedAt, Guid Id)? after,
-        int count,
+        int skip,
+        int take,
         CancellationToken cancellationToken = default)
+    {
+        return await Filter(status, category)
+            .OrderByDescending(entry => entry.CreatedAt)
+            .ThenByDescending(entry => entry.Id)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<int> CountForReadAsync(
+        FeedbackStatus? status,
+        FeedbackCategory? category,
+        CancellationToken cancellationToken = default)
+    {
+        return Filter(status, category).CountAsync(cancellationToken);
+    }
+
+    private IQueryable<FeedbackEntry> Filter(FeedbackStatus? status, FeedbackCategory? category)
     {
         IQueryable<FeedbackEntry> entries = DbSet.AsNoTracking();
 
@@ -32,18 +50,7 @@ internal sealed class FeedbackEntryRepository : Repository<FeedbackEntry>, IFeed
             entries = entries.Where(entry => entry.Category == categoryFilter);
         }
 
-        if (after is { } position)
-        {
-            entries = entries.Where(entry => EF.Functions.LessThan(
-                ValueTuple.Create(entry.CreatedAt, entry.Id),
-                ValueTuple.Create(position.CreatedAt, position.Id)));
-        }
-
-        return await entries
-            .OrderByDescending(entry => entry.CreatedAt)
-            .ThenByDescending(entry => entry.Id)
-            .Take(count)
-            .ToListAsync(cancellationToken);
+        return entries;
     }
 
     public Task<int> CountByStatusAsync(FeedbackStatus status, CancellationToken cancellationToken = default)

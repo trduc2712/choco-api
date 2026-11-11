@@ -22,30 +22,30 @@ public sealed class AdminFeedbackController : ApiController
     public AdminFeedbackController(ISender sender) : base(sender) { }
 
     /// <summary>Lists feedback, newest first.</summary>
-    /// <remarks>Only a caller with the permission to read any feedback may call it. Use status and category to narrow the list; leave them out for all feedback. To get the next page, pass the previous page's nextCursor as cursor. It is null on the last page.</remarks>
+    /// <remarks>Only a caller with the permission to read any feedback may call it. Use status and category to narrow the list; leave them out for all feedback. Pages are numbered from 1. The response carries the page, the page size and totalCount, the number of feedback entries that match the filters across all pages. A page past the last one is not an error; its items are empty.</remarks>
     /// <param name="status" example="new">Only feedback in this state: new, in_progress, resolved or wont_fix.</param>
     /// <param name="category" example="bug">Only feedback of this kind: bug, suggestion or other.</param>
-    /// <param name="cursor" example="MTIzNDU2Nzg5MF8wMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMQ">The previous page's nextCursor; leave it out for the first page.</param>
-    /// <param name="limit" example="20">The page size, from 1 to 50. Defaults to 20.</param>
+    /// <param name="page" example="1">The page number, from 1. Defaults to 1.</param>
+    /// <param name="pageSize" example="20">The page size, from 1 to 50. Defaults to 20.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
-    /// <response code="200">One page of feedback. The page can be empty.</response>
-    /// <response code="400">The status, category, cursor or limit is invalid.</response>
+    /// <response code="200">One page of feedback and the total count. The page can be empty.</response>
+    /// <response code="400">The status, category, page or page size is invalid.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     /// <response code="403">The caller may not read feedback.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(PageResponse<FeedbackResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(OffsetPageResponse<FeedbackResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetAll(
         string? status = null,
         string? category = null,
-        string? cursor = null,
-        int limit = GetFeedbackQuery.DefaultLimit,
+        int page = GetFeedbackQuery.DefaultPage,
+        int pageSize = GetFeedbackQuery.DefaultPageSize,
         CancellationToken cancellationToken = default)
     {
-        Result<PageResponse<FeedbackResponse>> result = await Sender.Send(
-            new GetFeedbackQuery(status, category, cursor, limit), cancellationToken);
+        Result<OffsetPageResponse<FeedbackResponse>> result = await Sender.Send(
+            new GetFeedbackQuery(status, category, page, pageSize), cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
     }
