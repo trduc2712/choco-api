@@ -131,7 +131,7 @@ public sealed class RevokeRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().BeEquivalentTo(["RoleId"]);
+        problem.Errors.Keys.Should().BeEquivalentTo(["roleId"]);
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be("Validation.Failed");
     }
 

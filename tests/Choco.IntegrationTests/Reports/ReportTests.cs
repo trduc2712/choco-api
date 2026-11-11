@@ -187,7 +187,7 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("Reason");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("reason");
     }
 
     [Theory]
@@ -255,7 +255,7 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("Cursor");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("cursor");
     }
 
     [Fact]
@@ -328,7 +328,7 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("Outcome");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("outcome");
     }
 
     private static HttpRequestMessage PostRequest(string path, object body)

@@ -14,10 +14,14 @@ internal sealed class CreateFeedbackCommandValidator : AbstractValidator<CreateF
             .WithMessage($"'{{PropertyName}}' must be one of: {FeedbackWire.Options<FeedbackCategory>()}.");
 
         RuleFor(command => command.Message)
+            .Cascade(CascadeMode.Stop)
             .NotNull()
-            .Must(message => message is null
-                || message.Trim().Length is >= FeedbackEntry.MessageMinLength and <= FeedbackEntry.MessageMaxLength)
-            .WithMessage($"'{{PropertyName}}' must be {FeedbackEntry.MessageMinLength} to {FeedbackEntry.MessageMaxLength} characters after trimming.");
+            .Must(message => message.Trim().Length >= FeedbackEntry.MessageMinLength)
+            .WithErrorCode("TooShort")
+            .WithMessage($"'{{PropertyName}}' must be at least {FeedbackEntry.MessageMinLength} characters after trimming.")
+            .Must(message => message.Trim().Length <= FeedbackEntry.MessageMaxLength)
+            .WithErrorCode("TooLong")
+            .WithMessage($"'{{PropertyName}}' must be {FeedbackEntry.MessageMaxLength} characters or fewer after trimming.");
 
         RuleFor(command => command.Context).NotNull();
 

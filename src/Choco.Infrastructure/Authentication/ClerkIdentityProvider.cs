@@ -119,7 +119,7 @@ internal sealed class ClerkIdentityProvider : IIdentityProvider
             return UserErrors.UsernameTaken;
         }
 
-        var errors = new Dictionary<string, string[]>();
+        var errors = new Dictionary<string, FieldError[]>();
         foreach (ClerkError error in body?.Errors ?? [])
         {
             string field = error.Meta?.ParamName switch
@@ -129,15 +129,20 @@ internal sealed class ClerkIdentityProvider : IIdentityProvider
                 "last_name" => "LastName",
                 _ => defaultField
             };
-            errors[field] = ["The value was rejected by the identity provider."];
+            errors[field] = [Rejected(field)];
         }
 
         if (errors.Count == 0)
         {
-            errors[defaultField] = ["The value was rejected by the identity provider."];
+            errors[defaultField] = [Rejected(defaultField)];
         }
 
         return new ValidationError(errors);
+    }
+
+    private static FieldError Rejected(string field)
+    {
+        return new FieldError($"User.{field}.Rejected", "The value was rejected by the identity provider.");
     }
 
     private static async Task<IdpUser> ReadUserAsync(HttpResponseMessage response, CancellationToken cancellationToken)

@@ -96,7 +96,7 @@ public sealed class EditPostTests : IClassFixture<ChocoApiFactory>, IAsyncLifeti
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().BeEquivalentTo(["Content"]);
+        problem.Errors.Keys.Should().BeEquivalentTo(["content"]);
         (await GetPostAsync(post.Id)).Content.Should().Be("content");
     }
 

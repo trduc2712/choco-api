@@ -11,6 +11,7 @@ internal sealed class UpdateMyBioCommandValidator : AbstractValidator<UpdateMyBi
     {
         RuleFor(command => command.Bio)
             .Must(bio => bio is null || bio.Trim().Length <= User.BioMaxLength)
+            .WithErrorCode("TooLong")
             .WithMessage($"'Bio' must be at most {User.BioMaxLength} characters.");
     }
 }

@@ -164,7 +164,7 @@ public sealed class CreateCommentTests : IClassFixture<ChocoApiFactory>, IAsyncL
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        await ShouldBeValidationProblemAsync(response, "Content");
+        await ShouldBeValidationProblemAsync(response, "content");
         (await GetCommentsAsync()).Should().BeEmpty();
     }
 
@@ -180,7 +180,7 @@ public sealed class CreateCommentTests : IClassFixture<ChocoApiFactory>, IAsyncL
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("Content");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("content");
         (await GetCommentsAsync()).Should().BeEmpty();
     }
 
@@ -193,7 +193,7 @@ public sealed class CreateCommentTests : IClassFixture<ChocoApiFactory>, IAsyncL
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        await ShouldBeValidationProblemAsync(response, "Content");
+        await ShouldBeValidationProblemAsync(response, "content");
         (await GetCommentsAsync()).Should().BeEmpty();
     }
 
@@ -205,7 +205,7 @@ public sealed class CreateCommentTests : IClassFixture<ChocoApiFactory>, IAsyncL
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        await ShouldBeValidationProblemAsync(response, "PostId");
+        await ShouldBeValidationProblemAsync(response, "postId");
     }
 
     [Fact]

@@ -181,7 +181,7 @@ public sealed class UserBlockTests : IClassFixture<ChocoApiFactory>, IAsyncLifet
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("UserId");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("userId");
     }
 
     [Theory]

@@ -139,14 +139,14 @@ public sealed class GetUserFollowListTests : IClassFixture<ChocoApiFactory>, IAs
     }
 
     [Theory]
-    [InlineData("followers", "/00000000-0000-0000-0000-000000000000/", "", "UserId")]
-    [InlineData("following", "/00000000-0000-0000-0000-000000000000/", "", "UserId")]
-    [InlineData("followers", "/00000000-0000-0000-0000-000000000001/", "?limit=0", "Limit")]
-    [InlineData("followers", "/00000000-0000-0000-0000-000000000001/", "?limit=51", "Limit")]
-    [InlineData("following", "/00000000-0000-0000-0000-000000000001/", "?limit=0", "Limit")]
-    [InlineData("following", "/00000000-0000-0000-0000-000000000001/", "?limit=51", "Limit")]
-    [InlineData("followers", "/00000000-0000-0000-0000-000000000001/", "?cursor=invalid-cursor", "Cursor")]
-    [InlineData("following", "/00000000-0000-0000-0000-000000000001/", "?cursor=invalid-cursor", "Cursor")]
+    [InlineData("followers", "/00000000-0000-0000-0000-000000000000/", "", "userId")]
+    [InlineData("following", "/00000000-0000-0000-0000-000000000000/", "", "userId")]
+    [InlineData("followers", "/00000000-0000-0000-0000-000000000001/", "?limit=0", "limit")]
+    [InlineData("followers", "/00000000-0000-0000-0000-000000000001/", "?limit=51", "limit")]
+    [InlineData("following", "/00000000-0000-0000-0000-000000000001/", "?limit=0", "limit")]
+    [InlineData("following", "/00000000-0000-0000-0000-000000000001/", "?limit=51", "limit")]
+    [InlineData("followers", "/00000000-0000-0000-0000-000000000001/", "?cursor=invalid-cursor", "cursor")]
+    [InlineData("following", "/00000000-0000-0000-0000-000000000001/", "?cursor=invalid-cursor", "cursor")]
     public async Task InvalidInput_ReturnsValidationProblem(string list, string userPath, string query, string invalidProperty)
     {
         await AddUserAsync("identity-id", "username");

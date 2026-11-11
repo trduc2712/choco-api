@@ -85,7 +85,7 @@ public sealed class EditMyBioTests(ChocoApiFactory factory) : IClassFixture<Choc
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("Bio");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("bio");
         ((JsonElement)problem.Extensions["code"]!).GetString().Should().Be("Validation.Failed");
         (await ReadAsync<UserProfileResponse>(ProfilePath)).Bio.Should().Be("Bio");
     }

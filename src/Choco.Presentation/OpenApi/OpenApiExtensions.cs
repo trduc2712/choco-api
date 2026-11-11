@@ -23,6 +23,7 @@ internal static class OpenApiExtensions
             XmlCommentsTransformer contractComments = new(Path.ChangeExtension(typeof(PostResponse).Assembly.Location, ".xml"));
             options.Document.AddSchemaTransformer(contractComments);
             options.Document.AddDocumentTransformer(contractComments);
+            options.Document.AddSchemaTransformer<ValidationProblemSchemaTransformer>();
             options.Document.AddDocumentTransformer((document, context, _) =>
             {
                 ApiDocumentationOptions documentation = context.ApplicationServices

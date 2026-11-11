@@ -146,9 +146,9 @@ public sealed class GetPostCommentsTests : IClassFixture<ChocoApiFactory>, IAsyn
     }
 
     [Theory]
-    [InlineData("?limit=0", "Limit")]
-    [InlineData("?limit=51", "Limit")]
-    [InlineData("?cursor=not-a-cursor", "Cursor")]
+    [InlineData("?limit=0", "limit")]
+    [InlineData("?limit=51", "limit")]
+    [InlineData("?cursor=not-a-cursor", "cursor")]
     public async Task InvalidLimitOrCursor_ReturnsValidationProblem(string query, string field)
     {
         await AddUserAsync("identity-id", "username");
@@ -167,7 +167,7 @@ public sealed class GetPostCommentsTests : IClassFixture<ChocoApiFactory>, IAsyn
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        await ShouldBeValidationProblemAsync(response, "PostId");
+        await ShouldBeValidationProblemAsync(response, "postId");
     }
 
     [Fact]

@@ -92,7 +92,7 @@ public sealed class CreateFeedbackTests : IClassFixture<ChocoApiFactory>, IAsync
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        await AssertValidationAsync(response, "Message");
+        await AssertValidationAsync(response, "message");
         (await GetEntriesAsync()).Should().BeEmpty();
     }
 
@@ -104,7 +104,7 @@ public sealed class CreateFeedbackTests : IClassFixture<ChocoApiFactory>, IAsync
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        await AssertValidationAsync(response, "Message");
+        await AssertValidationAsync(response, "message");
     }
 
     [Fact]
@@ -115,13 +115,13 @@ public sealed class CreateFeedbackTests : IClassFixture<ChocoApiFactory>, IAsync
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        await AssertValidationAsync(response, "Category");
+        await AssertValidationAsync(response, "category");
     }
 
     [Theory]
-    [InlineData("path", "Context.Path")]
-    [InlineData("/path?query=value", "Context.Path")]
-    [InlineData("/path#hash", "Context.Path")]
+    [InlineData("path", "context.path")]
+    [InlineData("/path?query=value", "context.path")]
+    [InlineData("/path#hash", "context.path")]
     public async Task SendingAPathThatIsNotAPathname_ReturnsValidationProblemOnPath(string path, string field)
     {
         await NotificationTestData.AddUserAsync(_factory, "identity-id", "username");
@@ -145,7 +145,7 @@ public sealed class CreateFeedbackTests : IClassFixture<ChocoApiFactory>, IAsync
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().BeEquivalentTo("Context.Path", "Context.UserAgent", "Context.AppVersion");
+        problem.Errors.Keys.Should().BeEquivalentTo("context.path", "context.userAgent", "context.appVersion");
     }
 
     [Fact]
@@ -163,8 +163,8 @@ public sealed class CreateFeedbackTests : IClassFixture<ChocoApiFactory>, IAsync
     }
 
     [Theory]
-    [InlineData("fr", "system", "Context.Locale")]
-    [InlineData("en", "blue", "Context.Theme")]
+    [InlineData("fr", "system", "context.locale")]
+    [InlineData("en", "blue", "context.theme")]
     public async Task SendingAnUnknownLocaleOrTheme_ReturnsValidationProblemOnThatField(string locale, string theme, string field)
     {
         await NotificationTestData.AddUserAsync(_factory, "identity-id", "username");
@@ -185,7 +185,7 @@ public sealed class CreateFeedbackTests : IClassFixture<ChocoApiFactory>, IAsync
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().BeEquivalentTo("Context.Viewport.Width", "Context.Viewport.Height");
+        problem.Errors.Keys.Should().BeEquivalentTo("context.viewport.width", "context.viewport.height");
     }
 
     [Fact]

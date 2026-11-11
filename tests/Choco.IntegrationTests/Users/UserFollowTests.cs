@@ -196,7 +196,7 @@ public sealed class UserFollowTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
         problem.Status.Should().Be(400);
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("UserId");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("userId");
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be("Validation.Failed");
     }
 

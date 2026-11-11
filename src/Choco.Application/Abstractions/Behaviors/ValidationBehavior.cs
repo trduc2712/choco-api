@@ -33,12 +33,17 @@ internal sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavio
         ValidationResult[] validationResults = await Task.WhenAll(
             _validators.Select(validator => validator.ValidateAsync(context, cancellationToken)));
 
-        Dictionary<string, string[]> errors = validationResults
+        Dictionary<string, FieldError[]> errors = validationResults
             .SelectMany(validationResult => validationResult.Errors)
             .GroupBy(failure => failure.PropertyName)
             .ToDictionary(
                 group => group.Key,
-                group => group.Select(failure => failure.ErrorMessage).Distinct().ToArray());
+                group => group
+                    .Select(failure => new FieldError(
+                        ValidationErrorCodes.Create(typeof(TRequest), failure.PropertyName, failure.ErrorCode),
+                        failure.ErrorMessage))
+                    .Distinct()
+                    .ToArray());
 
         if (errors.Count == 0)
         {
