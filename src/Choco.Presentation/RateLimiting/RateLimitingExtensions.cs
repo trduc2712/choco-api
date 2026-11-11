@@ -25,27 +25,51 @@ internal static class RateLimitingExtensions
             .Configure<IOptions<RateLimitingOptions>>((options, rateLimiting) =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-                {
-                    string? identityId = httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-
-                    if (identityId is null)
+                options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
+                    PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                     {
-                        return RateLimitPartition.GetNoLimiter(string.Empty);
-                    }
+                        string? identityId = httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub);
 
-                    return RateLimitPartition.GetTokenBucketLimiter(identityId, _ => new TokenBucketRateLimiterOptions
-                    {
-                        TokenLimit = rateLimiting.Value.TokenLimit,
-                        TokensPerPeriod = rateLimiting.Value.TokensPerPeriod,
-                        ReplenishmentPeriod = rateLimiting.Value.ReplenishmentPeriod,
-                        QueueLimit = 0
-                    });
-                });
+                        if (identityId is null)
+                        {
+                            return RateLimitPartition.GetNoLimiter(string.Empty);
+                        }
+
+                        return RateLimitPartition.GetTokenBucketLimiter(identityId, _ => new TokenBucketRateLimiterOptions
+                        {
+                            TokenLimit = rateLimiting.Value.TokenLimit,
+                            TokensPerPeriod = rateLimiting.Value.TokensPerPeriod,
+                            ReplenishmentPeriod = rateLimiting.Value.ReplenishmentPeriod,
+                            QueueLimit = 0
+                        });
+                    }),
+                    CreateFeedbackSubmissionLimiter(rateLimiting.Value.FeedbackPerHour, TimeSpan.FromHours(1)),
+                    CreateFeedbackSubmissionLimiter(rateLimiting.Value.FeedbackPerDay, TimeSpan.FromDays(1)));
                 options.OnRejected = WriteRejectionAsync;
             });
 
         return services;
+    }
+
+    private static PartitionedRateLimiter<HttpContext> CreateFeedbackSubmissionLimiter(int permitLimit, TimeSpan window)
+    {
+        return PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        {
+            string? identityId = httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+            if (identityId is null
+                || httpContext.GetEndpoint()?.Metadata.GetMetadata<FeedbackSubmissionLimitAttribute>() is null)
+            {
+                return RateLimitPartition.GetNoLimiter(string.Empty);
+            }
+
+            return RateLimitPartition.GetFixedWindowLimiter(identityId, _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = window,
+                QueueLimit = 0
+            });
+        });
     }
 
     private static async ValueTask WriteRejectionAsync(OnRejectedContext context, CancellationToken cancellationToken)

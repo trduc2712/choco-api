@@ -123,6 +123,8 @@ public class ChocoApiFactory : WebApplicationFactory<Program>, IAsyncLifetime, I
             new Dictionary<string, string?>
             {
                 ["Database:ConnectionString"] = connectionString,
+                ["RateLimiting:FeedbackPerHour"] = "1000",
+                ["RateLimiting:FeedbackPerDay"] = "1000",
                 ["Clerk:Authority"] = TestJwt.Issuer,
                 ["Clerk:AuthorizedParties:0"] = TestJwt.AuthorizedParty,
                 ["Clerk:WebhookSigningSecret"] = ClerkWebhookSigner.SigningSecret,
