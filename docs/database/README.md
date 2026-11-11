@@ -8,6 +8,7 @@
 | [public.notifications](public.notifications.md) | 8       | Things that happened to a user, such as a new follower, shown to that user.                                  | BASE TABLE |
 | [public.post_likes](public.post_likes.md)       | 4       | Active likes that users give to posts.                                                                       | BASE TABLE |
 | [public.posts](public.posts.md)                 | 7       | Text posts that users publish.                                                                               | BASE TABLE |
+| [public.reports](public.reports.md)             | 12      | Reports from users about a post or another user, waiting for or finished with a moderator's decision.        | BASE TABLE |
 | [public.roles](public.roles.md)                 | 7       | Named sets of permissions that users can hold. Roles and their permissions can change while the system runs. | BASE TABLE |
 | [public.user_blocks](public.user_blocks.md)     | 4       | Active blocks between users.                                                                                 | BASE TABLE |
 | [public.user_follows](public.user_follows.md)   | 4       | Active follow relationships between users.                                                                   | BASE TABLE |
@@ -37,6 +38,10 @@ erDiagram
 "public.post_likes" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.post_likes" }o--|| "public.posts" : "FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE RESTRICT"
 "public.posts" }o--|| "public.users" : "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.reports" }o--|| "public.users" : "FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.reports" }o--o| "public.users" : "FOREIGN KEY (resolved_by_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.reports" }o--o| "public.users" : "FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.reports" }o--o| "public.posts" : "FOREIGN KEY (target_post_id) REFERENCES posts(id) ON DELETE RESTRICT"
 "public.user_blocks" }o--|| "public.users" : "FOREIGN KEY (blocked_user_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.user_blocks" }o--|| "public.users" : "FOREIGN KEY (blocker_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.user_follows" }o--|| "public.users" : "FOREIGN KEY (followed_user_id) REFERENCES users(id) ON DELETE RESTRICT"
@@ -79,6 +84,20 @@ erDiagram
   uuid id
   boolean is_deleted
   timestamp_with_time_zone modified_at
+}
+"public.reports" {
+  timestamp_with_time_zone created_at
+  varchar_500_ details
+  uuid id
+  varchar_32_ outcome
+  varchar_32_ reason
+  uuid reporter_id FK
+  timestamp_with_time_zone resolved_at
+  uuid resolved_by_id FK
+  varchar_32_ status
+  uuid target_post_id FK
+  varchar_32_ target_type
+  uuid target_user_id FK
 }
 "public.roles" {
   timestamp_with_time_zone created_at
