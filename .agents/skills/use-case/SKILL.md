@@ -12,7 +12,7 @@ This skill covers Contract, Application and Presentation. Domain code follows th
 ## Workflow
 
 1. Read the aggregate the use case works on, and its repository.
-2. Write, in this order: the command or query, its response, its validator, its authorizer when it needs a permission, its handler, the endpoint.
+2. Write, in this order: the command or query, its response, its validator, its authorizer when it needs a permission, its handler, its audit describer when the command is recorded, the endpoint.
 3. Write validator tests by the `test-unit` skill and endpoint tests by the `test-integration` skill.
 4. Check the OpenAPI document (rule 28).
 5. Run `./build.ps1 Check`.
@@ -67,3 +67,13 @@ Swagger shows what the XML doc comments and response attributes say, and nothing
 26. Document every command, query and response that an endpoint takes or returns: a `<summary>` on the record, a `<param>` for each positional parameter that says what it means, its format and its limits, and an `<example>` with the whole JSON body in its wire format. Write no doc comments on anything Swagger does not show; the compiler does not ask for them (CS1591 is off).
 27. Write example values by `docs/test-data.md`: each value names its field and keeps its real format. Give a route or query parameter its example with `<param name="..." example="...">`.
 28. When adding or changing an endpoint, run the app on an available port, open `/openapi/v1.json`, and check that each new operation has its summary, description, parameter descriptions, examples and every response code. Stop the app afterwards. If local configuration or the database prevents startup, report that limitation.
+
+## Audit Log
+
+A command that creates, changes or deletes data on behalf of a user is recorded in the audit log, unless it is listed in the exclusions of the test that checks this.
+
+29. Give every recorded command an `internal sealed class <Name>AuditDescriber : IAuditDescriber<<Name>, <TResponse>>` next to its handler (`DeletePostCommandAuditDescriber`). It returns the `AuditAction`, the target type and id, the user who owns the target and a short detail. Add a value to `AuditAction` or `AuditTargetType` when none fits.
+30. Do not call or register a describer, and do not write audit entries from a handler: the audit pipeline runs the describer after the handler succeeds and saves the entry in the same transaction, and describers are registered by assembly scanning.
+31. Take what the describer needs from the response. When the response lacks it, as a delete does, read it through a repository method whose name says `IncludingDeleted`.
+32. Report the owner of the target in `AffectedUserId` even when it is the caller; the pipeline clears it in that case.
+33. Keep `Detail` to identifiers and short values such as a role name or a status. Never put content, tokens, email addresses or usernames in it.

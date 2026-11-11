@@ -44,7 +44,7 @@ A unit test runs one unit of behavior through its public API, with real domain o
 17. Use a stub for data coming in and never assert it was called. Use a spy only for calls going out to other systems (email, HTTP, a message bus), and assert those calls.
 18. Never replace repositories, `IUnitOfWork`, `DbContext`, validators or domain objects with doubles.
 19. Use no mocking library. Use lambdas, small stubs and spies written as private nested classes in the test class, `FakeTimeProvider` and `NullLogger<T>.Instance`. Add NSubstitute with its analyzers only when a hand-written spy grows or repeats, and only after the user agrees.
-20. Do not assert logs unless the log is a requirement, such as an audit or security event; then use `FakeLogger<T>`.
+20. Do not assert logs unless the log is a requirement, such as a security event; then use `FakeLogger<T>`.
 
 ## Naming and Structure
 
@@ -61,3 +61,8 @@ A unit test runs one unit of behavior through its public API, with real domain o
 
 29. Never use `Thread.Sleep`, `Task.Delay`, unseeded random values, the system clock or the machine's culture. Never retry a failing unit test; a flaky unit test is a bug to fix at once.
 30. Set no coverage or mutation threshold. Coverage and mutation testing are deferred; when added, they are reports only.
+
+## Audit Log
+
+31. Test an audit describer as a pure mapping only when it branches and reads no repository: build the response, call `DescribeAsync` and assert the action, target, owner and detail. Leave a describer that reads a repository, and the audit pipeline itself, to integration tests.
+32. Keep one architecture test in `tests/Choco.ArchitectureTests` that lists every command in `Choco.Contract` and fails for a command that has neither an audit describer nor an entry in its exclusion list. The exclusion list names each command left out and why.
