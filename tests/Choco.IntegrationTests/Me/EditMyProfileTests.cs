@@ -43,7 +43,7 @@ public sealed class EditMyProfileTests(ChocoApiFactory factory) : IClassFixture<
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        UserProfileResponse expected = new(caller.Id, "username-updated", "First Name Last Name", AvatarUrl);
+        UserProfileResponse expected = new(caller.Id, "username-updated", "First Name Last Name", AvatarUrl, null);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadFromJsonAsync<UserProfileResponse>(TestContext.Current.CancellationToken)).Should().Be(expected);
         (await ReadProfileAsync(ProfilePath)).Should().Be(expected);
@@ -93,7 +93,7 @@ public sealed class EditMyProfileTests(ChocoApiFactory factory) : IClassFixture<
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         ProblemDetails problem = (await response.Content.ReadFromJsonAsync<ProblemDetails>(TestContext.Current.CancellationToken))!;
         ((JsonElement)problem.Extensions["code"]!).GetString().Should().Be("User.UsernameTaken");
-        (await ReadProfileAsync(ProfilePath)).Should().Be(new UserProfileResponse(caller.Id, "username", "Display Name", AvatarUrl));
+        (await ReadProfileAsync(ProfilePath)).Should().Be(new UserProfileResponse(caller.Id, "username", "Display Name", AvatarUrl, null));
         factory.IdentityProvider.Requests.Should().HaveCount(rejectedByProvider ? 1 : 0);
     }
 
@@ -117,7 +117,7 @@ public sealed class EditMyProfileTests(ChocoApiFactory factory) : IClassFixture<
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        UserProfileResponse expected = new(caller.Id, "username", "Display Name", newAvatarUrl);
+        UserProfileResponse expected = new(caller.Id, "username", "Display Name", newAvatarUrl, null);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadFromJsonAsync<UserProfileResponse>(TestContext.Current.CancellationToken)).Should().Be(expected);
         (await ReadProfileAsync($"/api/v1/users/{caller.Id}", "identity-id-2")).Should().Be(expected);
@@ -162,7 +162,7 @@ public sealed class EditMyProfileTests(ChocoApiFactory factory) : IClassFixture<
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        UserProfileResponse expected = new(caller.Id, "username", "Display Name", null);
+        UserProfileResponse expected = new(caller.Id, "username", "Display Name", null, null);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadFromJsonAsync<UserProfileResponse>(TestContext.Current.CancellationToken)).Should().Be(expected);
         (await ReadProfileAsync($"/api/v1/users/{caller.Id}", "identity-id-2")).Should().Be(expected);

@@ -8,7 +8,7 @@ internal static class UserMappings
 {
     public static UserProfileResponse ToProfileResponse(this User user)
     {
-        return new UserProfileResponse(user.Id, user.Username, user.DisplayName, user.AvatarUrl);
+        return new UserProfileResponse(user.Id, user.Username, user.DisplayName, user.AvatarUrl, user.Bio);
     }
 
     public static UserProfileDetailsResponse ToProfileDetailsResponse(
@@ -19,6 +19,7 @@ internal static class UserMappings
             user.Username,
             user.DisplayName,
             user.AvatarUrl,
+            user.Bio,
             summary.IsFollowedByViewer,
             isBlockedByViewer,
             summary.FollowerCount,

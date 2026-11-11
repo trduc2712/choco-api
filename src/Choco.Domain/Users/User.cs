@@ -8,6 +8,7 @@ public sealed class User : AggregateRoot, IAuditable, ISoftDeletable
     public const int UsernameMaxLength = 64;
     public const int DisplayNameMaxLength = 256;
     public const int AvatarUrlMaxLength = 2048;
+    public const int BioMaxLength = 160;
 
     private readonly List<UserRole> _roles = [];
 
@@ -15,6 +16,7 @@ public sealed class User : AggregateRoot, IAuditable, ISoftDeletable
     public string Username { get; private set; } = null!;
     public string DisplayName { get; private set; } = null!;
     public string? AvatarUrl { get; private set; }
+    public string? Bio { get; private set; }
     public IReadOnlyCollection<UserRole> Roles => _roles.AsReadOnly();
 
     public DateTimeOffset CreatedAt { get; private set; }
@@ -57,6 +59,11 @@ public sealed class User : AggregateRoot, IAuditable, ISoftDeletable
     public void ChangeAvatar(string? avatarUrl)
     {
         AvatarUrl = avatarUrl;
+    }
+
+    public void ChangeBio(string? bio)
+    {
+        Bio = string.IsNullOrWhiteSpace(bio) ? null : bio.Trim();
     }
 
     public void AssignRole(Guid roleId, Guid? assignedBy, DateTimeOffset now)

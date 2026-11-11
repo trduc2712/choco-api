@@ -33,6 +33,10 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(User.AvatarUrlMaxLength)
             .HasComment("Profile image URL from Clerk; null when the user has none.");
 
+        builder.Property(user => user.Bio)
+            .HasMaxLength(User.BioMaxLength)
+            .HasComment("Short text the user wrote about themselves. Lives only in choco-api, not in Clerk; null when the user has none.");
+
         builder.HasIndex(user => user.IdentityId)
             .IsUnique();
 

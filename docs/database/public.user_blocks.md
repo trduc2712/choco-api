@@ -49,6 +49,7 @@ erDiagram
 }
 "public.users" {
   varchar_2048_ avatar_url
+  varchar_160_ bio
   timestamp_with_time_zone created_at
   timestamp_with_time_zone deleted_at
   varchar_256_ display_name
