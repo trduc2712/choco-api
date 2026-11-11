@@ -6,6 +6,7 @@ using Amazon.S3;
 using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Authorization;
 using Choco.Application.Abstractions.Storage;
+using Choco.Domain.AuditLogs;
 using Choco.Domain.Comments;
 using Choco.Domain.FeedbackEntries;
 using Choco.Domain.Notifications;
@@ -68,6 +69,7 @@ public static class DependencyInjection
         services.AddScoped<IPostRepository, PostRepository>();
         services.AddScoped<IPostLikeRepository, PostLikeRepository>();
         services.AddScoped<ICommentRepository, CommentRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
         services.AddOptions<AdministratorBootstrapOptions>()
             .Bind(configuration.GetSection(AdministratorBootstrapOptions.SectionName));
