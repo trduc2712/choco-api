@@ -58,7 +58,8 @@ public sealed class GetMyProfileTests : IClassFixture<ChocoApiFactory>, IAsyncLi
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
-        body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo("id", "username", "displayName", "avatarUrl");
+        body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo("id", "username", "displayName", "avatarUrl", "bio");
+        body.GetProperty("bio").ValueKind.Should().Be(JsonValueKind.Null);
         body.GetProperty("id").GetGuid().Should().Be(target.Id);
         body.GetProperty("username").GetString().Should().Be(target.Username);
         body.GetProperty("displayName").GetString().Should().Be("Display Name");

@@ -102,6 +102,32 @@ public sealed class UserTests
         user.DisplayName.Should().Be("Display Name");
     }
 
+    [Theory]
+    [InlineData("Bio", "Bio")]
+    [InlineData("  Bio  ", "Bio")]
+    [InlineData("", null)]
+    [InlineData(" ", null)]
+    [InlineData(null, null)]
+    public void ChangeBio_WithValue_StoresTrimmedBioOrNull(string? bio, string? expectedBio)
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+
+        user.ChangeBio(bio);
+
+        user.Bio.Should().Be(expectedBio);
+    }
+
+    [Fact]
+    public void ChangeProfileName_WithBioSet_KeepsBio()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+        user.ChangeBio("Bio");
+
+        user.ChangeProfileName("username-2", "Display Name 2");
+
+        user.Bio.Should().Be("Bio");
+    }
+
     [Fact]
     public void AssignRole_NewRole_AddsAssignment()
     {

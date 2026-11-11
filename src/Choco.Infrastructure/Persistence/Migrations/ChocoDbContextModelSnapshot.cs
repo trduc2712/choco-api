@@ -389,6 +389,12 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .HasColumnName("avatar_url")
                         .HasComment("Profile image URL from Clerk; null when the user has none.");
 
+                    b.Property<string>("Bio")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("bio")
+                        .HasComment("Short text the user wrote about themselves. Lives only in choco-api, not in Clerk; null when the user has none.");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")

@@ -33,7 +33,7 @@ public sealed class MeController : ApiController
     }
 
     /// <summary>Gets the caller's basic profile.</summary>
-    /// <remarks>Any signed-in user may call it. Creates the local account if needed. Returns the stored username, display name and avatar.</remarks>
+    /// <remarks>Any signed-in user may call it. Creates the local account if needed. Returns the stored username, display name, avatar and bio.</remarks>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="200">The caller's profile.</response>
     /// <response code="400">The account details needed to create the local profile are invalid; errors lists the field.</response>
@@ -63,6 +63,24 @@ public sealed class MeController : ApiController
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateMyProfileCommand command, CancellationToken cancellationToken)
+    {
+        Result<UserProfileResponse> result = await Sender.Send(command, cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
+    /// <summary>Replaces the caller's bio.</summary>
+    /// <remarks>Any signed-in user may call it. The bio is trimmed and may be up to 160 characters. Send null or blank text to clear it. It does not change the username, display name or avatar. Sending the same bio again is safe.</remarks>
+    /// <param name="command">The new bio.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The updated profile.</response>
+    /// <response code="400">The bio is longer than 160 characters after trimming; errors lists the field.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    [HttpPut("profile/bio")]
+    [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateBio([FromBody] UpdateMyBioCommand command, CancellationToken cancellationToken)
     {
         Result<UserProfileResponse> result = await Sender.Send(command, cancellationToken);
 

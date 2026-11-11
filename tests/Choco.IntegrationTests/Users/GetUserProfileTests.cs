@@ -56,7 +56,8 @@ public sealed class GetUserProfileTests : IClassFixture<ChocoApiFactory>, IAsync
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
-            "id", "username", "displayName", "avatarUrl", "isFollowedByMe", "isBlockedByMe", "followerCount", "followingCount", "postCount");
+            "id", "username", "displayName", "avatarUrl", "bio", "isFollowedByMe", "isBlockedByMe", "followerCount", "followingCount", "postCount");
+        body.GetProperty("bio").ValueKind.Should().Be(JsonValueKind.Null);
         body.GetProperty("id").GetGuid().Should().Be(target.Id);
         body.GetProperty("username").GetString().Should().Be(target.Username);
         body.GetProperty("displayName").GetString().Should().Be("Display Name 2");
