@@ -30,23 +30,16 @@ internal sealed class ReportRepository : Repository<Report>, IReportRepository
     }
 
     public async Task<IReadOnlyList<Report>> ListOpenForReadAsync(
-        (DateTimeOffset CreatedAt, Guid Id)? after,
-        int count,
+        int skip,
+        int take,
         CancellationToken cancellationToken)
     {
-        IQueryable<Report> reports = DbSet.AsNoTracking().Where(report => report.Status == ReportStatus.Open);
-
-        if (after is { } position)
-        {
-            reports = reports.Where(report => EF.Functions.GreaterThan(
-                ValueTuple.Create(report.CreatedAt, report.Id),
-                ValueTuple.Create(position.CreatedAt, position.Id)));
-        }
-
-        return await reports
+        return await DbSet.AsNoTracking()
+            .Where(report => report.Status == ReportStatus.Open)
             .OrderBy(report => report.CreatedAt)
             .ThenBy(report => report.Id)
-            .Take(count)
+            .Skip(skip)
+            .Take(take)
             .ToListAsync(cancellationToken);
     }
 

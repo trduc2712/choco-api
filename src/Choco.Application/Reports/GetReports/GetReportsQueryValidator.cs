@@ -8,11 +8,8 @@ internal sealed class GetReportsQueryValidator : AbstractValidator<GetReportsQue
 {
     public GetReportsQueryValidator()
     {
-        RuleFor(query => query.Limit).InclusiveBetween(1, GetReportsQuery.MaxLimit);
+        RuleFor(query => query.Page).GreaterThanOrEqualTo(1);
 
-        RuleFor(query => query.Cursor)
-            .Must(cursor => ReportCursor.TryDecode(cursor, out _))
-            .When(query => query.Cursor is not null)
-            .WithMessage("'{PropertyName}' is not a valid cursor.");
+        RuleFor(query => query.PageSize).InclusiveBetween(1, GetReportsQuery.MaxPageSize);
     }
 }

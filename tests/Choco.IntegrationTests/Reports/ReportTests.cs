@@ -205,7 +205,7 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task ListingReports_ReturnsOpenReportsOldestFirstByCursor()
+    public async Task ListingReports_ReturnsOpenReportsOldestFirstByPage()
     {
         User admin = await AddAdminAsync("identity-id", "username");
         User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
@@ -217,16 +217,10 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
         _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
         Report resolved = await AddReportForUserAsync(admin, target, ReportReason.Other);
         await ResolveAsync(resolved.Id);
-        using HttpRequestMessage firstPageRequest = NotificationTestData.CreateRequest(HttpMethod.Get, "/api/v1/reports?limit=1");
 
-        using HttpResponseMessage firstPageResponse = await _client.SendAsync(firstPageRequest, TestContext.Current.CancellationToken);
-        PageResponse<ReportResponse> firstPage = (await firstPageResponse.Content.ReadFromJsonAsync<PageResponse<ReportResponse>>(TestContext.Current.CancellationToken))!;
-        using HttpRequestMessage secondPageRequest = NotificationTestData.CreateRequest(
-            HttpMethod.Get, $"/api/v1/reports?limit=1&cursor={firstPage.NextCursor}");
-        using HttpResponseMessage secondPageResponse = await _client.SendAsync(secondPageRequest, TestContext.Current.CancellationToken);
-        PageResponse<ReportResponse> secondPage = (await secondPageResponse.Content.ReadFromJsonAsync<PageResponse<ReportResponse>>(TestContext.Current.CancellationToken))!;
+        OffsetPageResponse<ReportResponse> firstPage = await GetPageAsync("/api/v1/reports?pageSize=1");
+        OffsetPageResponse<ReportResponse> secondPage = await GetPageAsync("/api/v1/reports?pageSize=1&page=2");
 
-        firstPageResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         ReportResponse firstItem = firstPage.Items.Should().ContainSingle().Subject;
         firstItem.Id.Should().Be(first.Id);
         firstItem.TargetType.Should().Be("User");
@@ -236,26 +230,124 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
         firstItem.ReporterId.Should().Be(reporter.Id);
         firstItem.ReporterUsername.Should().Be("username-2");
         firstItem.CreatedAt.Should().Be(first.CreatedAt);
-        firstPage.NextCursor.Should().NotBeNull();
-        secondPageResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        firstPage.Page.Should().Be(1);
+        firstPage.PageSize.Should().Be(1);
+        firstPage.TotalCount.Should().Be(2);
         ReportResponse secondItem = secondPage.Items.Should().ContainSingle().Subject;
         secondItem.Id.Should().Be(second.Id);
         secondItem.TargetType.Should().Be("Post");
         secondItem.TargetPostId.Should().Be(post.Id);
-        secondPage.NextCursor.Should().BeNull();
+        secondPage.Page.Should().Be(2);
+        secondPage.TotalCount.Should().Be(2);
     }
 
     [Fact]
-    public async Task ListingReportsWithAnInvalidCursor_ReturnsValidationProblem()
+    public async Task ListingReports_WithoutQuery_UsesTheFirstPageOfTwentyAndCamelCaseNames()
     {
         await AddAdminAsync("identity-id", "username");
-        using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Get, "/api/v1/reports?cursor=invalid");
+        User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        User target = await NotificationTestData.AddUserAsync(_factory, "identity-id-3", "username-3");
+        await AddReportForUserAsync(reporter, target, ReportReason.Spam);
+        using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Get, "/api/v1/reports");
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+            "items", "page", "pageSize", "totalCount");
+        body.GetProperty("page").GetInt32().Should().Be(1);
+        body.GetProperty("pageSize").GetInt32().Should().Be(20);
+        body.GetProperty("totalCount").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ListingReports_ReturnsTheMiddleAndLastPagesAndAnEmptyPagePastTheEnd()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        List<Report> reports = [];
+        for (int index = 0; index < 5; index++)
+        {
+            User target = await NotificationTestData.AddUserAsync(_factory, $"identity-id-target-{index}", $"username-target-{index}");
+            reports.Add(await AddReportForUserAsync(reporter, target, ReportReason.Spam));
+            _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
+        }
+
+        OffsetPageResponse<ReportResponse> middle = await GetPageAsync("/api/v1/reports?pageSize=2&page=2");
+        OffsetPageResponse<ReportResponse> last = await GetPageAsync("/api/v1/reports?pageSize=2&page=3");
+        OffsetPageResponse<ReportResponse> pastEnd = await GetPageAsync("/api/v1/reports?pageSize=2&page=99");
+        OffsetPageResponse<ReportResponse> hugePage = await GetPageAsync($"/api/v1/reports?pageSize=50&page={int.MaxValue}");
+
+        middle.Items.Select(item => item.Id).Should().Equal(reports[2].Id, reports[3].Id);
+        last.Items.Select(item => item.Id).Should().Equal(reports[4].Id);
+        pastEnd.Items.Should().BeEmpty();
+        pastEnd.Page.Should().Be(99);
+        pastEnd.TotalCount.Should().Be(5);
+        hugePage.Items.Should().BeEmpty();
+        hugePage.TotalCount.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task ListingReports_AcceptsTheSmallestAndLargestPageSize()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        for (int index = 0; index < 3; index++)
+        {
+            User target = await NotificationTestData.AddUserAsync(_factory, $"identity-id-target-{index}", $"username-target-{index}");
+            await AddReportForUserAsync(reporter, target, ReportReason.Spam);
+            _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
+        }
+
+        OffsetPageResponse<ReportResponse> smallest = await GetPageAsync("/api/v1/reports?pageSize=1");
+        OffsetPageResponse<ReportResponse> largest = await GetPageAsync("/api/v1/reports?pageSize=50");
+
+        smallest.Items.Should().ContainSingle();
+        smallest.TotalCount.Should().Be(3);
+        largest.Items.Should().HaveCount(3);
+        largest.PageSize.Should().Be(50);
+    }
+
+    [Fact]
+    public async Task ListingReports_OrdersReportsMadeAtTheSameInstantByIdAscendingOnEveryPage()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        List<Report> reports = [];
+        for (int index = 0; index < 5; index++)
+        {
+            User target = await NotificationTestData.AddUserAsync(_factory, $"identity-id-target-{index}", $"username-target-{index}");
+            reports.Add(await AddReportForUserAsync(reporter, target, ReportReason.Spam));
+        }
+
+        List<Guid> expected = reports.Select(report => report.Id).Order().ToList();
+
+        OffsetPageResponse<ReportResponse> firstPage = await GetPageAsync("/api/v1/reports?pageSize=2&page=1");
+        OffsetPageResponse<ReportResponse> secondPage = await GetPageAsync("/api/v1/reports?pageSize=2&page=2");
+        OffsetPageResponse<ReportResponse> thirdPage = await GetPageAsync("/api/v1/reports?pageSize=2&page=3");
+        OffsetPageResponse<ReportResponse> repeated = await GetPageAsync("/api/v1/reports?pageSize=2&page=1");
+
+        firstPage.Items.Concat(secondPage.Items).Concat(thirdPage.Items).Select(item => item.Id)
+            .Should().Equal(expected);
+        repeated.Items.Select(item => item.Id).Should().Equal(firstPage.Items.Select(item => item.Id));
+    }
+
+    [Theory]
+    [InlineData("?page=0", "page")]
+    [InlineData("?page=-1", "page")]
+    [InlineData("?pageSize=0", "pageSize")]
+    [InlineData("?pageSize=51", "pageSize")]
+    public async Task ListingReportsWithAnInvalidQuery_ReturnsValidationProblem(string query, string field)
+    {
+        await AddAdminAsync("identity-id", "username");
+        using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Get, "/api/v1/reports" + query);
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("cursor");
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be(field);
     }
 
     [Fact]
@@ -352,6 +444,15 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
         ProblemDetails problem = (await response.Content.ReadFromJsonAsync<ProblemDetails>(TestContext.Current.CancellationToken))!;
         problem.Status.Should().Be((int)status);
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be(code);
+    }
+
+    private async Task<OffsetPageResponse<ReportResponse>> GetPageAsync(string uri)
+    {
+        using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Get, uri);
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        return (await response.Content.ReadFromJsonAsync<OffsetPageResponse<ReportResponse>>(TestContext.Current.CancellationToken))!;
     }
 
     private async Task<User> AddAdminAsync(string identityId, string username)
