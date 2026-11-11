@@ -10,4 +10,6 @@ public interface IReportRepository : IRepository<Report>
         (DateTimeOffset CreatedAt, Guid Id)? after,
         int count,
         CancellationToken cancellationToken);
+
+    Task<int> CountOpenAsync(CancellationToken cancellationToken);
 }

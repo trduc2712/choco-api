@@ -45,4 +45,9 @@ internal sealed class FeedbackEntryRepository : Repository<FeedbackEntry>, IFeed
             .Take(count)
             .ToListAsync(cancellationToken);
     }
+
+    public Task<int> CountByStatusAsync(FeedbackStatus status, CancellationToken cancellationToken = default)
+    {
+        return DbSet.AsNoTracking().CountAsync(entry => entry.Status == status, cancellationToken);
+    }
 }

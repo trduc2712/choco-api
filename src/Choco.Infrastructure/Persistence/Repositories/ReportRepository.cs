@@ -49,4 +49,9 @@ internal sealed class ReportRepository : Repository<Report>, IReportRepository
             .Take(count)
             .ToListAsync(cancellationToken);
     }
+
+    public Task<int> CountOpenAsync(CancellationToken cancellationToken)
+    {
+        return DbSet.AsNoTracking().CountAsync(report => report.Status == ReportStatus.Open, cancellationToken);
+    }
 }
