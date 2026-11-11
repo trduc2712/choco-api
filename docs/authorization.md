@@ -11,6 +11,7 @@ How choco-api decides what a signed-in user may do, and how to operate it. Why i
 3. A user's permissions are those of the default role, which every signed-in user has without being assigned it, plus those of every role assigned to them in `user_roles`.
 4. Code checks permissions, never role names. A request that needs a permission is rejected with `403 Permission.Denied` before it is validated.
 5. Roles are platform-wide today. Roles scoped to a community come with communities.
+6. Clients read the caller's permission codes from `permissions` in `GET /api/v1/me` and use them only to show or hide UI; the API still checks every request.
 
 Rules on assigning and revoking roles:
 

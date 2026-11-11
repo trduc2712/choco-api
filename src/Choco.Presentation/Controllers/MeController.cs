@@ -127,7 +127,16 @@ public sealed class MeController : ApiController
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
     }
 
+    /// <summary>Gets the signed-in caller.</summary>
+    /// <remarks>Any signed-in user may call it. Creates the local account if needed. Returns the user's id, the identity, session and client from the session token, and the permissions the caller holds. A member gets an empty permissions list.</remarks>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The caller and their permissions.</response>
+    /// <response code="400">The account details needed to create the local profile are invalid; errors lists the field.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     [HttpGet]
+    [ProducesResponseType(typeof(MeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
         Result<Guid> userIdResult = await _currentUser.GetIdAsync(cancellationToken);
@@ -137,13 +146,19 @@ public sealed class MeController : ApiController
             return HandleFailure(userIdResult);
         }
 
-        return Ok(new
+        Result<MyPermissionsResponse> permissionsResult = await Sender.Send(new GetMyPermissionsQuery(), cancellationToken);
+
+        if (permissionsResult.IsFailure)
         {
-            id = userIdResult.Value,
-            identityId = User.FindFirstValue(JwtRegisteredClaimNames.Sub),
-            sessionId = User.FindFirstValue(JwtRegisteredClaimNames.Sid),
-            authorizedParty = User.FindFirstValue(JwtRegisteredClaimNames.Azp)
-        });
+            return HandleFailure(permissionsResult);
+        }
+
+        return Ok(new MeResponse(
+            userIdResult.Value,
+            User.FindFirstValue(JwtRegisteredClaimNames.Sub),
+            User.FindFirstValue(JwtRegisteredClaimNames.Sid),
+            User.FindFirstValue(JwtRegisteredClaimNames.Azp),
+            permissionsResult.Value.Permissions));
     }
 
     /// <summary>
