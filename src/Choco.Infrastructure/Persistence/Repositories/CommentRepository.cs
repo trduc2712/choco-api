@@ -15,6 +15,14 @@ internal sealed class CommentRepository : Repository<Comment>, ICommentRepositor
         return DbSet.AsNoTracking().FirstOrDefaultAsync(comment => comment.Id == id, cancellationToken);
     }
 
+    public Task<Comment?> GetByIdIncludingDeletedForReadAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return DbSet
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(comment => comment.Id == id, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Comment>> ListByPostForReadAsync(
         Guid postId,
         Guid viewerId,

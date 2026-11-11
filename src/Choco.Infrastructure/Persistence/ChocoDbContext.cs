@@ -39,6 +39,11 @@ internal sealed class ChocoDbContext : DbContext, IUnitOfWork
 
     public async Task<T> InTransactionAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken)
     {
+        if (Database.CurrentTransaction is not null)
+        {
+            return await action();
+        }
+
         _afterCommitActions.Clear();
 
         await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
