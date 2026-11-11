@@ -8,6 +8,7 @@ public interface ICommentRepository : IRepository<Comment>
 
     Task<IReadOnlyList<Comment>> ListByPostForReadAsync(
         Guid postId,
+        Guid viewerId,
         (DateTimeOffset CreatedAt, Guid Id)? after,
         int count,
         CancellationToken cancellationToken = default);

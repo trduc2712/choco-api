@@ -215,6 +215,6 @@ public sealed class CommentRepositoryTests : IClassFixture<ChocoApiFactory>, IAs
         using IServiceScope scope = _factory.Services.CreateScope();
         ICommentRepository repository = scope.ServiceProvider.GetRequiredService<ICommentRepository>();
 
-        return await repository.ListByPostForReadAsync(postId, after, count, TestContext.Current.CancellationToken);
+        return await repository.ListByPostForReadAsync(postId, new Guid("00000000-0000-0000-0000-000000000099"), after, count, TestContext.Current.CancellationToken);
     }
 }

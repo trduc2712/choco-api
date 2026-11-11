@@ -10,6 +10,7 @@ public interface IPostRepository : IRepository<Post>
 
     Task<IReadOnlyList<Post>> ListByAuthorForReadAsync(
         Guid authorId,
+        Guid viewerId,
         (DateTimeOffset CreatedAt, Guid Id)? after,
         int count,
         CancellationToken cancellationToken = default);

@@ -4,6 +4,7 @@ using Choco.Contract.Posts;
 using Choco.Domain.PostLikes;
 using Choco.Domain.Posts;
 using Choco.Domain.Primitives.Persistence;
+using Choco.Domain.UserBlocks;
 using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
 
@@ -13,6 +14,7 @@ internal sealed class LikePostCommandHandler(
     ICurrentUser currentUser,
     IPostRepository postRepository,
     IUserRepository userRepository,
+    IUserBlockRepository blockRepository,
     IPostLikeRepository likeRepository,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider) : ICommandHandler<LikePostCommand>
@@ -29,6 +31,11 @@ internal sealed class LikePostCommandHandler(
         if (post is null || await userRepository.GetByIdForReadAsync(post.AuthorId, cancellationToken) is null)
         {
             return Result.Failure(PostErrors.NotFound);
+        }
+
+        if (await blockRepository.ExistsBetweenForReadAsync(caller.Value, post.AuthorId, cancellationToken))
+        {
+            return Result.Failure(UserBlockErrors.Blocked);
         }
 
         PostLike like = PostLike.Create(post.Id, caller.Value, timeProvider.GetUtcNow());

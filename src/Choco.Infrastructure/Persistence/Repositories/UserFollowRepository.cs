@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 
+using Choco.Domain.UserBlocks;
 using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 
@@ -68,32 +69,36 @@ internal sealed class UserFollowRepository : Repository<UserFollow>, IUserFollow
 
     public Task<IReadOnlyList<UserFollowEntry>> ListFollowersForReadAsync(
         Guid userId,
+        Guid viewerId,
         (DateTimeOffset FollowedAt, Guid FollowId)? after,
         int count,
         CancellationToken cancellationToken)
     {
         return ListAsync(
-            follow => follow.FollowedUserId == userId, follow => follow.FollowerId, after, count, cancellationToken);
+            follow => follow.FollowedUserId == userId, follow => follow.FollowerId, viewerId, after, count, cancellationToken);
     }
 
     public Task<IReadOnlyList<UserFollowEntry>> ListFollowingForReadAsync(
         Guid userId,
+        Guid viewerId,
         (DateTimeOffset FollowedAt, Guid FollowId)? after,
         int count,
         CancellationToken cancellationToken)
     {
         return ListAsync(
-            follow => follow.FollowerId == userId, follow => follow.FollowedUserId, after, count, cancellationToken);
+            follow => follow.FollowerId == userId, follow => follow.FollowedUserId, viewerId, after, count, cancellationToken);
     }
 
     private async Task<IReadOnlyList<UserFollowEntry>> ListAsync(
         Expression<Func<UserFollow, bool>> owner,
         Expression<Func<UserFollow, Guid>> listedUserId,
+        Guid viewerId,
         (DateTimeOffset FollowedAt, Guid FollowId)? after,
         int count,
         CancellationToken cancellationToken)
     {
         IQueryable<UserFollow> follows = DbSet.AsNoTracking().Where(owner);
+        IQueryable<Guid> hidden = DbContext.Set<UserBlock>().HiddenFrom(viewerId);
 
         if (after is { } position)
         {
@@ -105,6 +110,7 @@ internal sealed class UserFollowRepository : Repository<UserFollow>, IUserFollow
         var rows = await follows
             .Join(DbContext.Set<User>().AsNoTracking(), listedUserId, user => user.Id,
                 (follow, user) => new { FollowId = follow.Id, follow.FollowedAt, User = user })
+            .Where(row => !hidden.Contains(row.User.Id))
             .OrderByDescending(row => row.FollowedAt)
             .ThenByDescending(row => row.FollowId)
             .Take(count)

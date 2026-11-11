@@ -30,7 +30,7 @@ internal sealed class GetUserFollowersQueryHandler(
         }
 
         IReadOnlyList<UserFollowEntry> entries = await followRepository.ListFollowersForReadAsync(
-            user.Id, UserFollowPages.ReadPosition(query.Cursor), query.Limit + 1, cancellationToken);
+            user.Id, caller.Value, UserFollowPages.ReadPosition(query.Cursor), query.Limit + 1, cancellationToken);
 
         IReadOnlySet<Guid> followed = await FollowStatus.ReadFollowedAsync(
             followRepository, caller.Value, UserFollowPages.PageUserIds(entries, query.Limit), cancellationToken);

@@ -5,6 +5,7 @@ using Choco.Contract.Comments;
 using Choco.Domain.Comments;
 using Choco.Domain.Posts;
 using Choco.Domain.Primitives.Persistence;
+using Choco.Domain.UserBlocks;
 using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
 
@@ -14,6 +15,7 @@ internal sealed class CreateCommentCommandHandler(
     ICurrentUser currentUser,
     VisiblePostFinder postFinder,
     IUserRepository userRepository,
+    IUserBlockRepository blockRepository,
     ICommentRepository commentRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<CreateCommentCommand, CommentResponse>
 {
@@ -29,6 +31,11 @@ internal sealed class CreateCommentCommandHandler(
         if (post is null)
         {
             return Result<CommentResponse>.Failure(PostErrors.NotFound);
+        }
+
+        if (await blockRepository.ExistsBetweenForReadAsync(caller.Value, post.AuthorId, cancellationToken))
+        {
+            return Result<CommentResponse>.Failure(UserBlockErrors.Blocked);
         }
 
         User? author = await userRepository.GetByIdForReadAsync(caller.Value, cancellationToken);

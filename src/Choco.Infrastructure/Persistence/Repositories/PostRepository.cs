@@ -1,4 +1,5 @@
 using Choco.Domain.Posts;
+using Choco.Domain.UserBlocks;
 using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 
@@ -26,13 +27,16 @@ internal sealed class PostRepository : Repository<Post>, IPostRepository
 
     public async Task<IReadOnlyList<Post>> ListByAuthorForReadAsync(
         Guid authorId,
+        Guid viewerId,
         (DateTimeOffset CreatedAt, Guid Id)? after,
         int count,
         CancellationToken cancellationToken = default)
     {
+        IQueryable<Guid> hidden = DbContext.Set<UserBlock>().HiddenFrom(viewerId);
+
         IQueryable<Post> posts = DbSet
             .AsNoTracking()
-            .Where(post => post.AuthorId == authorId);
+            .Where(post => post.AuthorId == authorId && !hidden.Contains(post.AuthorId));
 
         if (after is { } position)
         {
@@ -55,10 +59,13 @@ internal sealed class PostRepository : Repository<Post>, IPostRepository
         CancellationToken cancellationToken = default)
     {
         IQueryable<User> users = DbContext.Set<User>();
+        IQueryable<Guid> hidden = DbContext.Set<UserBlock>().HiddenFrom(viewerId);
 
         IQueryable<Post> posts = DbSet
             .AsNoTracking()
-            .Where(post => post.AuthorId != viewerId && users.Any(user => user.Id == post.AuthorId));
+            .Where(post => post.AuthorId != viewerId
+                && users.Any(user => user.Id == post.AuthorId)
+                && !hidden.Contains(post.AuthorId));
 
         if (after is { } position)
         {
@@ -82,11 +89,13 @@ internal sealed class PostRepository : Repository<Post>, IPostRepository
     {
         IQueryable<UserFollow> follows = DbContext.Set<UserFollow>();
         IQueryable<User> users = DbContext.Set<User>();
+        IQueryable<Guid> hidden = DbContext.Set<UserBlock>().HiddenFrom(followerId);
 
         IQueryable<Post> posts = DbSet
             .AsNoTracking()
             .Where(post => follows.Any(follow => follow.FollowerId == followerId && follow.FollowedUserId == post.AuthorId)
-                && users.Any(user => user.Id == post.AuthorId));
+                && users.Any(user => user.Id == post.AuthorId)
+                && !hidden.Contains(post.AuthorId));
 
         if (after is { } position)
         {

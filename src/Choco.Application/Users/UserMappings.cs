@@ -12,7 +12,7 @@ internal static class UserMappings
     }
 
     public static UserProfileDetailsResponse ToProfileDetailsResponse(
-        this User user, UserFollowSummary summary, int postCount)
+        this User user, UserFollowSummary summary, bool isBlockedByViewer, int postCount)
     {
         return new UserProfileDetailsResponse(
             user.Id,
@@ -20,6 +20,7 @@ internal static class UserMappings
             user.DisplayName,
             user.AvatarUrl,
             summary.IsFollowedByViewer,
+            isBlockedByViewer,
             summary.FollowerCount,
             summary.FollowingCount,
             postCount);
