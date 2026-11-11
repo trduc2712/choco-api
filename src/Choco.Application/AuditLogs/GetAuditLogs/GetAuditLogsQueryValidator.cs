@@ -9,7 +9,9 @@ internal sealed class GetAuditLogsQueryValidator : AbstractValidator<GetAuditLog
 {
     public GetAuditLogsQueryValidator()
     {
-        RuleFor(query => query.Limit).InclusiveBetween(1, GetAuditLogsQuery.MaxLimit);
+        RuleFor(query => query.Page).GreaterThanOrEqualTo(1);
+
+        RuleFor(query => query.PageSize).InclusiveBetween(1, GetAuditLogsQuery.MaxPageSize);
 
         RuleFor(query => query.ActorId)
             .NotEqual(Guid.Empty)
@@ -37,10 +39,5 @@ internal sealed class GetAuditLogsQueryValidator : AbstractValidator<GetAuditLog
             .GreaterThan(query => query.From!.Value)
             .When(query => query.From is not null && query.To is not null)
             .WithMessage("'{PropertyName}' must be later than 'From'.");
-
-        RuleFor(query => query.Cursor)
-            .Must(cursor => AuditLogCursor.TryDecode(cursor, out _))
-            .When(query => query.Cursor is not null)
-            .WithMessage("'{PropertyName}' is not a valid cursor.");
     }
 }

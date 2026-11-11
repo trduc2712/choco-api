@@ -11,9 +11,9 @@ namespace Choco.Contract.AuditLogs;
 /// <param name="AffectedUserId">Only entries that affected this user. Null for any user.</param>
 /// <param name="From">Only entries at or after this time. Null for no lower limit.</param>
 /// <param name="To">Only entries before this time. Null for no upper limit.</param>
-/// <param name="Cursor">The previous page's nextCursor, or null for the first page.</param>
-/// <param name="Limit">The page size, from 1 to 50. Defaults to 20 at the endpoint.</param>
-/// <example>{"actorId":null,"action":"PostDeleted","targetType":"Post","targetId":null,"affectedUserId":null,"from":"2026-01-01T00:00:00+00:00","to":null,"cursor":null,"limit":20}</example>
+/// <param name="Page">The page number, from 1. Defaults to 1 at the endpoint.</param>
+/// <param name="PageSize">The page size, from 1 to 50. Defaults to 20 at the endpoint.</param>
+/// <example>{"actorId":null,"action":"PostDeleted","targetType":"Post","targetId":null,"affectedUserId":null,"from":"2026-01-01T00:00:00+00:00","to":null,"page":1,"pageSize":20}</example>
 public sealed record GetAuditLogsQuery(
     Guid? ActorId,
     string? Action,
@@ -22,9 +22,10 @@ public sealed record GetAuditLogsQuery(
     Guid? AffectedUserId,
     DateTimeOffset? From,
     DateTimeOffset? To,
-    string? Cursor,
-    int Limit) : IQuery<PageResponse<AuditLogResponse>>
+    int Page,
+    int PageSize) : IQuery<OffsetPageResponse<AuditLogResponse>>
 {
-    public const int DefaultLimit = 20;
-    public const int MaxLimit = 50;
+    public const int DefaultPage = 1;
+    public const int DefaultPageSize = 20;
+    public const int MaxPageSize = 50;
 }

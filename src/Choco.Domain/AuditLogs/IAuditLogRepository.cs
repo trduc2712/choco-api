@@ -6,7 +6,9 @@ public interface IAuditLogRepository
 
     Task<IReadOnlyList<AuditLogEntry>> ListForReadAsync(
         AuditLogFilter filter,
-        (DateTimeOffset OccurredAt, Guid Id)? after,
-        int count,
+        int skip,
+        int take,
         CancellationToken cancellationToken = default);
+
+    Task<int> CountForReadAsync(AuditLogFilter filter, CancellationToken cancellationToken = default);
 }

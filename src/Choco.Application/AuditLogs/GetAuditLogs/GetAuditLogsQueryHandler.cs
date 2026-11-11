@@ -9,9 +9,9 @@ namespace Choco.Application.AuditLogs.GetAuditLogs;
 
 internal sealed class GetAuditLogsQueryHandler(
     IAuditLogRepository auditLogRepository,
-    IUserRepository userRepository) : IQueryHandler<GetAuditLogsQuery, PageResponse<AuditLogResponse>>
+    IUserRepository userRepository) : IQueryHandler<GetAuditLogsQuery, OffsetPageResponse<AuditLogResponse>>
 {
-    public async Task<Result<PageResponse<AuditLogResponse>>> Handle(
+    public async Task<Result<OffsetPageResponse<AuditLogResponse>>> Handle(
         GetAuditLogsQuery query, CancellationToken cancellationToken)
     {
         AuditLogFilter filter = new(
@@ -22,18 +22,12 @@ internal sealed class GetAuditLogsQueryHandler(
             query.AffectedUserId,
             query.From,
             query.To);
-        (DateTimeOffset OccurredAt, Guid Id)? after =
-            AuditLogCursor.TryDecode(query.Cursor, out AuditLogCursor? position)
-                ? (position!.OccurredAt, position.EntryId)
-                : null;
+        long skip = (long)(query.Page - 1) * query.PageSize;
 
-        IReadOnlyList<AuditLogEntry> entries = await auditLogRepository.ListForReadAsync(
-            filter, after, query.Limit + 1, cancellationToken);
-
-        List<AuditLogEntry> page = entries.Take(query.Limit).ToList();
-        string? nextCursor = entries.Count > query.Limit
-            ? new AuditLogCursor(page[^1].OccurredAt, page[^1].Id).Encode()
-            : null;
+        int totalCount = await auditLogRepository.CountForReadAsync(filter, cancellationToken);
+        IReadOnlyList<AuditLogEntry> page = skip >= totalCount
+            ? []
+            : await auditLogRepository.ListForReadAsync(filter, (int)skip, query.PageSize, cancellationToken);
 
         List<Guid> userIds = page
             .SelectMany(entry => new[] { entry.ActorId, entry.AffectedUserId })
@@ -61,7 +55,8 @@ internal sealed class GetAuditLogsQueryHandler(
                 entry.TraceId))
             .ToList();
 
-        return Result<PageResponse<AuditLogResponse>>.Success(new PageResponse<AuditLogResponse>(items, nextCursor));
+        return Result<OffsetPageResponse<AuditLogResponse>>.Success(
+            new OffsetPageResponse<AuditLogResponse>(items, query.Page, query.PageSize, totalCount));
     }
 
     private static AuditLogUserResponse? ToUser(Guid? userId, Dictionary<Guid, string> usernames)

@@ -89,7 +89,7 @@ public sealed class GetAuditLogsTests(ChocoApiFactory factory) : AuditTestsBase(
         newest.GetProperty("detail").GetString().Should().Be("Role: Administrator");
         newest.GetProperty("traceId").GetString().Should().Be("trace-id");
         items[1].GetProperty("affectedUser").ValueKind.Should().Be(JsonValueKind.Null);
-        body.GetProperty("nextCursor").ValueKind.Should().Be(JsonValueKind.Null);
+        body.GetProperty("totalCount").GetInt32().Should().Be(2);
     }
 
     [Fact]
@@ -142,22 +142,121 @@ public sealed class GetAuditLogsTests(ChocoApiFactory factory) : AuditTestsBase(
     }
 
     [Fact]
-    public async Task Entries_ArePagedWithACursorWithoutOverlap()
+    public async Task Entries_AreReturnedByPageWithoutOverlapAndWithTheTotal()
     {
         await AddAdministratorAsync();
         await AddEntryAsync(Guid.NewGuid(), Time, targetId: TargetId);
         await AddEntryAsync(Guid.NewGuid(), Time.AddMinutes(1), targetId: TargetId);
         await AddEntryAsync(Guid.NewGuid(), Time.AddMinutes(2), targetId: TargetId);
 
-        JsonElement first = await GetJsonAsync($"{Path}?limit=2");
-        string cursor = first.GetProperty("nextCursor").GetString()!;
-        JsonElement second = await GetJsonAsync($"{Path}?limit=2&cursor={Uri.EscapeDataString(cursor)}");
+        JsonElement first = await GetJsonAsync($"{Path}?pageSize=2");
+        JsonElement second = await GetJsonAsync($"{Path}?pageSize=2&page=2");
 
         first.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("occurredAt").GetDateTimeOffset())
             .Should().Equal(Time.AddMinutes(2), Time.AddMinutes(1));
+        first.GetProperty("page").GetInt32().Should().Be(1);
+        first.GetProperty("pageSize").GetInt32().Should().Be(2);
+        first.GetProperty("totalCount").GetInt32().Should().Be(3);
         second.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("occurredAt").GetDateTimeOffset())
             .Should().Equal(Time);
-        second.GetProperty("nextCursor").ValueKind.Should().Be(JsonValueKind.Null);
+        second.GetProperty("page").GetInt32().Should().Be(2);
+        second.GetProperty("totalCount").GetInt32().Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Entries_WithoutQuery_UseTheFirstPageOfTwentyAndCamelCaseNames()
+    {
+        await AddAdministratorAsync();
+        await AddEntryAsync(Guid.NewGuid(), Time);
+
+        JsonElement body = await GetJsonAsync(Path);
+
+        body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+            "items", "page", "pageSize", "totalCount");
+        body.GetProperty("page").GetInt32().Should().Be(1);
+        body.GetProperty("pageSize").GetInt32().Should().Be(20);
+        body.GetProperty("totalCount").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Entries_ReturnTheMiddleAndLastPagesAndAnEmptyPagePastTheEnd()
+    {
+        await AddAdministratorAsync();
+        for (int index = 0; index < 5; index++)
+        {
+            await AddEntryAsync(Guid.NewGuid(), Time.AddMinutes(index));
+        }
+
+        JsonElement middle = await GetJsonAsync($"{Path}?pageSize=2&page=2");
+        JsonElement last = await GetJsonAsync($"{Path}?pageSize=2&page=3");
+        JsonElement pastEnd = await GetJsonAsync($"{Path}?pageSize=2&page=99");
+        JsonElement hugePage = await GetJsonAsync($"{Path}?pageSize=50&page={int.MaxValue}");
+
+        middle.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("occurredAt").GetDateTimeOffset())
+            .Should().Equal(Time.AddMinutes(2), Time.AddMinutes(1));
+        last.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("occurredAt").GetDateTimeOffset())
+            .Should().Equal(Time);
+        pastEnd.GetProperty("items").GetArrayLength().Should().Be(0);
+        pastEnd.GetProperty("page").GetInt32().Should().Be(99);
+        pastEnd.GetProperty("totalCount").GetInt32().Should().Be(5);
+        hugePage.GetProperty("items").GetArrayLength().Should().Be(0);
+        hugePage.GetProperty("totalCount").GetInt32().Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Entries_AcceptTheSmallestAndLargestPageSize()
+    {
+        await AddAdministratorAsync();
+        for (int index = 0; index < 3; index++)
+        {
+            await AddEntryAsync(Guid.NewGuid(), Time.AddMinutes(index));
+        }
+
+        JsonElement smallest = await GetJsonAsync($"{Path}?pageSize=1");
+        JsonElement largest = await GetJsonAsync($"{Path}?pageSize=50");
+
+        smallest.GetProperty("items").GetArrayLength().Should().Be(1);
+        smallest.GetProperty("totalCount").GetInt32().Should().Be(3);
+        largest.GetProperty("items").GetArrayLength().Should().Be(3);
+        largest.GetProperty("pageSize").GetInt32().Should().Be(50);
+    }
+
+    [Fact]
+    public async Task Entries_AtTheSameInstant_AreOrderedByIdDescendingOnEveryPage()
+    {
+        await AddAdministratorAsync();
+        List<Guid> ids = [];
+        for (int index = 0; index < 5; index++)
+        {
+            ids.Add(await AddEntryAsync(Guid.NewGuid(), Time));
+        }
+
+        List<Guid> expected = ids.OrderDescending().ToList();
+
+        JsonElement first = await GetJsonAsync($"{Path}?pageSize=2&page=1");
+        JsonElement second = await GetJsonAsync($"{Path}?pageSize=2&page=2");
+        JsonElement third = await GetJsonAsync($"{Path}?pageSize=2&page=3");
+        JsonElement repeated = await GetJsonAsync($"{Path}?pageSize=2&page=1");
+
+        static IEnumerable<Guid> Ids(JsonElement body) => body.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("id").GetGuid());
+
+        Ids(first).Concat(Ids(second)).Concat(Ids(third)).Should().Equal(expected);
+        Ids(repeated).Should().Equal(Ids(first));
+    }
+
+    [Fact]
+    public async Task TotalCount_CountsAllMatchesAcrossPagesWhenFiltered()
+    {
+        await AddAdministratorAsync();
+        await AddEntryAsync(Guid.NewGuid(), Time, AuditAction.PostDeleted);
+        await AddEntryAsync(Guid.NewGuid(), Time.AddMinutes(1), AuditAction.PostDeleted);
+        await AddEntryAsync(Guid.NewGuid(), Time.AddMinutes(2), AuditAction.PostDeleted);
+        await AddEntryAsync(Guid.NewGuid(), Time.AddMinutes(3), AuditAction.PostEdited);
+
+        JsonElement body = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=2");
+
+        body.GetProperty("items").GetArrayLength().Should().Be(2);
+        body.GetProperty("totalCount").GetInt32().Should().Be(3);
     }
 
     [Fact]
@@ -234,8 +333,10 @@ public sealed class GetAuditLogsTests(ChocoApiFactory factory) : AuditTestsBase(
     [Theory]
     [InlineData("action=Unknown", "action")]
     [InlineData("targetType=Unknown", "targetType")]
-    [InlineData("cursor=not-a-cursor", "cursor")]
-    [InlineData("limit=0", "limit")]
+    [InlineData("page=0", "page")]
+    [InlineData("page=-1", "page")]
+    [InlineData("pageSize=0", "pageSize")]
+    [InlineData("pageSize=51", "pageSize")]
     public async Task InvalidParameter_ReturnsValidationProblem(string query, string key)
     {
         await AddAdministratorAsync();
@@ -253,7 +354,7 @@ public sealed class GetAuditLogsTests(ChocoApiFactory factory) : AuditTestsBase(
         return await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
     }
 
-    private async Task AddEntryAsync(
+    private async Task<Guid> AddEntryAsync(
         Guid actorId,
         DateTimeOffset occurredAt,
         AuditAction action = AuditAction.PostDeleted,
@@ -282,6 +383,8 @@ public sealed class GetAuditLogsTests(ChocoApiFactory factory) : AuditTestsBase(
             dbContext.Add(entry);
             return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
+
+        return entry.Id;
     }
 
     private async Task<JsonElement> GetJsonAsync(string path)

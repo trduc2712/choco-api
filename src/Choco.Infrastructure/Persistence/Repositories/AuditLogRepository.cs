@@ -20,9 +20,24 @@ internal sealed class AuditLogRepository : IAuditLogRepository
 
     public async Task<IReadOnlyList<AuditLogEntry>> ListForReadAsync(
         AuditLogFilter filter,
-        (DateTimeOffset OccurredAt, Guid Id)? after,
-        int count,
+        int skip,
+        int take,
         CancellationToken cancellationToken = default)
+    {
+        return await Filter(filter)
+            .OrderByDescending(entry => entry.OccurredAt)
+            .ThenByDescending(entry => entry.Id)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<int> CountForReadAsync(AuditLogFilter filter, CancellationToken cancellationToken = default)
+    {
+        return Filter(filter).CountAsync(cancellationToken);
+    }
+
+    private IQueryable<AuditLogEntry> Filter(AuditLogFilter filter)
     {
         IQueryable<AuditLogEntry> entries = _dbContext.Set<AuditLogEntry>().AsNoTracking();
 
@@ -61,17 +76,6 @@ internal sealed class AuditLogRepository : IAuditLogRepository
             entries = entries.Where(entry => entry.OccurredAt < to);
         }
 
-        if (after is { } position)
-        {
-            entries = entries.Where(entry => EF.Functions.LessThan(
-                ValueTuple.Create(entry.OccurredAt, entry.Id),
-                ValueTuple.Create(position.OccurredAt, position.Id)));
-        }
-
-        return await entries
-            .OrderByDescending(entry => entry.OccurredAt)
-            .ThenByDescending(entry => entry.Id)
-            .Take(count)
-            .ToListAsync(cancellationToken);
+        return entries;
     }
 }
