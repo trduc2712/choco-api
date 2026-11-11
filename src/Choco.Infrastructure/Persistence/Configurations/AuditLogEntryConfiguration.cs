@@ -65,5 +65,14 @@ internal sealed class AuditLogEntryConfiguration : IEntityTypeConfiguration<Audi
 
         builder.Property(entry => entry.IpAddress)
             .HasComment("Address of the client that sent the request, taken from the forwarded headers of the trusted proxy.");
+
+        builder.HasIndex(entry => new { entry.OccurredAt, entry.Id })
+            .IsDescending(true, true);
+
+        builder.HasIndex(entry => new { entry.ActorId, entry.OccurredAt });
+
+        builder.HasIndex(entry => new { entry.TargetType, entry.TargetId, entry.OccurredAt });
+
+        builder.HasIndex(entry => new { entry.AffectedUserId, entry.OccurredAt });
     }
 }

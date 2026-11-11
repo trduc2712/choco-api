@@ -38,9 +38,13 @@ Append-only record of who did what to which object. One row per successful actio
 
 ## Indexes
 
-| Name          | Definition                                                              |
-| ------------- | ----------------------------------------------------------------------- |
-| pk_audit_logs | CREATE UNIQUE INDEX pk_audit_logs ON public.audit_logs USING btree (id) |
+| Name                                            | Definition                                                                                                                          |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| ix_audit_logs_actor_id_occurred_at              | CREATE INDEX ix_audit_logs_actor_id_occurred_at ON public.audit_logs USING btree (actor_id, occurred_at)                            |
+| ix_audit_logs_affected_user_id_occurred_at      | CREATE INDEX ix_audit_logs_affected_user_id_occurred_at ON public.audit_logs USING btree (affected_user_id, occurred_at)            |
+| ix_audit_logs_occurred_at_id                    | CREATE INDEX ix_audit_logs_occurred_at_id ON public.audit_logs USING btree (occurred_at DESC, id DESC)                              |
+| ix_audit_logs_target_type_target_id_occurred_at | CREATE INDEX ix_audit_logs_target_type_target_id_occurred_at ON public.audit_logs USING btree (target_type, target_id, occurred_at) |
+| pk_audit_logs                                   | CREATE UNIQUE INDEX pk_audit_logs ON public.audit_logs USING btree (id)                                                             |
 
 ## Relations
 
