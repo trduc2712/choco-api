@@ -14,6 +14,7 @@ builder.Services.AddPresentation(builder.Configuration);
 
 WebApplication app = builder.Build();
 
+app.UseResponseCompression();
 app.UseHttpLogging();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
