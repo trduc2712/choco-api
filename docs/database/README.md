@@ -9,6 +9,7 @@
 | [public.post_likes](public.post_likes.md)       | 4       | Active likes that users give to posts.                                                                       | BASE TABLE |
 | [public.posts](public.posts.md)                 | 7       | Text posts that users publish.                                                                               | BASE TABLE |
 | [public.roles](public.roles.md)                 | 7       | Named sets of permissions that users can hold. Roles and their permissions can change while the system runs. | BASE TABLE |
+| [public.user_blocks](public.user_blocks.md)     | 4       | Active blocks between users.                                                                                 | BASE TABLE |
 | [public.user_follows](public.user_follows.md)   | 4       | Active follow relationships between users.                                                                   | BASE TABLE |
 | [public.user_roles](public.user_roles.md)       | 5       | Roles assigned to users, besides the default role that every signed-in user has.                             | BASE TABLE |
 | [public.users](public.users.md)                 | 9       | People who use choco-api. Sign-in lives in Clerk; each row is the local copy of one Clerk user.              | BASE TABLE |
@@ -36,6 +37,8 @@ erDiagram
 "public.post_likes" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.post_likes" }o--|| "public.posts" : "FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE RESTRICT"
 "public.posts" }o--|| "public.users" : "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.user_blocks" }o--|| "public.users" : "FOREIGN KEY (blocked_user_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.user_blocks" }o--|| "public.users" : "FOREIGN KEY (blocker_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.user_follows" }o--|| "public.users" : "FOREIGN KEY (followed_user_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.user_follows" }o--|| "public.users" : "FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.user_roles" }o--o| "public.users" : "FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE RESTRICT"
@@ -85,6 +88,12 @@ erDiagram
   varchar_64_ name
   varchar_64___ permissions
   varchar_64_ system_key
+}
+"public.user_blocks" {
+  timestamp_with_time_zone blocked_at
+  uuid blocked_user_id FK
+  uuid blocker_id FK
+  uuid id
 }
 "public.user_follows" {
   timestamp_with_time_zone followed_at
