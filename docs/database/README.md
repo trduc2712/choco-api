@@ -5,7 +5,7 @@
 | Name                                            | Columns | Comment                                                                                                      | Type       |
 | ----------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ | ---------- |
 | [public.comments](public.comments.md)           | 8       | Comments that users write on posts.                                                                          | BASE TABLE |
-| [public.notifications](public.notifications.md) | 6       | Things that happened to a user, such as a new follower, shown to that user.                                  | BASE TABLE |
+| [public.notifications](public.notifications.md) | 8       | Things that happened to a user, such as a new follower, shown to that user.                                  | BASE TABLE |
 | [public.post_likes](public.post_likes.md)       | 4       | Active likes that users give to posts.                                                                       | BASE TABLE |
 | [public.posts](public.posts.md)                 | 7       | Text posts that users publish.                                                                               | BASE TABLE |
 | [public.roles](public.roles.md)                 | 7       | Named sets of permissions that users can hold. Roles and their permissions can change while the system runs. | BASE TABLE |
@@ -31,6 +31,8 @@ erDiagram
 "public.comments" }o--|| "public.posts" : "FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE RESTRICT"
 "public.notifications" }o--|| "public.users" : "FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.notifications" }o--|| "public.users" : "FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.notifications" }o--o| "public.posts" : "FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE RESTRICT"
+"public.notifications" }o--o| "public.comments" : "FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE RESTRICT"
 "public.post_likes" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.post_likes" }o--|| "public.posts" : "FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE RESTRICT"
 "public.posts" }o--|| "public.users" : "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT"
@@ -52,8 +54,10 @@ erDiagram
 }
 "public.notifications" {
   uuid actor_id FK
+  uuid comment_id FK
   timestamp_with_time_zone created_at
   uuid id
+  uuid post_id FK
   timestamp_with_time_zone read_at
   uuid recipient_id FK
   varchar_32_ type
