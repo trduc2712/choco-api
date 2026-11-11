@@ -2,6 +2,7 @@ using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Users;
 using Choco.Domain.Primitives.Persistence;
+using Choco.Domain.UserBlocks;
 using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
@@ -13,6 +14,7 @@ internal sealed class FollowUserCommandHandler : ICommandHandler<FollowUserComma
     private readonly ICurrentUser _currentUser;
     private readonly IUserRepository _userRepository;
     private readonly IUserFollowRepository _followRepository;
+    private readonly IUserBlockRepository _blockRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
 
@@ -20,12 +22,14 @@ internal sealed class FollowUserCommandHandler : ICommandHandler<FollowUserComma
         ICurrentUser currentUser,
         IUserRepository userRepository,
         IUserFollowRepository followRepository,
+        IUserBlockRepository blockRepository,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
     {
         _currentUser = currentUser;
         _userRepository = userRepository;
         _followRepository = followRepository;
+        _blockRepository = blockRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
     }
@@ -48,6 +52,11 @@ internal sealed class FollowUserCommandHandler : ICommandHandler<FollowUserComma
         if (follow.IsFailure)
         {
             return follow;
+        }
+
+        if (await _blockRepository.ExistsBetweenForReadAsync(caller.Value, target.Id, cancellationToken))
+        {
+            return Result.Failure(UserBlockErrors.Blocked);
         }
 
         await _unitOfWork.InTransactionAsync(async () =>

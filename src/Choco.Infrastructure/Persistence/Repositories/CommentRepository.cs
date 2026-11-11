@@ -1,4 +1,5 @@
 using Choco.Domain.Comments;
+using Choco.Domain.UserBlocks;
 using Choco.Domain.Users;
 
 using Microsoft.EntityFrameworkCore;
@@ -16,15 +17,19 @@ internal sealed class CommentRepository : Repository<Comment>, ICommentRepositor
 
     public async Task<IReadOnlyList<Comment>> ListByPostForReadAsync(
         Guid postId,
+        Guid viewerId,
         (DateTimeOffset CreatedAt, Guid Id)? after,
         int count,
         CancellationToken cancellationToken = default)
     {
         IQueryable<User> users = DbContext.Set<User>();
+        IQueryable<Guid> hidden = DbContext.Set<UserBlock>().HiddenFrom(viewerId);
 
         IQueryable<Comment> comments = DbSet
             .AsNoTracking()
-            .Where(comment => comment.PostId == postId && users.Any(user => user.Id == comment.AuthorId));
+            .Where(comment => comment.PostId == postId
+                && users.Any(user => user.Id == comment.AuthorId)
+                && !hidden.Contains(comment.AuthorId));
 
         if (after is { } position)
         {

@@ -384,6 +384,6 @@ public sealed class PostRepositoryTests : IClassFixture<ChocoApiFactory>, IAsync
         using IServiceScope scope = _factory.Services.CreateScope();
         IPostRepository repository = scope.ServiceProvider.GetRequiredService<IPostRepository>();
 
-        return await repository.ListByAuthorForReadAsync(authorId, after, count, TestContext.Current.CancellationToken);
+        return await repository.ListByAuthorForReadAsync(authorId, new Guid("00000000-0000-0000-0000-000000000099"), after, count, TestContext.Current.CancellationToken);
     }
 }

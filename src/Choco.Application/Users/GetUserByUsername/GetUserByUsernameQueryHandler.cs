@@ -2,6 +2,7 @@ using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Users;
 using Choco.Domain.Posts;
+using Choco.Domain.UserBlocks;
 using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
@@ -12,6 +13,7 @@ internal sealed class GetUserByUsernameQueryHandler(
     ICurrentUser currentUser,
     IUserRepository userRepository,
     IUserFollowRepository followRepository,
+    IUserBlockRepository blockRepository,
     IPostRepository postRepository)
     : IQueryHandler<GetUserByUsernameQuery, UserProfileDetailsResponse>
 {
@@ -35,8 +37,12 @@ internal sealed class GetUserByUsernameQueryHandler(
         UserFollowSummary summary = await followRepository.GetSummaryForReadAsync(
             user.Id, userIdResult.Value, cancellationToken);
 
+        bool isBlockedByViewer = await blockRepository.ExistsForReadAsync(
+            userIdResult.Value, user.Id, cancellationToken);
+
         int postCount = await postRepository.CountByAuthorForReadAsync(user.Id, cancellationToken);
 
-        return Result<UserProfileDetailsResponse>.Success(user.ToProfileDetailsResponse(summary, postCount));
+        return Result<UserProfileDetailsResponse>.Success(
+            user.ToProfileDetailsResponse(summary, isBlockedByViewer, postCount));
     }
 }

@@ -264,11 +264,13 @@ public sealed class UsersController : ApiController
     /// <response code="204">The caller follows the target user.</response>
     /// <response code="400">The id is empty, the caller tried to follow their own account, or the caller's account details are invalid.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller blocked the target user, or the target user blocked the caller.</response>
     /// <response code="404">The target user does not exist or is deleted.</response>
     [HttpPut("{userId:guid}/follow")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Follow(Guid userId, CancellationToken cancellationToken)
     {
@@ -293,6 +295,46 @@ public sealed class UsersController : ApiController
     public async Task<IActionResult> Unfollow(Guid userId, CancellationToken cancellationToken)
     {
         Result result = await Sender.Send(new UnfollowUserCommand(userId), cancellationToken);
+
+        return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
+
+    /// <summary>Blocks another user.</summary>
+    /// <remarks>Any signed-in user with an active account may call this endpoint. Repeating it when the target is already blocked changes nothing. Blocking removes any follow between the two users in both directions. While the block lasts, neither user can follow the other, like their posts or comment on them, and each is left out of the other's feeds, post and comment lists, follower and following lists, search results, suggestions and notifications.</remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The target user's id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="204">The caller blocks the target user.</response>
+    /// <response code="400">The id is empty or the caller tried to block their own account.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">The target user does not exist or is deleted.</response>
+    [HttpPut("{userId:guid}/block")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Block(Guid userId, CancellationToken cancellationToken)
+    {
+        Result result = await Sender.Send(new BlockUserCommand(userId), cancellationToken);
+
+        return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
+
+    /// <summary>Unblocks another user.</summary>
+    /// <remarks>Any signed-in user with an active account may call this endpoint. Repeating it when the target is not blocked changes nothing. Unblocking does not restore the follows that blocking removed.</remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The target user's id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="204">The caller does not block the target user.</response>
+    /// <response code="400">The id is empty.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">The target user does not exist or is deleted.</response>
+    [HttpDelete("{userId:guid}/block")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Unblock(Guid userId, CancellationToken cancellationToken)
+    {
+        Result result = await Sender.Send(new UnblockUserCommand(userId), cancellationToken);
 
         return result.IsSuccess ? NoContent() : HandleFailure(result);
     }

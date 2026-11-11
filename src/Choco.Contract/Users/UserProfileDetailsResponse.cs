@@ -8,16 +8,18 @@ namespace Choco.Contract.Users;
 /// <param name="DisplayName">The display name, up to 256 characters.</param>
 /// <param name="AvatarUrl">The avatar URL, or null when no avatar is available.</param>
 /// <param name="IsFollowedByMe">Whether the caller follows this user.</param>
+/// <param name="IsBlockedByMe">Whether the caller blocked this user.</param>
 /// <param name="FollowerCount">The number of users who follow this user, zero when nobody does.</param>
 /// <param name="FollowingCount">The number of users this user follows, zero when they follow nobody.</param>
 /// <param name="PostCount">The number of posts the user has published, zero when they have none. Deleted posts are not counted.</param>
-/// <example>{"id":"00000000-0000-0000-0000-000000000001","username":"username","displayName":"Display Name","avatarUrl":"https://example.com/avatar.png","isFollowedByMe":true,"followerCount":12,"followingCount":3,"postCount":5}</example>
+/// <example>{"id":"00000000-0000-0000-0000-000000000001","username":"username","displayName":"Display Name","avatarUrl":"https://example.com/avatar.png","isFollowedByMe":true,"isBlockedByMe":false,"followerCount":12,"followingCount":3,"postCount":5}</example>
 public sealed record UserProfileDetailsResponse(
     Guid Id,
     string Username,
     string DisplayName,
     string? AvatarUrl,
     bool IsFollowedByMe,
+    bool IsBlockedByMe,
     int FollowerCount,
     int FollowingCount,
     int PostCount);

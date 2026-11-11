@@ -114,11 +114,13 @@ public sealed class PostsController : ApiController
     /// <response code="204">The caller likes the post.</response>
     /// <response code="400">The id is empty; errors lists the field.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="403">The caller blocked the post's author, or the author blocked the caller.</response>
     /// <response code="404">The post does not exist, is deleted, or was written by a deleted account.</response>
     [HttpPut("{id:guid}/like")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Like(Guid id, CancellationToken cancellationToken)
     {
@@ -166,11 +168,13 @@ public sealed class PostsController : ApiController
     /// <response code="201">The comment was added.</response>
     /// <response code="400">The content is missing, blank or too long, or the id is empty; errors lists the field.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="403">The caller blocked the post's author, or the author blocked the caller.</response>
     /// <response code="404">The post does not exist, is deleted, or was written by a deleted account.</response>
     [HttpPost("{id:guid}/comments")]
     [ProducesResponseType(typeof(CommentResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AddComment(
         Guid id, [FromBody] CreateCommentCommand command, CancellationToken cancellationToken)
@@ -186,7 +190,8 @@ public sealed class PostsController : ApiController
     /// Lists the comments on a post, oldest first.
     /// </summary>
     /// <remarks>
-    /// Any signed-in user may call it. Deleted comments and comments by deleted accounts are not listed.
+    /// Any signed-in user may call it. Deleted comments, comments by deleted accounts and comments by users who blocked the caller or whom the caller blocked are not listed.
+    /// A post by such a user is not found.
     /// To get the next page, pass the nextCursor of the previous page as cursor; it is null on the last page.
     /// </remarks>
     /// <param name="id" example="00000000-0000-0000-0000-000000000001">The post's id.</param>
@@ -218,7 +223,7 @@ public sealed class PostsController : ApiController
     /// Gets a post by its id.
     /// </summary>
     /// <remarks>
-    /// Any signed-in user may call it. A deleted post is not found.
+    /// Any signed-in user may call it. A deleted post, or a post by a user who blocked the caller or whom the caller blocked, is not found.
     /// </remarks>
     /// <param name="id" example="00000000-0000-0000-0000-000000000001">The post's id.</param>
     /// <param name="cancellationToken">Cancels the request.</param>

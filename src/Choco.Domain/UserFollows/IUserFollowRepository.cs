@@ -13,12 +13,14 @@ public interface IUserFollowRepository : IRepository<UserFollow>
 
     Task<IReadOnlyList<UserFollowEntry>> ListFollowersForReadAsync(
         Guid userId,
+        Guid viewerId,
         (DateTimeOffset FollowedAt, Guid FollowId)? after,
         int count,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<UserFollowEntry>> ListFollowingForReadAsync(
         Guid userId,
+        Guid viewerId,
         (DateTimeOffset FollowedAt, Guid FollowId)? after,
         int count,
         CancellationToken cancellationToken);

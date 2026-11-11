@@ -2,6 +2,7 @@ using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Posts;
 using Choco.Domain.Posts;
+using Choco.Domain.UserBlocks;
 using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
 
@@ -12,17 +13,20 @@ internal sealed class GetPostQueryHandler : IQueryHandler<GetPostQuery, PostResp
     private readonly ICurrentUser _currentUser;
     private readonly IPostRepository _postRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IUserBlockRepository _blockRepository;
     private readonly PostResponseReader _reader;
 
     public GetPostQueryHandler(
         ICurrentUser currentUser,
         IPostRepository postRepository,
         IUserRepository userRepository,
+        IUserBlockRepository blockRepository,
         PostResponseReader reader)
     {
         _currentUser = currentUser;
         _postRepository = postRepository;
         _userRepository = userRepository;
+        _blockRepository = blockRepository;
         _reader = reader;
     }
 
@@ -44,7 +48,7 @@ internal sealed class GetPostQueryHandler : IQueryHandler<GetPostQuery, PostResp
 
         User? author = await _userRepository.GetByIdForReadAsync(post.AuthorId, cancellationToken);
 
-        return author is null
+        return author is null || await _blockRepository.ExistsBetweenForReadAsync(caller.Value, author.Id, cancellationToken)
             ? Result<PostResponse>.Failure(PostErrors.NotFound)
             : Result<PostResponse>.Success(await _reader.ReadOneAsync(post, author, caller.Value, cancellationToken));
     }

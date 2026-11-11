@@ -241,8 +241,8 @@ public sealed class UserFollowRepositoryTests : IClassFixture<ChocoApiFactory>, 
         IUserFollowRepository repository = scope.ServiceProvider.GetRequiredService<IUserFollowRepository>();
 
         return list == "followers"
-            ? await repository.ListFollowersForReadAsync(userId, after, count, TestContext.Current.CancellationToken)
-            : await repository.ListFollowingForReadAsync(userId, after, count, TestContext.Current.CancellationToken);
+            ? await repository.ListFollowersForReadAsync(userId, new Guid("00000000-0000-0000-0000-000000000099"), after, count, TestContext.Current.CancellationToken)
+            : await repository.ListFollowingForReadAsync(userId, new Guid("00000000-0000-0000-0000-000000000099"), after, count, TestContext.Current.CancellationToken);
     }
 
     private async Task<IReadOnlySet<Guid>> GetFollowedUserIdsAsync(Guid followerId, Guid[] userIds)

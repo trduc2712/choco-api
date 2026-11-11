@@ -1,6 +1,7 @@
 using Choco.Domain.Comments;
 using Choco.Domain.Notifications;
 using Choco.Domain.Posts;
+using Choco.Domain.UserBlocks;
 using Choco.Domain.Users;
 
 using Microsoft.EntityFrameworkCore;
@@ -24,8 +25,10 @@ internal sealed class NotificationRepository : Repository<Notification>, INotifi
         int count,
         CancellationToken cancellationToken = default)
     {
+        IQueryable<Guid> hidden = DbContext.Set<UserBlock>().HiddenFrom(recipientId);
+
         IQueryable<Notification> notifications = DbSet.AsNoTracking()
-            .Where(notification => notification.RecipientId == recipientId);
+            .Where(notification => notification.RecipientId == recipientId && !hidden.Contains(notification.ActorId));
 
         if (after is { } position)
         {
@@ -64,12 +67,14 @@ internal sealed class NotificationRepository : Repository<Notification>, INotifi
     public Task<int> CountUnreadForReadAsync(Guid recipientId, CancellationToken cancellationToken = default)
     {
         IQueryable<User> users = DbContext.Set<User>();
+        IQueryable<Guid> hidden = DbContext.Set<UserBlock>().HiddenFrom(recipientId);
 
         return DbSet.AsNoTracking()
             .CountAsync(
                 notification => notification.RecipientId == recipientId
                     && notification.ReadAt == null
-                    && users.Any(user => user.Id == notification.ActorId),
+                    && users.Any(user => user.Id == notification.ActorId)
+                    && !hidden.Contains(notification.ActorId),
                 cancellationToken);
     }
 

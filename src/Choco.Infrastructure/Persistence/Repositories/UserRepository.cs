@@ -1,3 +1,4 @@
+using Choco.Domain.UserBlocks;
 using Choco.Domain.Users;
 
 using Microsoft.EntityFrameworkCore;
@@ -46,9 +47,10 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
         CancellationToken cancellationToken = default)
     {
         string usernameText = text.ToLowerInvariant();
+        IQueryable<Guid> hidden = DbContext.Set<UserBlock>().HiddenFrom(excludedUserId);
         var matches =
             from user in DbSet.AsNoTracking()
-            where user.Id != excludedUserId
+            where user.Id != excludedUserId && !hidden.Contains(user.Id)
             let nameText = EF.Functions.Unaccent(text).ToLower()
             let username = user.Username.ToLower()
             let name = EF.Functions.Unaccent(user.DisplayName).ToLower()

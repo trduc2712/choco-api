@@ -17,7 +17,7 @@ internal sealed class PostResponseReader(
         Guid authorId, string? cursor, int limit, Guid viewerId, CancellationToken cancellationToken)
     {
         IReadOnlyList<Post> posts = await postRepository.ListByAuthorForReadAsync(
-            authorId, PostPages.ReadPosition(cursor), limit + 1, cancellationToken);
+            authorId, viewerId, PostPages.ReadPosition(cursor), limit + 1, cancellationToken);
 
         return await ToPageAsync(posts, limit, viewerId, cancellationToken);
     }
