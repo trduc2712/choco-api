@@ -27,7 +27,8 @@ An integration test runs the API in-process through a `WebApplicationFactory`, a
    - 401 and 403, one per kind of policy,
    - 404, including a soft-deleted row,
    - 409 for unique and concurrency conflicts,
-   - idempotency, when the endpoint promises it.
+   - idempotency, when the endpoint promises it,
+   - for a recorded command, one audit entry with the actor, action, target and owner, and no entry when the command fails.
 4. Leave domain rules and individual validator rules to unit tests.
 
 ## Host and Fixtures
@@ -72,7 +73,7 @@ An integration test runs the API in-process through a `WebApplicationFactory`, a
 24. Assert, in this order: status code, response body contract, persisted state, outgoing side effects.
 25. Read bodies with the app's JSON options. For errors, read `ProblemDetails` or `ValidationProblemDetails` and assert the status, the field keys in `errors`, the `code` extension and the `application/problem+json` content type.
 26. Build request bodies as anonymous objects or raw JSON in the wire format, not with the app's request types, so a renamed property breaks the test.
-27. Do not assert logs unless the log is a requirement, such as an audit or security event; then use `FakeLogCollector`.
+27. Do not assert logs unless the log is a requirement, such as a security event; then use `FakeLogCollector`.
 
 ## Naming and Structure
 

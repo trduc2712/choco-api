@@ -18,6 +18,14 @@ internal sealed class PostRepository : Repository<Post>, IPostRepository
             .FirstOrDefaultAsync(post => post.Id == id, cancellationToken);
     }
 
+    public Task<Post?> GetByIdIncludingDeletedForReadAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return DbSet
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(post => post.Id == id, cancellationToken);
+    }
+
     public Task<int> CountByAuthorForReadAsync(Guid authorId, CancellationToken cancellationToken = default)
     {
         return DbSet

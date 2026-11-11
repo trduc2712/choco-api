@@ -59,7 +59,8 @@ This skill covers the domain and persistence code. Migrations follow the `migrat
 
 19. Derive the interface from `IRepository<T>` and add only the queries a use case needs. A query that must see soft-deleted rows says so in its name (`...IncludingDeleted`).
 20. Implement it as `internal sealed class <Name>Repository : Repository<T>, I<Name>Repository`, and register it with `AddScoped` in `src/Choco.Infrastructure/DependencyInjection.cs`.
+21. A record that must never change after it is written, such as a log, derives from `BaseEntity`, has no methods that change state, and has a repository with only `Add`, not one derived from `IRepository<T>`.
 
 ## Configuration
 
-21. Write the EF Core configuration by the `migration` skill: a comment on every table and column, limits from the entity's constants, names from the snake_case convention.
+22. Write the EF Core configuration by the `migration` skill: a comment on every table and column, limits from the entity's constants, names from the snake_case convention.

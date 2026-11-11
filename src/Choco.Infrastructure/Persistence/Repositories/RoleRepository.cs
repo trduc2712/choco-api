@@ -12,16 +12,30 @@ internal sealed class RoleRepository : Repository<Role>, IRoleRepository
     public async Task<IReadOnlyCollection<string>> GetPlatformPermissionsForReadAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
+        return await PlatformRoles(userId)
+            .SelectMany(role => role.Permissions)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<string>> GetPlatformRoleNamesForReadAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await PlatformRoles(userId)
+            .Select(role => role.Name)
+            .OrderBy(name => name)
+            .ToListAsync(cancellationToken);
+    }
+
+    private IQueryable<Role> PlatformRoles(Guid userId)
+    {
         IQueryable<Guid> assignedRoleIds = DbContext.Set<User>()
             .Where(user => user.Id == userId)
             .SelectMany(user => user.Roles.Select(userRole => userRole.RoleId));
 
-        return await DbSet
+        return DbSet
             .AsNoTracking()
-            .Where(role => role.IsDefault || assignedRoleIds.Contains(role.Id))
-            .SelectMany(role => role.Permissions)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+            .Where(role => role.IsDefault || assignedRoleIds.Contains(role.Id));
     }
 
     public Task<Role?> GetBySystemKeyAsync(string systemKey, CancellationToken cancellationToken = default)

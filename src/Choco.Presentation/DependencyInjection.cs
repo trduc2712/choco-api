@@ -5,12 +5,15 @@ using Asp.Versioning;
 
 using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Notifications;
+using Choco.Application.Abstractions.Requests;
 using Choco.Presentation.Authentication;
 using Choco.Presentation.Authorization;
+using Choco.Presentation.ForwardedHeaders;
 using Choco.Presentation.Notifications;
 using Choco.Presentation.OpenApi;
 using Choco.Presentation.Options;
 using Choco.Presentation.RateLimiting;
+using Choco.Presentation.Requests;
 using Choco.Presentation.Validation;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -94,6 +97,7 @@ public static class DependencyInjection
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();
 
+        services.AddConfiguredForwardedHeaders(configuration);
         services.AddUserRateLimiting(configuration);
 
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
@@ -145,6 +149,7 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext, UserContext>();
+        services.AddScoped<IRequestContext, RequestContext>();
 
         services.AddSingleton(serviceProvider =>
         {
