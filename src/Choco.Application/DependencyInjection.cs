@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<Users.MyProfileWriter>();
         services.AddScoped<Posts.PostResponseReader>();
         services.AddScoped<Posts.VisiblePostFinder>();
+        services.AddScoped<Notifications.NotificationDispatcher>();
         services.AddScoped<IPermissionChecker, PermissionChecker>();
 
         return services;

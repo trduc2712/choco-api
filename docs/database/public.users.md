@@ -77,8 +77,10 @@ erDiagram
 }
 "public.notifications" {
   uuid actor_id FK
+  uuid comment_id FK
   timestamp_with_time_zone created_at
   uuid id
+  uuid post_id FK
   timestamp_with_time_zone read_at
   uuid recipient_id FK
   varchar_32_ type

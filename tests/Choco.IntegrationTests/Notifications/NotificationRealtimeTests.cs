@@ -1,12 +1,16 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Channels;
 
+using Choco.Domain.Comments;
+using Choco.Domain.Posts;
 using Choco.Domain.Users;
 using Choco.IntegrationTests.Authentication;
 
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.EntityFrameworkCore;
 
 namespace Choco.IntegrationTests.Notifications;
 
@@ -55,6 +59,48 @@ public sealed class NotificationRealtimeTests : IClassFixture<ChocoApiFactory>, 
         payload.GetProperty("actor").GetProperty("username").GetString().Should().Be("username");
         payload.GetProperty("createdAt").GetDateTimeOffset().Should().Be(_factory.TimeProvider.GetUtcNow());
         payload.GetProperty("isRead").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Commenting_DeliversTheNotificationWithThePostAndCommentContext()
+    {
+        await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        Post post = await NotificationTestData.AddPostAsync(_factory, author, "post content");
+        await using HubConnection connection = CreateConnection("identity-id-2");
+        TaskCompletionSource<JsonElement> received = Listen(connection);
+        await connection.StartAsync(TestContext.Current.CancellationToken);
+
+        await CommentAsync(post.Id, "comment content");
+
+        JsonElement payload = await received.Task.WaitAsync(DeliveryTimeout, TestContext.Current.CancellationToken);
+        Comment comment = (await _factory.ExecuteDbContextAsync(db => db.Set<Comment>().AsNoTracking()
+            .ToListAsync(TestContext.Current.CancellationToken))).Should().ContainSingle().Subject;
+        payload.GetProperty("type").GetString().Should().Be("PostCommented");
+        payload.GetProperty("postId").GetGuid().Should().Be(post.Id);
+        payload.GetProperty("postExcerpt").GetString().Should().Be("post content");
+        payload.GetProperty("commentId").GetGuid().Should().Be(comment.Id);
+        payload.GetProperty("commentExcerpt").GetString().Should().Be("comment content");
+    }
+
+    [Fact]
+    public async Task Liking_DeliversTheNotificationWithThePostContext()
+    {
+        await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        Post post = await NotificationTestData.AddPostAsync(_factory, author, "post content");
+        await using HubConnection connection = CreateConnection("identity-id-2");
+        TaskCompletionSource<JsonElement> received = Listen(connection);
+        await connection.StartAsync(TestContext.Current.CancellationToken);
+
+        await LikeAsync(post.Id);
+
+        JsonElement payload = await received.Task.WaitAsync(DeliveryTimeout, TestContext.Current.CancellationToken);
+        payload.GetProperty("type").GetString().Should().Be("PostLiked");
+        payload.GetProperty("postId").GetGuid().Should().Be(post.Id);
+        payload.GetProperty("postExcerpt").GetString().Should().Be("post content");
+        payload.GetProperty("commentId").ValueKind.Should().Be(JsonValueKind.Null);
+        payload.GetProperty("commentExcerpt").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     [Fact]
@@ -135,6 +181,21 @@ public sealed class NotificationRealtimeTests : IClassFixture<ChocoApiFactory>, 
     {
         return await received.Reader.ReadAsync(TestContext.Current.CancellationToken).AsTask()
             .WaitAsync(DeliveryTimeout, TestContext.Current.CancellationToken);
+    }
+
+    private async Task CommentAsync(Guid postId, string content)
+    {
+        using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Post, $"/api/v1/posts/{postId}/comments");
+        request.Content = JsonContent.Create(new { content });
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    private async Task LikeAsync(Guid postId)
+    {
+        using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Put, $"/api/v1/posts/{postId}/like");
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
     private async Task FollowAsync(Guid userId)

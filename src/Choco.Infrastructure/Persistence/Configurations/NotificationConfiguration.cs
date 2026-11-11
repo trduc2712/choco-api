@@ -1,4 +1,6 @@
+using Choco.Domain.Comments;
 using Choco.Domain.Notifications;
+using Choco.Domain.Posts;
 using Choco.Domain.Users;
 
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +20,9 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notif
         builder.Property(notification => notification.Type)
             .HasConversion<string>()
             .HasMaxLength(Notification.TypeMaxLength)
-            .HasComment("What happened, such as Followed.");
+            .HasComment("What happened, such as Followed, PostLiked or PostCommented.");
+        builder.Property(notification => notification.PostId).HasComment("Post the notification is about; null when it is not about a post.");
+        builder.Property(notification => notification.CommentId).HasComment("Comment the notification is about; null when it is not about a comment.");
         builder.Property(notification => notification.CreatedAt).HasComment("When it happened.");
         builder.Property(notification => notification.ReadAt).HasComment("When the recipient marked it read; null while unread.");
 
@@ -37,6 +41,16 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notif
         builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(notification => notification.ActorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Post>()
+            .WithMany()
+            .HasForeignKey(notification => notification.PostId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Comment>()
+            .WithMany()
+            .HasForeignKey(notification => notification.CommentId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

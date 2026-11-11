@@ -1,6 +1,8 @@
 using Choco.Application.Notifications;
 using Choco.Contract.Notifications;
+using Choco.Domain.Comments;
 using Choco.Domain.Notifications;
+using Choco.Domain.Posts;
 using Choco.Domain.Users;
 
 namespace Choco.Application.UnitTests.Notifications;
@@ -76,8 +78,73 @@ public sealed class NotificationPagesTests
             notification.Id,
             "Followed",
             new NotificationActorResponse(actor.Id, "username", "Display Name", "https://example.com/avatar.png"),
+            null,
+            null,
+            null,
+            null,
             CreatedAt,
             false));
+    }
+
+    [Fact]
+    public void ToResponse_WithPost_MapsThePostIdAndExcerpt()
+    {
+        User actor = User.Create("identity-id", "username", "Display Name", null);
+        Post post = Post.Create("post content", new Guid("00000000-0000-0000-0000-000000000004"));
+        Notification notification = Notification.Create(
+            new Guid("00000000-0000-0000-0000-000000000001"), actor.Id, NotificationType.PostLiked, CreatedAt, post.Id);
+
+        NotificationResponse response = NotificationPages.ToResponse(new NotificationEntry(notification, actor, post));
+
+        response.Type.Should().Be("PostLiked");
+        response.PostId.Should().Be(post.Id);
+        response.PostExcerpt.Should().Be("post content");
+        response.CommentId.Should().BeNull();
+        response.CommentExcerpt.Should().BeNull();
+    }
+
+    [Fact]
+    public void ToResponse_WithPostAndComment_MapsBothIdsAndExcerpts()
+    {
+        User actor = User.Create("identity-id", "username", "Display Name", null);
+        Post post = Post.Create("post content", new Guid("00000000-0000-0000-0000-000000000004"));
+        Comment comment = Comment.Create(post.Id, actor.Id, "comment content");
+        Notification notification = Notification.Create(
+            new Guid("00000000-0000-0000-0000-000000000001"),
+            actor.Id,
+            NotificationType.PostCommented,
+            CreatedAt,
+            post.Id,
+            comment.Id);
+
+        NotificationResponse response = NotificationPages.ToResponse(new NotificationEntry(notification, actor, post, comment));
+
+        response.PostId.Should().Be(post.Id);
+        response.PostExcerpt.Should().Be("post content");
+        response.CommentId.Should().Be(comment.Id);
+        response.CommentExcerpt.Should().Be("comment content");
+    }
+
+    [Fact]
+    public void ToResponse_WithDeletedPostAndComment_KeepsTheIdsAndLeavesTheExcerptsEmpty()
+    {
+        Guid postId = new("00000000-0000-0000-0000-000000000003");
+        Guid commentId = new("00000000-0000-0000-0000-000000000005");
+        User actor = User.Create("identity-id", "username", "Display Name", null);
+        Notification notification = Notification.Create(
+            new Guid("00000000-0000-0000-0000-000000000001"),
+            actor.Id,
+            NotificationType.PostCommented,
+            CreatedAt,
+            postId,
+            commentId);
+
+        NotificationResponse response = NotificationPages.ToResponse(new NotificationEntry(notification, actor));
+
+        response.PostId.Should().Be(postId);
+        response.PostExcerpt.Should().BeNull();
+        response.CommentId.Should().Be(commentId);
+        response.CommentExcerpt.Should().BeNull();
     }
 
     [Fact]

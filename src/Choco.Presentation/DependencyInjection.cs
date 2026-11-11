@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Security.Claims;
 
 using Asp.Versioning;
@@ -13,6 +14,7 @@ using Choco.Presentation.RateLimiting;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpLogging;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -33,9 +35,15 @@ public static class DependencyInjection
         services.AddCors(options => options.AddDefaultPolicy(policy => policy
             .WithOrigins(configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
             .AllowAnyHeader()
-            .AllowAnyMethod()));
+            .AllowAnyMethod()
+            .AllowCredentials()));
 
         services.AddControllers();
+
+        services.AddResponseCompression(options => options.EnableForHttps = true);
+        services.Configure<BrotliCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
+        services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
+
         services.AddApiVersioning(options =>
         {
             options.DefaultApiVersion = new ApiVersion(1, 0);

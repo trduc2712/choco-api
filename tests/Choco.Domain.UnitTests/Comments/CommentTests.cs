@@ -22,6 +22,15 @@ public sealed class CommentTests
     }
 
     [Fact]
+    public void Create_WithValidData_RaisesCommentCreated()
+    {
+        Comment comment = Comment.Create(PostId, AuthorId, "content");
+
+        comment.DomainEvents.Should().ContainSingle()
+            .Which.Should().Be(new CommentCreated(comment.Id, PostId, AuthorId));
+    }
+
+    [Fact]
     public void Create_WithSurroundingWhitespace_StoresContentTrimmedAtBothEnds()
     {
         Comment comment = Comment.Create(PostId, AuthorId, " \n\tcontent-line-1\n\n  content-line-2 \t\n");

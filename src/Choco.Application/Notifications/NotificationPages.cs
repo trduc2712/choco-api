@@ -20,6 +20,10 @@ internal static class NotificationPages
             entry.Notification.Type.ToString(),
             new NotificationActorResponse(
                 entry.Actor.Id, entry.Actor.Username, entry.Actor.DisplayName, entry.Actor.AvatarUrl),
+            entry.Notification.PostId,
+            NotificationExcerpt.Of(entry.Post?.Content),
+            entry.Notification.CommentId,
+            NotificationExcerpt.Of(entry.Comment?.Content),
             entry.Notification.CreatedAt,
             entry.Notification.ReadAt is not null);
     }

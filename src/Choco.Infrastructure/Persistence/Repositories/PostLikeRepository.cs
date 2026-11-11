@@ -9,13 +9,21 @@ internal sealed class PostLikeRepository : Repository<PostLike>, IPostLikeReposi
 {
     public PostLikeRepository(ChocoDbContext dbContext) : base(dbContext) { }
 
-    public async Task AddIfMissingAsync(PostLike like, CancellationToken cancellationToken)
+    public async Task<bool> AddIfMissingAsync(PostLike like, CancellationToken cancellationToken)
     {
-        await DbContext.Database.ExecuteSqlAsync($"""
+        int inserted = await DbContext.Database.ExecuteSqlAsync($"""
             INSERT INTO post_likes (id, post_id, user_id, liked_at)
             VALUES ({like.Id}, {like.PostId}, {like.UserId}, {like.LikedAt})
             ON CONFLICT (post_id, user_id) DO NOTHING
             """, cancellationToken);
+
+        if (inserted == 0)
+        {
+            return false;
+        }
+
+        DbSet.Attach(like);
+        return true;
     }
 
     public async Task RemoveIfPresentAsync(Guid postId, Guid userId, CancellationToken cancellationToken)

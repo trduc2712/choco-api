@@ -2,7 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using Choco.Domain.Comments;
 using Choco.Domain.Notifications;
+using Choco.Domain.Posts;
 using Choco.Domain.Users;
 
 using Microsoft.AspNetCore.Mvc;
@@ -92,6 +94,118 @@ public sealed class GetMyNotificationsTests : IClassFixture<ChocoApiFactory>, IA
     }
 
     [Fact]
+    public async Task FollowedNotification_HasNoPostOrCommentContext()
+    {
+        User caller = await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");
+        User actor = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        await NotificationTestData.AddNotificationAsync(_factory, caller, actor, FirstAt);
+
+        PageBody body = await GetPageAsync(Path);
+
+        NotificationBody item = body.Items.Should().ContainSingle().Subject;
+        item.PostId.Should().BeNull();
+        item.PostExcerpt.Should().BeNull();
+        item.CommentId.Should().BeNull();
+        item.CommentExcerpt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task PostLikedNotification_ListsThePostWithItsExcerpt()
+    {
+        User caller = await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");
+        User actor = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        Post post = await NotificationTestData.AddPostAsync(_factory, caller, "post content");
+        await NotificationTestData.AddNotificationAsync(_factory, caller, actor, FirstAt, NotificationType.PostLiked, post);
+
+        PageBody body = await GetPageAsync(Path);
+
+        NotificationBody item = body.Items.Should().ContainSingle().Subject;
+        item.Type.Should().Be("PostLiked");
+        item.PostId.Should().Be(post.Id);
+        item.PostExcerpt.Should().Be("post content");
+        item.CommentId.Should().BeNull();
+        item.CommentExcerpt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task PostCommentedNotification_ListsThePostAndTheCommentWithTheirExcerpts()
+    {
+        User caller = await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");
+        User actor = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        Post post = await NotificationTestData.AddPostAsync(_factory, caller, "post content");
+        Comment comment = await NotificationTestData.AddCommentAsync(_factory, post, actor, "comment content");
+        await NotificationTestData.AddNotificationAsync(
+            _factory, caller, actor, FirstAt, NotificationType.PostCommented, post, comment);
+
+        PageBody body = await GetPageAsync(Path);
+
+        NotificationBody item = body.Items.Should().ContainSingle().Subject;
+        item.Type.Should().Be("PostCommented");
+        item.PostId.Should().Be(post.Id);
+        item.PostExcerpt.Should().Be("post content");
+        item.CommentId.Should().Be(comment.Id);
+        item.CommentExcerpt.Should().Be("comment content");
+    }
+
+    [Fact]
+    public async Task LongPostAndComment_AreListedAsShortenedExcerpts()
+    {
+        User caller = await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");
+        User actor = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        string content = new('c', Post.ContentMaxLength);
+        Post post = await NotificationTestData.AddPostAsync(_factory, caller, content);
+        Comment comment = await NotificationTestData.AddCommentAsync(_factory, post, actor, content);
+        await NotificationTestData.AddNotificationAsync(
+            _factory, caller, actor, FirstAt, NotificationType.PostCommented, post, comment);
+
+        PageBody body = await GetPageAsync(Path);
+
+        NotificationBody item = body.Items.Should().ContainSingle().Subject;
+        item.PostExcerpt.Should().EndWith("…").And.HaveLength(140).And.StartWith("ccc");
+        item.CommentExcerpt.Should().EndWith("…").And.HaveLength(140).And.StartWith("ccc");
+    }
+
+    [Fact]
+    public async Task DeletedPostAndComment_KeepTheirIdsAndHaveNoExcerpts()
+    {
+        User caller = await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");
+        User actor = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        Post post = await NotificationTestData.AddPostAsync(_factory, caller);
+        Comment comment = await NotificationTestData.AddCommentAsync(_factory, post, actor);
+        await NotificationTestData.AddNotificationAsync(
+            _factory, caller, actor, FirstAt, NotificationType.PostCommented, post, comment);
+        await NotificationTestData.DeleteCommentAsync(_factory, comment);
+        await NotificationTestData.DeletePostAsync(_factory, post);
+
+        PageBody body = await GetPageAsync(Path);
+
+        NotificationBody item = body.Items.Should().ContainSingle().Subject;
+        item.PostId.Should().Be(post.Id);
+        item.PostExcerpt.Should().BeNull();
+        item.CommentId.Should().Be(comment.Id);
+        item.CommentExcerpt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeletedComment_OnALivePost_KeepsThePostExcerptOnly()
+    {
+        User caller = await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");
+        User actor = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        Post post = await NotificationTestData.AddPostAsync(_factory, caller, "post content");
+        Comment comment = await NotificationTestData.AddCommentAsync(_factory, post, actor);
+        await NotificationTestData.AddNotificationAsync(
+            _factory, caller, actor, FirstAt, NotificationType.PostCommented, post, comment);
+        await NotificationTestData.DeleteCommentAsync(_factory, comment);
+
+        PageBody body = await GetPageAsync(Path);
+
+        NotificationBody item = body.Items.Should().ContainSingle().Subject;
+        item.PostExcerpt.Should().Be("post content");
+        item.CommentId.Should().Be(comment.Id);
+        item.CommentExcerpt.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Notifications_ArePagedByCursor()
     {
         User caller = await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");
@@ -169,5 +283,14 @@ public sealed class GetMyNotificationsTests : IClassFixture<ChocoApiFactory>, IA
 
     private sealed record ActorBody(Guid Id, string Username, string DisplayName, string? AvatarUrl);
 
-    private sealed record NotificationBody(Guid Id, string Type, ActorBody Actor, DateTimeOffset CreatedAt, bool IsRead);
+    private sealed record NotificationBody(
+        Guid Id,
+        string Type,
+        ActorBody Actor,
+        DateTimeOffset CreatedAt,
+        bool IsRead,
+        Guid? PostId = null,
+        string? PostExcerpt = null,
+        Guid? CommentId = null,
+        string? CommentExcerpt = null);
 }
