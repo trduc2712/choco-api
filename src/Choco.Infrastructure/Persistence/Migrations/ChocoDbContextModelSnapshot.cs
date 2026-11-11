@@ -111,6 +111,19 @@ namespace Choco.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_audit_logs");
 
+                    b.HasIndex("ActorId", "OccurredAt")
+                        .HasDatabaseName("ix_audit_logs_actor_id_occurred_at");
+
+                    b.HasIndex("AffectedUserId", "OccurredAt")
+                        .HasDatabaseName("ix_audit_logs_affected_user_id_occurred_at");
+
+                    b.HasIndex("OccurredAt", "Id")
+                        .IsDescending()
+                        .HasDatabaseName("ix_audit_logs_occurred_at_id");
+
+                    b.HasIndex("TargetType", "TargetId", "OccurredAt")
+                        .HasDatabaseName("ix_audit_logs_target_type_target_id_occurred_at");
+
                     b.ToTable("audit_logs", null, t =>
                         {
                             t.HasComment("Append-only record of who did what to which object. One row per successful action of a user or the system; rows are never changed.");
