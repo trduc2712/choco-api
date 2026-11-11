@@ -10,6 +10,9 @@ public interface IUserRepository : IRepository<User>
     Task<IReadOnlyList<User>> ListByIdsForReadAsync(
         IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<User>> ListByIdsIncludingDeletedForReadAsync(
+        IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
+
     Task<User?> GetByUsernameForReadAsync(string username, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<UserSearchMatch>> SearchForReadAsync(
