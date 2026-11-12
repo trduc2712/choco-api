@@ -1,3 +1,4 @@
+using Choco.Domain.Roles;
 using Choco.Domain.UserBlocks;
 using Choco.Domain.Users;
 
@@ -108,6 +109,49 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
         return DbSet
             .Include(user => user.Roles)
             .FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
+    }
+
+    public Task<int> CountIncludingDeletedForReadAsync(UserListFilter filter, CancellationToken cancellationToken = default)
+    {
+        return Filter(filter).CountAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<User>> ListWithRolesIncludingDeletedForReadAsync(
+        UserListFilter filter, int skip, int take, CancellationToken cancellationToken = default)
+    {
+        return await Filter(filter)
+            .Include(user => user.Roles)
+            .OrderByDescending(user => user.CreatedAt)
+            .ThenByDescending(user => user.Id)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
+    private IQueryable<User> Filter(UserListFilter filter)
+    {
+        IQueryable<User> users = DbSet.IgnoreQueryFilters().AsNoTracking();
+
+        users = filter.State == UserState.Deleted
+            ? users.Where(user => user.IsDeleted)
+            : users.Where(user => !user.IsDeleted);
+
+        if (filter.Text is { } text)
+        {
+            string pattern = LikePatterns.Contains(text);
+            users = users.Where(user =>
+                EF.Functions.ILike(EF.Functions.Unaccent(user.Username), EF.Functions.Unaccent(pattern), LikePatterns.Escape)
+                || EF.Functions.ILike(EF.Functions.Unaccent(user.DisplayName), EF.Functions.Unaccent(pattern), LikePatterns.Escape));
+        }
+
+        if (filter.RoleId is { } roleId)
+        {
+            users = users.Where(user =>
+                user.Roles.Any(userRole => userRole.RoleId == roleId)
+                || DbContext.Set<Role>().Any(role => role.Id == roleId && role.IsDefault));
+        }
+
+        return users;
     }
 
     public Task<int> CountWithRoleAsync(Guid roleId, CancellationToken cancellationToken = default)

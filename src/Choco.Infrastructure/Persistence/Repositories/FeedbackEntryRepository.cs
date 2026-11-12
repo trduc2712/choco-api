@@ -49,31 +49,23 @@ internal sealed class FeedbackEntryRepository : Repository<FeedbackEntry>, IFeed
 
         foreach (string term in filter.MessageTerms)
         {
-            string pattern = ContainsPattern(term);
+            string pattern = LikePatterns.Contains(term);
             entries = entries.Where(entry => EF.Functions.ILike(
-                EF.Functions.Unaccent(entry.Message), EF.Functions.Unaccent(pattern), LikeEscape));
+                EF.Functions.Unaccent(entry.Message), EF.Functions.Unaccent(pattern), LikePatterns.Escape));
         }
 
         if (filter.Author is { } author)
         {
-            string pattern = ContainsPattern(author);
+            string pattern = LikePatterns.Contains(author);
             IQueryable<Guid> authorIds = DbContext.Set<User>()
                 .Where(user =>
-                    EF.Functions.ILike(EF.Functions.Unaccent(user.Username), EF.Functions.Unaccent(pattern), LikeEscape)
-                    || EF.Functions.ILike(EF.Functions.Unaccent(user.DisplayName), EF.Functions.Unaccent(pattern), LikeEscape))
+                    EF.Functions.ILike(EF.Functions.Unaccent(user.Username), EF.Functions.Unaccent(pattern), LikePatterns.Escape)
+                    || EF.Functions.ILike(EF.Functions.Unaccent(user.DisplayName), EF.Functions.Unaccent(pattern), LikePatterns.Escape))
                 .Select(user => user.Id);
             entries = entries.Where(entry => authorIds.Contains(entry.AuthorId));
         }
 
         return entries;
-    }
-
-    private const string LikeEscape = "\\";
-
-    private static string ContainsPattern(string text)
-    {
-        string escaped = text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
-        return $"%{escaped}%";
     }
 
     public Task<int> CountByStatusAsync(FeedbackStatus status, CancellationToken cancellationToken = default)

@@ -17,6 +17,7 @@ Rules on assigning and revoking roles:
 
 - Assigning or revoking a role needs `roles.assign`.
 - Listing roles (`GET /api/v1/admin/roles`), reading one role (`GET /api/v1/admin/roles/{id}`) and listing the permissions of the catalog (`GET /api/v1/admin/permissions`) need `roles.read`. `roles.assign` does not include it, so a user who may assign roles but not read them gets `403`.
+- Listing users for administrators (`GET /api/v1/admin/users`) needs `users.read-any`. It shows deleted users when asked and the roles assigned to each user.
 - Creating a role (`POST /api/v1/admin/roles`) needs `roles.create`, and the new role may only list permissions the caller holds (`403` otherwise). Role names are unique ignoring case (`409 Role.NameTaken`). A created role is never the default role and has no system key.
 - Changing a role (`PUT /api/v1/admin/roles/{id}`) needs `roles.update`. It replaces the name and the whole set of permissions. The caller must hold every permission the role has now and every permission in the body, so nobody lowers or raises a role beyond their own power (`403`). The default role and system roles can be changed; their key stays.
 - Deleting a role (`DELETE /api/v1/admin/roles/{id}`) needs `roles.delete`, and the caller must hold every permission of the role. Everyone who holds it loses it. The default role and roles the system created cannot be deleted (`409`).
