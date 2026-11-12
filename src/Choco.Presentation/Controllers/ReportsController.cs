@@ -21,27 +21,31 @@ public sealed class ReportsController : ApiController
 {
     public ReportsController(ISender sender) : base(sender) { }
 
-    /// <summary>Lists the open reports.</summary>
-    /// <remarks>Only a caller with the permission to handle reports may call it. Reports come oldest first. Each shows the target, the reason, the reporter and when it was made. A resolved report no longer appears. Pages are numbered from 1. The response carries the page, the page size and totalCount, the number of open reports across all pages. A page past the last one is not an error; its items are empty.</remarks>
+    /// <summary>Lists the posts and users that have open reports, oldest first.</summary>
+    /// <remarks>Only a caller with the permission to handle reports may call it. This is the moderation queue: one row for each post or user that has open reports, not one row for each report. Rows come oldest first by their oldest open report. A row shows how many open reports it has, the reasons given with their counts, when the oldest was made, the reported post with its author or the reported user, and the oldest open reports behind it (at most 10, each with the reporter and the details). Resolve a row by resolving its reportId; that resolves every open report about the target. A post or user that was deleted is not in the queue. A suspended user stays in it with isSuspended true. Use targetType and reason to narrow the queue: a row matches a reason when at least one of its open reports gives it, and its counts still cover all its open reports. Pages are numbered from 1. The response carries the page, the page size and totalCount, the number of rows across all pages. A page past the last one is not an error; its items are empty.</remarks>
+    /// <param name="targetType" example="Post">Only targets of this kind: Post or User.</param>
+    /// <param name="reason" example="Spam">Only targets with at least one open report that gives this reason: Spam, Harassment, HateSpeech, Violence or Other.</param>
     /// <param name="page" example="1">The page number, from 1. Defaults to 1.</param>
     /// <param name="pageSize" example="20">The page size, from 1 to 50. Defaults to 20.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
-    /// <response code="200">One page of open reports and the total count. The page can be empty.</response>
-    /// <response code="400">The page or the page size is invalid.</response>
+    /// <response code="200">One page of rows and the total count. The page can be empty.</response>
+    /// <response code="400">The target type, the reason, the page or the page size is invalid.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
     /// <response code="403">The caller may not handle reports.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(OffsetPageResponse<ReportResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(OffsetPageResponse<ReportQueueItemResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetOpen(
+        string? targetType = null,
+        string? reason = null,
         int page = GetReportsQuery.DefaultPage,
         int pageSize = GetReportsQuery.DefaultPageSize,
         CancellationToken cancellationToken = default)
     {
-        Result<OffsetPageResponse<ReportResponse>> result = await Sender.Send(
-            new GetReportsQuery(page, pageSize), cancellationToken);
+        Result<OffsetPageResponse<ReportQueueItemResponse>> result = await Sender.Send(
+            new GetReportsQuery(targetType, reason, page, pageSize), cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
     }

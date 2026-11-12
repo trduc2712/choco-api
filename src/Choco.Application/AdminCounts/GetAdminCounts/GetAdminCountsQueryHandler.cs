@@ -39,7 +39,7 @@ internal sealed class GetAdminCountsQueryHandler(
             ? await feedbackRepository.CountByStatusAsync(FeedbackStatus.New, cancellationToken)
             : null;
         int? openReports = canHandleReports.Value
-            ? await reportRepository.CountOpenAsync(cancellationToken)
+            ? await reportRepository.CountQueueAsync(new ReportQueueFilter(null, null), cancellationToken)
             : null;
 
         return Result<AdminCountsResponse>.Success(new AdminCountsResponse(newFeedback, openReports));

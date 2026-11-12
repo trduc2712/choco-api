@@ -27,6 +27,12 @@ internal sealed class PostRepository : Repository<Post>, IPostRepository
             .FirstOrDefaultAsync(post => post.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Post>> ListByIdsForReadAsync(
+        IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        return await DbSet.AsNoTracking().Where(post => ids.Contains(post.Id)).ToListAsync(cancellationToken);
+    }
+
     public Task<int> CountIncludingDeletedForReadAsync(PostListFilter filter, CancellationToken cancellationToken = default)
     {
         return Filter(filter).CountAsync(cancellationToken);
