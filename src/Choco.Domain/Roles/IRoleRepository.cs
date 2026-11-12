@@ -8,5 +8,7 @@ public interface IRoleRepository : IRepository<Role>
 
     Task<IReadOnlyCollection<string>> GetPlatformRoleNamesForReadAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Role>> ListForReadAsync(CancellationToken cancellationToken = default);
+
     Task<Role?> GetBySystemKeyAsync(string systemKey, CancellationToken cancellationToken = default);
 }
