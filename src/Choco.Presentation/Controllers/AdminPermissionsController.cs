@@ -21,11 +21,11 @@ public sealed class AdminPermissionsController : ApiController
     public AdminPermissionsController(ISender sender) : base(sender) { }
 
     /// <summary>Lists every permission a role can hold.</summary>
-    /// <remarks>Only a caller with the permission to assign roles may call it. The list is fixed by the application, so it changes only with a new release. Permissions come in alphabetical order by code and the response is not paged.</remarks>
+    /// <remarks>Only a caller with the permission to read roles may call it. The list is fixed by the application, so it changes only with a new release. Permissions come in alphabetical order by code and the response is not paged.</remarks>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="200">Every permission, with its code.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
-    /// <response code="403">The caller may not assign roles.</response>
+    /// <response code="403">The caller may not read roles.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<PermissionResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]

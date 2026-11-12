@@ -61,7 +61,7 @@ public sealed class GetRolesTests : IClassFixture<ChocoApiFactory>, IAsyncLifeti
     }
 
     [Fact]
-    public async Task UserWithAnotherPermissionButNotAssignRoles_ReturnsForbidden()
+    public async Task UserWithAnotherPermissionButNotReadRoles_ReturnsForbidden()
     {
         Role role = await AddRoleAsync("reviewer-key", "Reviewer", [Permission.ReadAuditLog]);
         await AddUserAsync("identity-id", "username", role.Id);
@@ -70,6 +70,29 @@ public sealed class GetRolesTests : IClassFixture<ChocoApiFactory>, IAsyncLifeti
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task UserWithOnlyAssignRoles_ReturnsForbidden()
+    {
+        Role role = await AddRoleAsync("assigner-key", "Assigner", [Permission.AssignRoles]);
+        await AddUserAsync("identity-id", "username", role.Id);
+        using HttpRequestMessage request = CreateRequest();
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task UserWithOnlyReadRoles_ListsRoles()
+    {
+        Role role = await AddRoleAsync("reader-key", "Reader", [Permission.ReadRoles]);
+        await AddUserAsync("identity-id", "username", role.Id);
+
+        JsonElement roles = await GetJsonAsync();
+
+        roles.EnumerateArray().Select(item => item.GetProperty("id").GetGuid()).Should().Contain(role.Id);
     }
 
     [Fact]

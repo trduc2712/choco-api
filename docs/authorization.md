@@ -16,6 +16,8 @@ How choco-api decides what a signed-in user may do, and how to operate it. Why i
 Rules on assigning and revoking roles:
 
 - Assigning or revoking a role needs `roles.assign`.
+- Listing roles (`GET /api/v1/admin/roles`) and listing the permissions of the catalog (`GET /api/v1/admin/permissions`) need `roles.read`. `roles.assign` does not include it, so a user who may assign roles but not read them gets `403`.
+- `roles.create`, `roles.update` and `roles.delete` are in the catalog for the endpoints that create, change and delete roles; no endpoint checks them yet.
 - A user can only assign or revoke a role whose permissions they all hold themselves, so nobody hands out more power than they have.
 - The default role cannot be assigned or revoked.
 - The last administrator cannot lose the administrator role (`409 Role.LastAdministrator`).

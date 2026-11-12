@@ -61,21 +61,39 @@ public sealed class GetPermissionsTests : IClassFixture<ChocoApiFactory>, IAsync
     }
 
     [Fact]
-    public async Task UserWithAnotherPermissionButNotAssignRoles_ReturnsForbidden()
+    public async Task UserWithAnotherPermissionButNotReadRoles_ReturnsForbidden()
     {
-        Role role = Role.CreateSystem(new SystemRoleDefinition(
-            "reviewer-key", "Reviewer", IsDefault: false, Permissions: [Permission.ReadAuditLog]));
-        await _factory.ExecuteDbContextAsync(dbContext =>
-        {
-            dbContext.Add(role);
-            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
-        });
+        Role role = await AddRoleAsync("reviewer-key", "Reviewer", Permission.ReadAuditLog);
         await AddUserAsync("identity-id", "username", role.Id);
         using HttpRequestMessage request = CreateRequest();
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task UserWithOnlyAssignRoles_ReturnsForbidden()
+    {
+        Role role = await AddRoleAsync("assigner-key", "Assigner", Permission.AssignRoles);
+        await AddUserAsync("identity-id", "username", role.Id);
+        using HttpRequestMessage request = CreateRequest();
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task UserWithOnlyReadRoles_ListsTheCatalog()
+    {
+        Role role = await AddRoleAsync("reader-key", "Reader", Permission.ReadRoles);
+        await AddUserAsync("identity-id", "username", role.Id);
+        using HttpRequestMessage request = CreateRequest();
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -103,6 +121,19 @@ public sealed class GetPermissionsTests : IClassFixture<ChocoApiFactory>, IAsync
             "Bearer", TestJwt.Create(DateTimeOffset.UtcNow, subject: "identity-id"));
 
         return request;
+    }
+
+    private async Task<Role> AddRoleAsync(string systemKey, string name, string permission)
+    {
+        Role role = Role.CreateSystem(new SystemRoleDefinition(systemKey, name, IsDefault: false, Permissions: [permission]));
+
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Add(role);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+
+        return role;
     }
 
     private async Task AddUserAsync(string identityId, string username, Guid? roleId = null)
