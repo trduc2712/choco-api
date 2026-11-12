@@ -6,4 +6,4 @@ public sealed record CreateUserCommand(
     string IdentityId,
     string Username,
     string? DisplayName,
-    string? AvatarUrl) : ICommand;
+    string? AvatarUrl) : ICommand, ISystemRequest;

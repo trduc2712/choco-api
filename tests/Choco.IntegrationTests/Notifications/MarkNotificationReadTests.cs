@@ -104,6 +104,7 @@ public sealed class MarkNotificationReadTests : IClassFixture<ChocoApiFactory>, 
     [Fact]
     public async Task EmptyNotificationId_ReturnsValidationProblem()
     {
+        await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");
         using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Put, Path(Guid.Empty));
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);

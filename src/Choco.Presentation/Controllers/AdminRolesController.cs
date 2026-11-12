@@ -44,7 +44,7 @@ public sealed class AdminRolesController : ApiController
     /// <response code="201">The role was created; the Location header points to it.</response>
     /// <response code="400">The name is missing, blank or too long, or a permission is not in the catalog; errors lists the field.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
-    /// <response code="403">The caller may not create roles, or lists a permission the caller does not hold.</response>
+    /// <response code="403">The caller may not create roles, or lists a permission the caller does not hold. It is also returned when the caller's account is suspended.</response>
     /// <response code="409">Another role already has this name, ignoring case.</response>
     [HttpPost]
     [ProducesResponseType(typeof(RoleResponse), StatusCodes.Status201Created)]
@@ -69,7 +69,7 @@ public sealed class AdminRolesController : ApiController
     /// <response code="200">The role with its new name and permissions.</response>
     /// <response code="400">The id is empty, the name is missing, blank or too long, or a permission is not in the catalog; errors lists the field.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
-    /// <response code="403">The caller may not update roles, holds the role, or lacks a permission of the role or of the body.</response>
+    /// <response code="403">The caller may not update roles, holds the role, or lacks a permission of the role or of the body. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No role has this id.</response>
     /// <response code="409">Another role already has this name, ignoring case.</response>
     [HttpPut("{id:guid}")]
@@ -93,7 +93,7 @@ public sealed class AdminRolesController : ApiController
     /// <response code="204">The role was deleted.</response>
     /// <response code="400">The id is empty.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
-    /// <response code="403">The caller may not delete roles, holds the role, or lacks a permission of the role.</response>
+    /// <response code="403">The caller may not delete roles, holds the role, or lacks a permission of the role. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No role has this id.</response>
     /// <response code="409">The role is the default role or was created by the system.</response>
     [HttpDelete("{id:guid}")]

@@ -148,7 +148,7 @@ public sealed class UsersController : ApiController
     /// <response code="204">The user holds the role.</response>
     /// <response code="400">An id is empty, or the role is the default role.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
-    /// <response code="403">The caller may not assign roles, or lacks a permission the role grants.</response>
+    /// <response code="403">The caller may not assign roles, or lacks a permission the role grants. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No user or no role has this id.</response>
     [HttpPut("{userId:guid}/roles/{roleId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -177,7 +177,7 @@ public sealed class UsersController : ApiController
     /// <response code="204">The user does not hold the role.</response>
     /// <response code="400">An id is empty, or the role is the default role.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
-    /// <response code="403">The caller may not assign roles, or lacks a permission the role grants.</response>
+    /// <response code="403">The caller may not assign roles, or lacks a permission the role grants. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No user or no role has this id.</response>
     /// <response code="409">The user is the last administrator and the role is the administrator role.</response>
     [HttpDelete("{userId:guid}/roles/{roleId:guid}")]
@@ -265,7 +265,7 @@ public sealed class UsersController : ApiController
     /// <response code="204">The caller follows the target user.</response>
     /// <response code="400">The id is empty, the caller tried to follow their own account, or the caller's account details are invalid.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
-    /// <response code="403">The caller blocked the target user, or the target user blocked the caller.</response>
+    /// <response code="403">The caller blocked the target user, or the target user blocked the caller. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">The target user does not exist or is deleted.</response>
     [HttpPut("{userId:guid}/follow")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -287,11 +287,13 @@ public sealed class UsersController : ApiController
     /// <response code="204">The caller does not follow the target user.</response>
     /// <response code="400">The id is empty or the caller's account details are invalid.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     /// <response code="404">The target user does not exist or is deleted.</response>
     [HttpDelete("{userId:guid}/follow")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Unfollow(Guid userId, CancellationToken cancellationToken)
     {
@@ -307,11 +309,13 @@ public sealed class UsersController : ApiController
     /// <response code="204">The caller blocks the target user.</response>
     /// <response code="400">The id is empty or the caller tried to block their own account.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     /// <response code="404">The target user does not exist or is deleted.</response>
     [HttpPut("{userId:guid}/block")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Block(Guid userId, CancellationToken cancellationToken)
     {
@@ -328,11 +332,13 @@ public sealed class UsersController : ApiController
     /// <response code="201">The report is open.</response>
     /// <response code="400">The reason is not one of the listed values, the explanation is too long, or the caller tried to report their own account.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     /// <response code="404">The reported user does not exist or is deleted.</response>
     [HttpPost("{userId:guid}/reports")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Report(
         Guid userId, [FromBody] ReportUserCommand command, CancellationToken cancellationToken)
@@ -349,11 +355,13 @@ public sealed class UsersController : ApiController
     /// <response code="204">The caller does not block the target user.</response>
     /// <response code="400">The id is empty.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     /// <response code="404">The target user does not exist or is deleted.</response>
     [HttpDelete("{userId:guid}/block")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Unblock(Guid userId, CancellationToken cancellationToken)
     {

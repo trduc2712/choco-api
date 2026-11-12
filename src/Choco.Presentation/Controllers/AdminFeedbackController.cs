@@ -84,7 +84,7 @@ public sealed class AdminFeedbackController : ApiController
     /// <response code="200">The updated feedback.</response>
     /// <response code="400">The id is empty or the status is not one of the listed values.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
-    /// <response code="403">The caller may not change feedback status.</response>
+    /// <response code="403">The caller may not change feedback status. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No feedback has this id.</response>
     [HttpPatch("{id:guid}")]
     [ProducesResponseType(typeof(FeedbackResponse), StatusCodes.Status200OK)]

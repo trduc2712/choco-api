@@ -157,7 +157,7 @@ public sealed class MeTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         body.EnumerateObject().Select(property => property.Name)
-            .Should().BeEquivalentTo("id", "identityId", "sessionId", "authorizedParty", "permissions");
+            .Should().BeEquivalentTo("id", "identityId", "sessionId", "authorizedParty", "permissions", "suspension");
         body.GetProperty("permissions").GetArrayLength().Should().Be(0);
     }
 

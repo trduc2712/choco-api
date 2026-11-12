@@ -56,11 +56,13 @@ public sealed class MeController : ApiController
     /// <response code="200">The updated profile.</response>
     /// <response code="400">One or more profile fields are invalid.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     /// <response code="409">The username is unavailable.</response>
     [HttpPut("profile")]
     [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateMyProfileCommand command, CancellationToken cancellationToken)
     {
@@ -76,10 +78,12 @@ public sealed class MeController : ApiController
     /// <response code="200">The updated profile.</response>
     /// <response code="400">The bio is longer than 160 characters after trimming; errors lists the field.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     [HttpPut("profile/bio")]
     [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> UpdateBio([FromBody] UpdateMyBioCommand command, CancellationToken cancellationToken)
     {
         Result<UserProfileResponse> result = await Sender.Send(command, cancellationToken);
@@ -94,6 +98,7 @@ public sealed class MeController : ApiController
     /// <response code="200">The profile with the new avatar URL.</response>
     /// <response code="400">The image is missing, too large, or unsupported.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     /// <response code="413">The multipart request exceeds the request size limit.</response>
     /// <response code="415">The request does not use multipart/form-data.</response>
     [HttpPost("profile/avatar")]
@@ -102,6 +107,7 @@ public sealed class MeController : ApiController
     [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status415UnsupportedMediaType)]
     public async Task<IActionResult> UploadAvatar(IFormFile image, CancellationToken cancellationToken)
@@ -117,9 +123,11 @@ public sealed class MeController : ApiController
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="200">The profile with a null avatar URL.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     [HttpDelete("profile/avatar")]
     [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> RemoveAvatar(CancellationToken cancellationToken)
     {
         Result<UserProfileResponse> result = await Sender.Send(new RemoveMyAvatarCommand(), cancellationToken);
@@ -128,7 +136,7 @@ public sealed class MeController : ApiController
     }
 
     /// <summary>Gets the signed-in caller.</summary>
-    /// <remarks>Any signed-in user may call it. Creates the local account if needed. Returns the user's id, the identity, session and client from the session token, and the permissions the caller holds. A member gets an empty permissions list.</remarks>
+    /// <remarks>Any signed-in user may call it. Creates the local account if needed. Returns the user's id, the identity, session and client from the session token, and the permissions the caller holds. A member gets an empty permissions list. When an administrator has suspended the caller, suspension carries the reason and the time; otherwise it is null. A suspended caller can still call this endpoint and every other read.</remarks>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="200">The caller and their permissions.</response>
     /// <response code="400">The account details needed to create the local profile are invalid; errors lists the field.</response>
@@ -153,12 +161,24 @@ public sealed class MeController : ApiController
             return HandleFailure(permissionsResult);
         }
 
+        Result<CurrentUserSuspension?> suspensionResult = await _currentUser.GetSuspensionAsync(cancellationToken);
+
+        if (suspensionResult.IsFailure)
+        {
+            return HandleFailure(suspensionResult);
+        }
+
+        UserSuspensionResponse? suspension = suspensionResult.Value is { } current
+            ? new UserSuspensionResponse(current.Reason, current.SuspendedAt)
+            : null;
+
         return Ok(new MeResponse(
             userIdResult.Value,
             User.FindFirstValue(JwtRegisteredClaimNames.Sub),
             User.FindFirstValue(JwtRegisteredClaimNames.Sid),
             User.FindFirstValue(JwtRegisteredClaimNames.Azp),
-            permissionsResult.Value.Permissions));
+            permissionsResult.Value.Permissions,
+            suspension));
     }
 
     /// <summary>
@@ -331,11 +351,13 @@ public sealed class MeController : ApiController
     /// <response code="204">The notification is marked read.</response>
     /// <response code="400">The notification id is empty; errors lists the field.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     /// <response code="404">The caller has no notification with this id.</response>
     [HttpPut("notifications/{notificationId:guid}/read")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> MarkNotificationRead(Guid notificationId, CancellationToken cancellationToken)
     {
@@ -351,9 +373,11 @@ public sealed class MeController : ApiController
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="204">Every notification of the caller is marked read.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     [HttpPut("notifications/read")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> MarkAllNotificationsRead(CancellationToken cancellationToken)
     {
         Result result = await Sender.Send(new MarkAllNotificationsReadCommand(), cancellationToken);

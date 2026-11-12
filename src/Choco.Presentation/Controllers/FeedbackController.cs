@@ -28,12 +28,14 @@ public sealed class FeedbackController : ApiController
     /// <response code="201">The feedback was saved.</response>
     /// <response code="400">A field is invalid; errors lists the fields, such as Message.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     /// <response code="429">The caller sent too much feedback; wait the number of seconds in the Retry-After header.</response>
     [HttpPost]
     [FeedbackSubmissionLimit]
     [ProducesResponseType(typeof(CreatedFeedbackResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Create([FromBody] CreateFeedbackCommand command, CancellationToken cancellationToken)
     {

@@ -35,10 +35,12 @@ public sealed class PostsController : ApiController
     /// <response code="201">The post was published; the Location header points to it.</response>
     /// <response code="400">The content is missing, blank or too long; errors lists the field.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     [HttpPost]
     [ProducesResponseType(typeof(PostResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Create([FromBody] CreatePostCommand command, CancellationToken cancellationToken)
     {
         Result<PostResponse> result = await Sender.Send(command, cancellationToken);
@@ -61,7 +63,7 @@ public sealed class PostsController : ApiController
     /// <response code="200">The post with its new text.</response>
     /// <response code="400">The content is missing, blank or too long; errors lists the field.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
-    /// <response code="403">The caller is not the author of the post.</response>
+    /// <response code="403">The caller is not the author of the post. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No post has this id.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(PostResponse), StatusCodes.Status200OK)]
@@ -88,7 +90,7 @@ public sealed class PostsController : ApiController
     /// <response code="204">The post was deleted.</response>
     /// <response code="400">The id is empty; errors lists the field.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
-    /// <response code="403">The caller is not the author and may not delete other users' posts.</response>
+    /// <response code="403">The caller is not the author and may not delete other users' posts. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No post has this id.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -117,11 +119,13 @@ public sealed class PostsController : ApiController
     /// <response code="201">The report is open.</response>
     /// <response code="400">The reason is not one of the listed values, the explanation is too long, or the post is the caller's own.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     /// <response code="404">No post has this id.</response>
     [HttpPost("{id:guid}/reports")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Report(
         Guid id, [FromBody] ReportPostCommand command, CancellationToken cancellationToken)
@@ -143,7 +147,7 @@ public sealed class PostsController : ApiController
     /// <response code="204">The caller likes the post.</response>
     /// <response code="400">The id is empty; errors lists the field.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
-    /// <response code="403">The caller blocked the post's author, or the author blocked the caller.</response>
+    /// <response code="403">The caller blocked the post's author, or the author blocked the caller. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">The post does not exist, is deleted, or was written by a deleted account.</response>
     [HttpPut("{id:guid}/like")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -170,11 +174,13 @@ public sealed class PostsController : ApiController
     /// <response code="204">The caller does not like the post.</response>
     /// <response code="400">The id is empty; errors lists the field.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended; the response carries the reason.</response>
     /// <response code="404">The post does not exist, is deleted, or was written by a deleted account.</response>
     [HttpDelete("{id:guid}/like")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Unlike(Guid id, CancellationToken cancellationToken)
     {
@@ -197,7 +203,7 @@ public sealed class PostsController : ApiController
     /// <response code="201">The comment was added.</response>
     /// <response code="400">The content is missing, blank or too long, or the id is empty; errors lists the field.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
-    /// <response code="403">The caller blocked the post's author, or the author blocked the caller.</response>
+    /// <response code="403">The caller blocked the post's author, or the author blocked the caller. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">The post does not exist, is deleted, or was written by a deleted account.</response>
     [HttpPost("{id:guid}/comments")]
     [ProducesResponseType(typeof(CommentResponse), StatusCodes.Status201Created)]

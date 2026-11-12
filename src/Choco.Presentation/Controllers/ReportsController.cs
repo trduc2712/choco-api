@@ -54,7 +54,7 @@ public sealed class ReportsController : ApiController
     /// <response code="204">The report is resolved.</response>
     /// <response code="400">The outcome is not one of the listed values.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
-    /// <response code="403">The caller may not handle reports.</response>
+    /// <response code="403">The caller may not handle reports. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No report has this id.</response>
     [HttpPut("{reportId:guid}/resolution")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

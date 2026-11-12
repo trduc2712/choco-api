@@ -12,7 +12,7 @@ internal sealed class CurrentUser : ICurrentUser
     private readonly IUserRepository _userRepository;
     private readonly IIdentityProvider _identityProvider;
     private readonly ISender _sender;
-    private Result<Guid>? _cachedUserIdResult;
+    private Result<Snapshot>? _cachedSnapshotResult;
 
     public CurrentUser(
         IUserContext userContext,
@@ -28,10 +28,26 @@ internal sealed class CurrentUser : ICurrentUser
 
     public async Task<Result<Guid>> GetIdAsync(CancellationToken cancellationToken = default)
     {
-        return _cachedUserIdResult ??= await FindOrCreateUserIdAsync(cancellationToken);
+        Result<Snapshot> snapshot = await GetSnapshotAsync(cancellationToken);
+
+        return snapshot.IsFailure ? Result<Guid>.Failure(snapshot.Error) : Result<Guid>.Success(snapshot.Value.Id);
     }
 
-    private async Task<Result<Guid>> FindOrCreateUserIdAsync(CancellationToken cancellationToken)
+    public async Task<Result<CurrentUserSuspension?>> GetSuspensionAsync(CancellationToken cancellationToken = default)
+    {
+        Result<Snapshot> snapshot = await GetSnapshotAsync(cancellationToken);
+
+        return snapshot.IsFailure
+            ? Result<CurrentUserSuspension?>.Failure(snapshot.Error)
+            : Result<CurrentUserSuspension?>.Success(snapshot.Value.Suspension);
+    }
+
+    private async Task<Result<Snapshot>> GetSnapshotAsync(CancellationToken cancellationToken)
+    {
+        return _cachedSnapshotResult ??= await FindOrCreateUserAsync(cancellationToken);
+    }
+
+    private async Task<Result<Snapshot>> FindOrCreateUserAsync(CancellationToken cancellationToken)
     {
         string identityId = _userContext.IdentityId;
 
@@ -43,7 +59,7 @@ internal sealed class CurrentUser : ICurrentUser
 
             if (idpUser is null)
             {
-                return Result<Guid>.Failure(UserErrors.Deleted);
+                return Result<Snapshot>.Failure(UserErrors.Deleted);
             }
 
             Result createUserResult = await _sender.Send(
@@ -52,14 +68,23 @@ internal sealed class CurrentUser : ICurrentUser
 
             if (createUserResult.IsFailure)
             {
-                return Result<Guid>.Failure(createUserResult.Error);
+                return Result<Snapshot>.Failure(createUserResult.Error);
             }
 
             user = await _userRepository.GetByIdentityIdIncludingDeletedAsync(identityId, cancellationToken);
         }
 
-        return user is null || user.IsDeleted
-            ? Result<Guid>.Failure(UserErrors.Deleted)
-            : Result<Guid>.Success(user.Id);
+        if (user is null || user.IsDeleted)
+        {
+            return Result<Snapshot>.Failure(UserErrors.Deleted);
+        }
+
+        CurrentUserSuspension? suspension = user.SuspendedAt is { } suspendedAt && user.SuspensionReason is { } reason
+            ? new CurrentUserSuspension(reason, suspendedAt)
+            : null;
+
+        return Result<Snapshot>.Success(new Snapshot(user.Id, suspension));
     }
+
+    private sealed record Snapshot(Guid Id, CurrentUserSuspension? Suspension);
 }
