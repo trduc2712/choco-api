@@ -17,6 +17,8 @@ public enum AuditAction
     ReportResolved,
     UserBlocked,
     UserUnblocked,
+    UserSuspended,
+    UserUnsuspended,
     RoleCreated,
     RoleUpdated,
     RoleDeleted,

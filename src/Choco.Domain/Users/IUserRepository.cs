@@ -33,6 +33,8 @@ public interface IUserRepository : IRepository<User>
     Task<IReadOnlyList<User>> ListWithRolesIncludingDeletedForReadAsync(
         UserListFilter filter, int skip, int take, CancellationToken cancellationToken = default);
 
+    Task<int> CountActiveWithRoleAsync(Guid roleId, CancellationToken cancellationToken = default);
+
     Task<int> CountWithRoleAsync(Guid roleId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<User>> ListByIdentityIdsWithRolesAsync(

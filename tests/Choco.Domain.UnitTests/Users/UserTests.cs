@@ -1,4 +1,6 @@
+using Choco.Domain.Roles;
 using Choco.Domain.Users;
+using Choco.SharedKernel.Results;
 
 namespace Choco.Domain.UnitTests.Users;
 
@@ -7,6 +9,7 @@ public sealed class UserTests
     private static readonly Guid RoleId = new("6b1e0f3a-2c4d-4e8f-9a7b-1d2c3e4f5a60");
     private static readonly Guid OtherRoleId = new("7c2f1a4b-3d5e-4f9a-8b6c-2e3d4f5a6b70");
     private static readonly Guid AssignedBy = new("8d3a2b5c-4e6f-4a1b-9c7d-3f4a5b6c7d80");
+    private static readonly Guid OtherSuspendedBy = new("9e4b3c6d-5f7a-4b2c-8d8e-4a5b6c7d8e90");
     private static readonly DateTimeOffset Now = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
     [Fact]
@@ -231,5 +234,164 @@ public sealed class UserTests
         user.RevokeRole(OtherRoleId);
 
         user.Roles.Should().ContainSingle().Which.RoleId.Should().Be(RoleId);
+    }
+
+    [Fact]
+    public void NewUser_IsNotSuspended()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+
+        user.IsSuspended.Should().BeFalse();
+        user.SuspendedAt.Should().BeNull();
+        user.SuspendedBy.Should().BeNull();
+        user.SuspensionReason.Should().BeNull();
+    }
+
+    [Fact]
+    public void Suspend_WithReason_RecordsTheReasonWhoAndWhen()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+
+        user.Suspend("  reason  ", AssignedBy, Now);
+
+        user.IsSuspended.Should().BeTrue();
+        user.SuspensionReason.Should().Be("reason");
+        user.SuspendedBy.Should().Be(AssignedBy);
+        user.SuspendedAt.Should().Be(Now);
+    }
+
+    [Fact]
+    public void Suspend_WithReasonAtMaxLength_Suspends()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+        string reason = new('r', User.SuspensionReasonMaxLength);
+
+        user.Suspend(reason, AssignedBy, Now);
+
+        user.SuspensionReason.Should().Be(reason);
+    }
+
+    [Fact]
+    public void Suspend_AlreadySuspendedWithTheSameReason_KeepsTheFirstSuspension()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+        user.Suspend("reason", AssignedBy, Now);
+
+        user.Suspend(" reason ", OtherSuspendedBy, Now.AddHours(1));
+
+        user.SuspendedBy.Should().Be(AssignedBy);
+        user.SuspendedAt.Should().Be(Now);
+    }
+
+    [Fact]
+    public void Suspend_AlreadySuspendedWithAnotherReason_ReplacesTheSuspension()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+        user.Suspend("reason", AssignedBy, Now);
+
+        user.Suspend("other reason", OtherSuspendedBy, Now.AddHours(1));
+
+        user.SuspensionReason.Should().Be("other reason");
+        user.SuspendedBy.Should().Be(OtherSuspendedBy);
+        user.SuspendedAt.Should().Be(Now.AddHours(1));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Suspend_WithBlankReason_ThrowsArgumentExceptionAndDoesNotSuspend(string? reason)
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+
+        Action act = () => user.Suspend(reason!, AssignedBy, Now);
+
+        act.Should().Throw<ArgumentException>().WithParameterName("reason");
+        user.IsSuspended.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Suspend_WithReasonOverMaxLength_ThrowsArgumentOutOfRangeException()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+
+        Action act = () => user.Suspend(new string('r', User.SuspensionReasonMaxLength + 1), AssignedBy, Now);
+
+        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("reason");
+        user.IsSuspended.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Suspend_WithEmptySuspendedBy_ThrowsArgumentException()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+
+        Action act = () => user.Suspend("reason", Guid.Empty, Now);
+
+        act.Should().Throw<ArgumentException>().WithParameterName("suspendedBy");
+    }
+
+    [Fact]
+    public void LiftSuspension_SuspendedUser_ClearsTheSuspension()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+        user.Suspend("reason", AssignedBy, Now);
+
+        user.LiftSuspension();
+
+        user.IsSuspended.Should().BeFalse();
+        user.SuspendedAt.Should().BeNull();
+        user.SuspendedBy.Should().BeNull();
+        user.SuspensionReason.Should().BeNull();
+    }
+
+    [Fact]
+    public void LiftSuspension_UserThatIsNotSuspended_ChangesNothing()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+
+        user.LiftSuspension();
+
+        user.IsSuspended.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CheckCanBeSuspendedBy_AnotherUserHoldingEveryPermission_Succeeds()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+
+        Result result = user.CheckCanBeSuspendedBy(AssignedBy, ["posts.delete-any", "reports.handle"], ["reports.handle"]);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CheckCanBeSuspendedBy_UserWithoutPermissions_Succeeds()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+
+        Result result = user.CheckCanBeSuspendedBy(AssignedBy, [], []);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CheckCanBeSuspendedBy_TheUserThemselves_FailsWithCannotSuspendSelf()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+
+        Result result = user.CheckCanBeSuspendedBy(user.Id, ["reports.handle"], []);
+
+        result.Error.Should().Be(UserErrors.CannotSuspendSelf);
+    }
+
+    [Fact]
+    public void CheckCanBeSuspendedBy_ActorLackingAPermissionOfTheUser_FailsWithDenied()
+    {
+        User user = User.Create("identity-id", "username", "Display Name", null);
+
+        Result result = user.CheckCanBeSuspendedBy(AssignedBy, ["reports.handle"], ["reports.handle", "audit-log.read"]);
+
+        result.Error.Should().Be(PermissionErrors.Denied);
     }
 }

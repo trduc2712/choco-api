@@ -1,4 +1,6 @@
 using Choco.Domain.Primitives.Entities;
+using Choco.Domain.Roles;
+using Choco.SharedKernel.Results;
 
 namespace Choco.Domain.Users;
 
@@ -9,6 +11,7 @@ public sealed class User : AggregateRoot, IAuditable, ISoftDeletable
     public const int DisplayNameMaxLength = 256;
     public const int AvatarUrlMaxLength = 2048;
     public const int BioMaxLength = 160;
+    public const int SuspensionReasonMaxLength = 150;
 
     private readonly List<UserRole> _roles = [];
 
@@ -18,6 +21,10 @@ public sealed class User : AggregateRoot, IAuditable, ISoftDeletable
     public string? AvatarUrl { get; private set; }
     public string? Bio { get; private set; }
     public IReadOnlyCollection<UserRole> Roles => _roles.AsReadOnly();
+    public DateTimeOffset? SuspendedAt { get; private set; }
+    public Guid? SuspendedBy { get; private set; }
+    public string? SuspensionReason { get; private set; }
+    public bool IsSuspended => SuspendedAt is not null;
 
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset ModifiedAt { get; private set; }
@@ -89,5 +96,50 @@ public sealed class User : AggregateRoot, IAuditable, ISoftDeletable
     public bool HoldsRole(Guid roleId)
     {
         return _roles.Any(role => role.RoleId == roleId);
+    }
+
+    public Result CheckCanBeSuspendedBy(
+        Guid actorId, IReadOnlyCollection<string> actorPermissions, IReadOnlyCollection<string> ownPermissions)
+    {
+        ArgumentNullException.ThrowIfNull(actorPermissions);
+        ArgumentNullException.ThrowIfNull(ownPermissions);
+
+        if (actorId == Id)
+        {
+            return Result.Failure(UserErrors.CannotSuspendSelf);
+        }
+
+        return ownPermissions.All(actorPermissions.Contains)
+            ? Result.Success()
+            : Result.Failure(PermissionErrors.Denied);
+    }
+
+    public void Suspend(string reason, Guid suspendedBy, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+
+        string trimmedReason = reason.Trim();
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(trimmedReason.Length, SuspensionReasonMaxLength, nameof(reason));
+
+        if (suspendedBy == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(suspendedBy));
+        }
+
+        if (IsSuspended && SuspensionReason == trimmedReason)
+        {
+            return;
+        }
+
+        SuspendedAt = now;
+        SuspendedBy = suspendedBy;
+        SuspensionReason = trimmedReason;
+    }
+
+    public void LiftSuspension()
+    {
+        SuspendedAt = null;
+        SuspendedBy = null;
+        SuspensionReason = null;
     }
 }

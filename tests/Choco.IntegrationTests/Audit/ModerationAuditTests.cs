@@ -15,6 +15,35 @@ public sealed class ModerationAuditTests(ChocoApiFactory factory) : AuditTestsBa
         "/path", FeedbackLocale.Ja, FeedbackTheme.Dark, "user-agent", 1280, 720, "app-version");
 
     [Fact]
+    public async Task SuspendUser_RecordsUserSuspendedWithTheReason()
+    {
+        User administrator = await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
+        User target = await AddUserAsync("identity-id-2", "username-2");
+        using HttpRequestMessage request = Request(
+            HttpMethod.Put, $"/api/v1/admin/users/{target.Id}/suspension", new { reason = "  Repeated spam  " });
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
+        ShouldBeEntry(entry, administrator.Id, AuditAction.UserSuspended, AuditTargetType.User, target.Id, target.Id, "Reason: Repeated spam");
+    }
+
+    [Fact]
+    public async Task UnsuspendUser_RecordsUserUnsuspended()
+    {
+        User administrator = await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
+        User target = await AddUserAsync("identity-id-2", "username-2");
+        using HttpRequestMessage request = Request(HttpMethod.Delete, $"/api/v1/admin/users/{target.Id}/suspension");
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
+        ShouldBeEntry(entry, administrator.Id, AuditAction.UserUnsuspended, AuditTargetType.User, target.Id, target.Id);
+    }
+
+    [Fact]
     public async Task ReportPost_RecordsPostReportedWithTheAuthorAndTheReason()
     {
         User author = await AddUserAsync("identity-id-2", "username-2");

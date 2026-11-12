@@ -37,6 +37,21 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(User.BioMaxLength)
             .HasComment("Short text the user wrote about themselves. Lives only in choco-api, not in Clerk; null when the user has none.");
 
+        builder.Property(user => user.SuspendedAt)
+            .HasComment("When an administrator suspended the user; null when the user is not suspended. A suspended user can read but cannot create or change anything.");
+
+        builder.Property(user => user.SuspendedBy)
+            .HasComment("Administrator who suspended the user; null when the user is not suspended.");
+
+        builder.Property(user => user.SuspensionReason)
+            .HasMaxLength(User.SuspensionReasonMaxLength)
+            .HasComment("Why the user was suspended, shown to the user; null when the user is not suspended.");
+
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(user => user.SuspendedBy)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(user => user.IdentityId)
             .IsUnique();
 

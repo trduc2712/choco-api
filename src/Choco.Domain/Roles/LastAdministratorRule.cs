@@ -1,3 +1,4 @@
+using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
 
 namespace Choco.Domain.Roles;
@@ -10,6 +11,15 @@ public static class LastAdministratorRule
 
         return role.SystemKey == SystemRoles.Admin && userHoldsRole && holderCount <= 1
             ? Result.Failure(RoleErrors.LastAdministrator)
+            : Result.Success();
+    }
+
+    public static Result CheckSuspension(Role role, bool userHoldsRole, bool userIsSuspended, int activeHolderCount)
+    {
+        ArgumentNullException.ThrowIfNull(role);
+
+        return role.SystemKey == SystemRoles.Admin && userHoldsRole && !userIsSuspended && activeHolderCount <= 1
+            ? Result.Failure(UserErrors.LastAdministrator)
             : Result.Success();
     }
 }
