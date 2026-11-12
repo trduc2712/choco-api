@@ -132,9 +132,13 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
     {
         IQueryable<User> users = DbSet.IgnoreQueryFilters().AsNoTracking();
 
-        users = filter.State == UserState.Deleted
-            ? users.Where(user => user.IsDeleted)
-            : users.Where(user => !user.IsDeleted);
+        users = filter.State switch
+        {
+            UserState.Deleted => users.Where(user => user.IsDeleted),
+            UserState.Suspended => users.Where(user => !user.IsDeleted && user.SuspendedAt != null),
+            UserState.Active => users.Where(user => !user.IsDeleted && user.SuspendedAt == null),
+            _ => users.Where(user => !user.IsDeleted)
+        };
 
         if (filter.Text is { } text)
         {
