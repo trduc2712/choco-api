@@ -36,12 +36,7 @@ public sealed class Role : AggregateRoot, IAuditable
         ArgumentException.ThrowIfNullOrWhiteSpace(definition.Name, nameof(definition));
         ArgumentOutOfRangeException.ThrowIfGreaterThan(definition.Name.Length, NameMaxLength, nameof(definition));
 
-        string? unknownPermission = definition.Permissions.FirstOrDefault(permission => !Permission.All.Contains(permission));
-
-        if (unknownPermission is not null)
-        {
-            throw new ArgumentException($"Unknown permission '{unknownPermission}'.", nameof(definition));
-        }
+        EnsureKnown(definition.Permissions, nameof(definition));
 
         return new Role(
             Guid.NewGuid(),
@@ -51,10 +46,32 @@ public sealed class Role : AggregateRoot, IAuditable
             definition.Permissions.Distinct(StringComparer.Ordinal));
     }
 
+    public static Role Create(string name, IEnumerable<string> permissions)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(permissions);
+
+        string trimmedName = name.Trim();
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(trimmedName.Length, NameMaxLength, nameof(name));
+        EnsureKnown(permissions, nameof(permissions));
+
+        return new Role(Guid.NewGuid(), trimmedName, null, false, permissions.Distinct(StringComparer.Ordinal));
+    }
+
     public bool IsCoveredBy(IReadOnlyCollection<string> permissions)
     {
         ArgumentNullException.ThrowIfNull(permissions);
 
         return _permissions.All(permissions.Contains);
+    }
+
+    private static void EnsureKnown(IEnumerable<string> permissions, string paramName)
+    {
+        string? unknownPermission = permissions.FirstOrDefault(permission => !Permission.All.Contains(permission));
+
+        if (unknownPermission is not null)
+        {
+            throw new ArgumentException($"Unknown permission '{unknownPermission}'.", paramName);
+        }
     }
 }
