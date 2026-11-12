@@ -8,6 +8,11 @@ public interface ICommentRepository : IRepository<Comment>
 
     Task<Comment?> GetByIdIncludingDeletedForReadAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<int> CountIncludingDeletedForReadAsync(CommentListFilter filter, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Comment>> ListIncludingDeletedForReadAsync(
+        CommentListFilter filter, int skip, int take, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Comment>> ListByPostForReadAsync(
         Guid postId,
         Guid viewerId,

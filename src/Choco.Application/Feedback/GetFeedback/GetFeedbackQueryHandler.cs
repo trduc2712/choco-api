@@ -1,4 +1,5 @@
 using Choco.Application.Abstractions.Messaging;
+using Choco.Application.Content;
 using Choco.Contract.Abstractions;
 using Choco.Contract.Feedback;
 using Choco.Domain.FeedbackEntries;
@@ -20,10 +21,7 @@ internal sealed class GetFeedbackQueryHandler(
         FeedbackCategory? category = FeedbackWire.TryParse(query.Category, out FeedbackCategory parsedCategory)
             ? parsedCategory
             : null;
-        string[] terms = (query.Q ?? string.Empty)
-            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Take(GetFeedbackQuery.MaxSearchTerms)
-            .ToArray();
+        string[] terms = SearchTerms.Split(query.Q, GetFeedbackQuery.MaxSearchTerms);
         string? author = string.IsNullOrWhiteSpace(query.Author) ? null : query.Author.Trim();
         var filter = new FeedbackFilter(status, category, terms, author);
         long skip = (long)(query.Page - 1) * query.PageSize;

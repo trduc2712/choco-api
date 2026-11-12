@@ -1,4 +1,5 @@
 using Choco.Domain.Posts;
+using Choco.Domain.Primitives.Entities;
 using Choco.Domain.UserBlocks;
 using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
@@ -24,6 +25,55 @@ internal sealed class PostRepository : Repository<Post>, IPostRepository
             .IgnoreQueryFilters()
             .AsNoTracking()
             .FirstOrDefaultAsync(post => post.Id == id, cancellationToken);
+    }
+
+    public Task<int> CountIncludingDeletedForReadAsync(PostListFilter filter, CancellationToken cancellationToken = default)
+    {
+        return Filter(filter).CountAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Post>> ListIncludingDeletedForReadAsync(
+        PostListFilter filter, int skip, int take, CancellationToken cancellationToken = default)
+    {
+        return await Filter(filter)
+            .OrderByDescending(post => post.CreatedAt)
+            .ThenByDescending(post => post.Id)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
+    private IQueryable<Post> Filter(PostListFilter filter)
+    {
+        IQueryable<Post> posts = DbSet.IgnoreQueryFilters().AsNoTracking();
+
+        posts = filter.State == ContentState.Deleted
+            ? posts.Where(post => post.IsDeleted)
+            : posts.Where(post => !post.IsDeleted);
+
+        foreach (string term in filter.Terms)
+        {
+            string pattern = LikePatterns.Contains(term);
+            posts = posts.Where(post => EF.Functions.ILike(
+                EF.Functions.Unaccent(post.Content), EF.Functions.Unaccent(pattern), LikePatterns.Escape));
+        }
+
+        if (filter.AuthorId is { } authorId)
+        {
+            posts = posts.Where(post => post.AuthorId == authorId);
+        }
+
+        if (filter.From is { } from)
+        {
+            posts = posts.Where(post => post.CreatedAt >= from);
+        }
+
+        if (filter.To is { } to)
+        {
+            posts = posts.Where(post => post.CreatedAt < to);
+        }
+
+        return posts;
     }
 
     public Task<int> CountByAuthorForReadAsync(Guid authorId, CancellationToken cancellationToken = default)
