@@ -29,7 +29,7 @@ public sealed class AdminUsersController : ApiController
     /// <response code="204">The user is suspended.</response>
     /// <response code="400">The user id is empty, the reason is missing, blank or too long, or the caller is suspending themselves.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
-    /// <response code="403">The caller may not suspend users, or lacks a permission of the user.</response>
+    /// <response code="403">The caller may not suspend users, or lacks a permission of the user. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No user has this id, or the user is deleted.</response>
     /// <response code="409">The user is the last administrator who is not suspended.</response>
     [HttpPut("{userId:guid}/suspension")]
@@ -53,7 +53,7 @@ public sealed class AdminUsersController : ApiController
     /// <response code="204">The user is not suspended.</response>
     /// <response code="400">The user id is empty.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
-    /// <response code="403">The caller may not suspend users.</response>
+    /// <response code="403">The caller may not suspend users. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No user has this id, or the user is deleted.</response>
     [HttpDelete("{userId:guid}/suspension")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

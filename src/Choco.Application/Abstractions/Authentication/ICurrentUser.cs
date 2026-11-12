@@ -10,4 +10,10 @@ namespace Choco.Application.Abstractions.Authentication;
 public interface ICurrentUser
 {
     Task<Result<Guid>> GetIdAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The caller's suspension, or null when the caller is not suspended. Read from the same user row
+    /// as <see cref="GetIdAsync"/>, so it costs no extra query.
+    /// </summary>
+    Task<Result<CurrentUserSuspension?>> GetSuspensionAsync(CancellationToken cancellationToken = default);
 }

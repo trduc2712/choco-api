@@ -32,7 +32,7 @@ public sealed class CommentsController : ApiController
     /// <response code="204">The comment was deleted.</response>
     /// <response code="400">The id is empty; errors lists the field.</response>
     /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
-    /// <response code="403">The caller is not the author and may not delete other users' comments.</response>
+    /// <response code="403">The caller is not the author and may not delete other users' comments. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No comment has this id.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

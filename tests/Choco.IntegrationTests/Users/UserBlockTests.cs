@@ -175,6 +175,7 @@ public sealed class UserBlockTests : IClassFixture<ChocoApiFactory>, IAsyncLifet
     [InlineData("DELETE")]
     public async Task EmptyTargetId_ReturnsValidationProblem(string method)
     {
+        await NotificationTestData.AddUserAsync(_factory, "identity-id", "username");
         using HttpRequestMessage request = Request(method, Guid.Empty);
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);

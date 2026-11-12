@@ -13,4 +13,20 @@ public static class UserErrors
 
     public static readonly Error LastAdministrator = Error.Conflict(
         "User.LastAdministrator", "The last administrator who is not suspended cannot be suspended.");
+
+    public static Error Suspended(string reason, DateTimeOffset suspendedAt)
+    {
+        return new ErrorWithExtensions(
+            "User.Suspended",
+            $"Your account is suspended: {reason}",
+            ErrorType.Forbidden,
+            new Dictionary<string, object?>
+            {
+                ["suspension"] = new Dictionary<string, object?>
+                {
+                    ["reason"] = reason,
+                    ["suspendedAt"] = suspendedAt
+                }
+            });
+    }
 }

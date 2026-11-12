@@ -144,8 +144,8 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
     [Theory]
     [InlineData("/api/v1/me/notifications", "get", new[] { "200", "400", "401" })]
     [InlineData("/api/v1/me/notifications/unread-count", "get", new[] { "200", "401" })]
-    [InlineData("/api/v1/me/notifications/{notificationId}/read", "put", new[] { "204", "400", "401", "404" })]
-    [InlineData("/api/v1/me/notifications/read", "put", new[] { "204", "401" })]
+    [InlineData("/api/v1/me/notifications/{notificationId}/read", "put", new[] { "204", "400", "401", "403", "404" })]
+    [InlineData("/api/v1/me/notifications/read", "put", new[] { "204", "401", "403" })]
     public async Task OpenApi_DescribesNotifications(string path, string method, string[] statuses)
     {
         using HttpResponseMessage response = await _client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);

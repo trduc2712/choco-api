@@ -35,6 +35,14 @@ public abstract class ApiController : ControllerBase
 
         problemDetails.Extensions["code"] = result.Error.Code;
 
+        if (result.Error is ErrorWithExtensions errorWithExtensions)
+        {
+            foreach ((string key, object? value) in errorWithExtensions.Extensions)
+            {
+                problemDetails.Extensions[key] = value;
+            }
+        }
+
         return new ObjectResult(problemDetails) { StatusCode = statusCode };
     }
 

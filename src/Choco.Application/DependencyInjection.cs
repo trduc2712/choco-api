@@ -18,6 +18,7 @@ public static class DependencyInjection
             config.RegisterServicesFromAssembly(AssemblyReference.Assembly);
             config.AddOpenBehavior(typeof(LoggingBehavior<,>));
             config.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
+            config.AddOpenBehavior(typeof(SuspensionBehavior<,>));
             config.AddOpenBehavior(typeof(ValidationBehavior<,>));
             config.AddOpenBehavior(typeof(AuditBehavior<,>));
         });

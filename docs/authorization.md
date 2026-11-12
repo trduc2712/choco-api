@@ -18,7 +18,7 @@ Rules on assigning and revoking roles:
 - Assigning or revoking a role needs `roles.assign`.
 - Listing roles (`GET /api/v1/admin/roles`), reading one role (`GET /api/v1/admin/roles/{id}`) and listing the permissions of the catalog (`GET /api/v1/admin/permissions`) need `roles.read`. `roles.assign` does not include it, so a user who may assign roles but not read them gets `403`.
 - Listing users for administrators (`GET /api/v1/admin/users`) needs `users.read-any`. It shows deleted users when asked and the roles assigned to each user.
-- Suspending a user and lifting a suspension (`PUT` and `DELETE /api/v1/admin/users/{userId}/suspension`) need `users.suspend`. The caller must hold every permission the user holds (`403` otherwise), cannot suspend themselves (`400`) and cannot suspend the last administrator who is not suspended (`409`). This stores the suspension; refusing the requests of a suspended user comes in a later change.
+- Suspending a user and lifting a suspension (`PUT` and `DELETE /api/v1/admin/users/{userId}/suspension`) need `users.suspend`. The caller must hold every permission the user holds (`403` otherwise), cannot suspend themselves (`400`) and cannot suspend the last administrator who is not suspended (`409`). See [Suspended Users](#suspended-users).
 - Listing posts (`GET /api/v1/admin/posts`) and comments (`GET /api/v1/admin/comments`) for administrators needs `content.read-any`, one permission for both. Deleted posts and comments are shown when asked for.
 - Creating a role (`POST /api/v1/admin/roles`) needs `roles.create`, and the new role may only list permissions the caller holds (`403` otherwise). Role names are unique ignoring case (`409 Role.NameTaken`). A created role is never the default role and has no system key.
 - Changing a role (`PUT /api/v1/admin/roles/{id}`) needs `roles.update`. It replaces the name and the whole set of permissions. The caller must hold every permission the role has now and every permission in the body, so nobody lowers or raises a role beyond their own power (`403`). The default role and system roles can be changed; their key stays.
@@ -28,6 +28,25 @@ Rules on assigning and revoking roles:
 - The default role cannot be assigned or revoked.
 - The last administrator cannot lose the administrator role (`409 Role.LastAdministrator`).
 - Assigning a role the user already holds, or revoking one they do not hold, changes nothing.
+
+## Suspended Users
+
+An administrator with `users.suspend` can suspend a user with a reason. A suspended user can still sign in and read, but
+every request that creates or changes data is refused until an administrator lifts the suspension.
+
+1. The check is a step of the application pipeline, after the permission check and before validation. A request that is
+   a command is refused unless it is marked as a system request, so a command added later is refused without anyone
+   remembering to do it.
+2. The refusal is `403 User.Suspended`. The response carries `suspension.reason` and `suspension.suspendedAt` next to the
+   usual `code`, and its `detail` repeats the reason.
+3. Only requests with no user behind them are exempt: creating a user from the identity provider and applying the
+   administrators of the configuration. They are the requests marked as system requests; a test fails when another one is
+   added.
+4. Queries are never refused. `GET /api/v1/me` returns `suspension` with the reason and the time, or `null`, so a client
+   can show a notice without sending a write first.
+5. A suspended administrator is refused every command too, including the administrator ones, because the check does not
+   look at the permission. A caller without the permission still gets `403 Permission.Denied` first.
+6. Every action that creates or changes data declares `403` in the OpenAPI document for this reason.
 
 ## Setting the First Administrator
 
