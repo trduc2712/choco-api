@@ -296,6 +296,49 @@ public sealed class RoleTests
     }
 
     [Fact]
+    public void SystemRoles_Administrator_HoldsEveryPermissionOfTheCatalog()
+    {
+        SystemRoleDefinition administrator = SystemRoles.All.Single(definition => definition.Key == SystemRoles.Admin);
+
+        administrator.Permissions.Should().BeEquivalentTo(Permission.All);
+    }
+
+    [Fact]
+    public void SystemRoles_Moderator_HoldsOnlyThePermissionsOfModeration()
+    {
+        SystemRoleDefinition moderator = SystemRoles.All.Single(definition => definition.Key == SystemRoles.Moderator);
+
+        moderator.IsDefault.Should().BeFalse();
+        moderator.Permissions.Should().BeEquivalentTo(
+        [
+            Permission.HandleReports,
+            Permission.DeleteAnyPost,
+            Permission.DeleteAnyComment,
+            Permission.ReadAnyContent,
+            Permission.SuspendUsers,
+            Permission.ReadAnyUser
+        ]);
+    }
+
+    [Fact]
+    public void SystemRoles_Moderator_DoesNotHoldThePermissionsToHandOutPowerOrToReadWhatIsNotModeration()
+    {
+        SystemRoleDefinition moderator = SystemRoles.All.Single(definition => definition.Key == SystemRoles.Moderator);
+
+        moderator.Permissions.Should().NotContain(
+        [
+            Permission.AssignRoles,
+            Permission.ReadRoles,
+            Permission.CreateRoles,
+            Permission.UpdateRoles,
+            Permission.DeleteRoles,
+            Permission.ReadAuditLog,
+            Permission.ReadAnyFeedback,
+            Permission.ChangeFeedbackStatus
+        ]);
+    }
+
+    [Fact]
     public void IsCoveredBy_WithEveryPermissionOfTheRole_ReturnsTrue()
     {
         Role role = Role.CreateSystem(ValidDefinition);

@@ -49,13 +49,13 @@ public sealed class RoleAuditTests(ChocoApiFactory factory) : AuditTestsBase(fac
             dbContext.Add(target);
             return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
-        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/admin/roles/{target.Id}", new { name = "Moderator", permissions = new[] { "reports.handle" } });
+        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/admin/roles/{target.Id}", new { name = "Senior Reviewer", permissions = new[] { "reports.handle" } });
 
         using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
-        ShouldBeEntry(entry, administrator.Id, AuditAction.RoleUpdated, AuditTargetType.Role, target.Id, detail: "Role: Moderator");
+        ShouldBeEntry(entry, administrator.Id, AuditAction.RoleUpdated, AuditTargetType.Role, target.Id, detail: "Role: Senior Reviewer");
     }
 
     [Fact]
