@@ -1,4 +1,6 @@
+using Choco.Domain.Posts;
 using Choco.Domain.Reports;
+using Choco.Domain.Users;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -29,20 +31,6 @@ internal sealed class ReportRepository : Repository<Report>, IReportRepository
         return true;
     }
 
-    public async Task<IReadOnlyList<Report>> ListOpenForReadAsync(
-        int skip,
-        int take,
-        CancellationToken cancellationToken)
-    {
-        return await DbSet.AsNoTracking()
-            .Where(report => report.Status == ReportStatus.Open)
-            .OrderBy(report => report.CreatedAt)
-            .ThenBy(report => report.Id)
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync(cancellationToken);
-    }
-
     public Task<Report?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken)
     {
         return DbSet.AsNoTracking().FirstOrDefaultAsync(report => report.Id == id, cancellationToken);
@@ -66,8 +54,92 @@ internal sealed class ReportRepository : Repository<Report>, IReportRepository
             cancellationToken);
     }
 
-    public Task<int> CountOpenAsync(CancellationToken cancellationToken)
+    public Task<int> CountQueueAsync(ReportQueueFilter filter, CancellationToken cancellationToken)
     {
-        return DbSet.AsNoTracking().CountAsync(report => report.Status == ReportStatus.Open, cancellationToken);
+        return Groups(filter).CountAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ReportQueueGroup>> ListQueueForReadAsync(
+        ReportQueueFilter filter, int skip, int take, CancellationToken cancellationToken)
+    {
+        List<TargetKey> keys = await Groups(filter)
+            .OrderBy(group => group.Min(report => report.CreatedAt))
+            .ThenBy(group => group.Key.PostId ?? group.Key.UserId)
+            .Skip(skip)
+            .Take(take)
+            .Select(group => group.Key)
+            .ToListAsync(cancellationToken);
+
+        if (keys.Count == 0)
+        {
+            return [];
+        }
+
+        List<Guid> postIds = keys.Where(key => key.PostId != null).Select(key => key.PostId!.Value).ToList();
+        List<Guid> userIds = keys.Where(key => key.UserId != null).Select(key => key.UserId!.Value).ToList();
+
+        List<Report> reports = await OpenReportsOfExistingTargets()
+            .Where(report => (report.TargetPostId != null && postIds.Contains(report.TargetPostId.Value))
+                || (report.TargetUserId != null && userIds.Contains(report.TargetUserId.Value)))
+            .OrderBy(report => report.CreatedAt)
+            .ThenBy(report => report.Id)
+            .ToListAsync(cancellationToken);
+
+        return keys
+            .Select(key =>
+            {
+                Guid targetId = (key.PostId ?? key.UserId)!.Value;
+
+                return new ReportQueueGroup(
+                    key.Type,
+                    targetId,
+                    reports.Where(report => (report.TargetPostId ?? report.TargetUserId) == targetId).ToList());
+            })
+            .ToList();
+    }
+
+    private IQueryable<Report> OpenReportsOfExistingTargets()
+    {
+        IQueryable<Post> posts = DbContext.Set<Post>();
+        IQueryable<User> users = DbContext.Set<User>();
+
+        return DbSet
+            .AsNoTracking()
+            .Where(report => report.Status == ReportStatus.Open)
+            .Where(report => (report.TargetPostId != null && posts.Any(post => post.Id == report.TargetPostId))
+                || (report.TargetUserId != null && users.Any(user => user.Id == report.TargetUserId)));
+    }
+
+    private IQueryable<IGrouping<TargetKey, Report>> Groups(ReportQueueFilter filter)
+    {
+        IQueryable<Report> open = OpenReportsOfExistingTargets();
+
+        if (filter.TargetType is { } targetType)
+        {
+            open = open.Where(report => report.TargetType == targetType);
+        }
+
+        IQueryable<IGrouping<TargetKey, Report>> groups = open.GroupBy(report => new TargetKey
+        {
+            Type = report.TargetType,
+            PostId = report.TargetPostId,
+            UserId = report.TargetUserId
+        });
+
+        if (filter.Reason is { } reason)
+        {
+            groups = groups.Where(group => group.Count(report => report.Reason == reason) > 0);
+        }
+
+        return groups;
+    }
+
+    private sealed class TargetKey
+    {
+        public ReportTargetType Type { get; init; }
+
+        public Guid? PostId { get; init; }
+
+        public Guid? UserId { get; init; }
     }
 }

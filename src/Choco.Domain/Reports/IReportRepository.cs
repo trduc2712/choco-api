@@ -6,12 +6,13 @@ public interface IReportRepository : IRepository<Report>
 {
     Task<bool> AddIfNoOpenAsync(Report report, CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<Report>> ListOpenForReadAsync(
+    Task<int> CountQueueAsync(ReportQueueFilter filter, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ReportQueueGroup>> ListQueueForReadAsync(
+        ReportQueueFilter filter,
         int skip,
         int take,
         CancellationToken cancellationToken);
-
-    Task<int> CountOpenAsync(CancellationToken cancellationToken);
 
     Task<Report?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken);
 

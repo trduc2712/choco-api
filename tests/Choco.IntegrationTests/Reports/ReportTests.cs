@@ -205,7 +205,7 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task ListingReports_ReturnsOpenReportsOldestFirstByPage()
+    public async Task ListingReports_ReturnsOneRowPerTargetOldestFirstByPage()
     {
         User admin = await AddAdminAsync("identity-id", "username");
         User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
@@ -218,27 +218,141 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
         Report resolved = await AddReportForUserAsync(admin, target, ReportReason.Other);
         await ResolveAsync(resolved.Id);
 
-        OffsetPageResponse<ReportResponse> firstPage = await GetPageAsync("/api/v1/reports?pageSize=1");
-        OffsetPageResponse<ReportResponse> secondPage = await GetPageAsync("/api/v1/reports?pageSize=1&page=2");
+        OffsetPageResponse<ReportQueueItemResponse> firstPage = await GetPageAsync("/api/v1/reports?pageSize=1");
+        OffsetPageResponse<ReportQueueItemResponse> secondPage = await GetPageAsync("/api/v1/reports?pageSize=1&page=2");
 
-        ReportResponse firstItem = firstPage.Items.Should().ContainSingle().Subject;
-        firstItem.Id.Should().Be(first.Id);
+        ReportQueueItemResponse firstItem = firstPage.Items.Should().ContainSingle().Subject;
+        firstItem.ReportId.Should().Be(first.Id);
         firstItem.TargetType.Should().Be("User");
         firstItem.TargetUserId.Should().Be(target.Id);
         firstItem.TargetPostId.Should().BeNull();
-        firstItem.Reason.Should().Be("Spam");
-        firstItem.ReporterId.Should().Be(reporter.Id);
-        firstItem.ReporterUsername.Should().Be("username-2");
-        firstItem.CreatedAt.Should().Be(first.CreatedAt);
+        firstItem.Post.Should().BeNull();
+        firstItem.User.Should().Be(new ReportedUserResponse("username-3", target.DisplayName, false));
+        firstItem.OpenReportCount.Should().Be(1);
+        firstItem.OldestReportedAt.Should().Be(first.CreatedAt);
+        firstItem.Reasons.Should().Equal(new ReportReasonCountResponse("Spam", 1));
+        ReportDetailResponse detail = firstItem.Reports.Should().ContainSingle().Subject;
+        detail.Id.Should().Be(first.Id);
+        detail.Reason.Should().Be("Spam");
+        detail.ReporterId.Should().Be(reporter.Id);
+        detail.ReporterUsername.Should().Be("username-2");
+        detail.CreatedAt.Should().Be(first.CreatedAt);
         firstPage.Page.Should().Be(1);
         firstPage.PageSize.Should().Be(1);
         firstPage.TotalCount.Should().Be(2);
-        ReportResponse secondItem = secondPage.Items.Should().ContainSingle().Subject;
-        secondItem.Id.Should().Be(second.Id);
+        ReportQueueItemResponse secondItem = secondPage.Items.Should().ContainSingle().Subject;
+        secondItem.ReportId.Should().Be(second.Id);
         secondItem.TargetType.Should().Be("Post");
         secondItem.TargetPostId.Should().Be(post.Id);
+        secondItem.TargetUserId.Should().BeNull();
+        secondItem.User.Should().BeNull();
+        secondItem.Post.Should().Be(new ReportedPostResponse(post.Content, new ContentAuthorResponse(target.Id, "username-3")));
         secondPage.Page.Should().Be(2);
         secondPage.TotalCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ListingReports_GroupsReportsAboutTheSameTargetIntoOneRow()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User reporterOne = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        User reporterTwo = await NotificationTestData.AddUserAsync(_factory, "identity-id-3", "username-3");
+        User reporterThree = await NotificationTestData.AddUserAsync(_factory, "identity-id-4", "username-4");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-5", "username-5");
+        Post post = await NotificationTestData.AddPostAsync(_factory, author);
+        Report oldest = await AddReportForPostAsync(reporterOne, post, ReportReason.Spam);
+        _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
+        Report middle = await AddReportForPostAsync(reporterTwo, post, ReportReason.Violence);
+        _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
+        Report newest = await AddReportForPostAsync(reporterThree, post, ReportReason.Violence);
+
+        OffsetPageResponse<ReportQueueItemResponse> page = await GetPageAsync("/api/v1/reports");
+
+        page.TotalCount.Should().Be(1);
+        ReportQueueItemResponse item = page.Items.Should().ContainSingle().Subject;
+        item.OpenReportCount.Should().Be(3);
+        item.ReportId.Should().Be(oldest.Id);
+        item.OldestReportedAt.Should().Be(oldest.CreatedAt);
+        item.Reasons.Should().Equal(new ReportReasonCountResponse("Violence", 2), new ReportReasonCountResponse("Spam", 1));
+        item.Reports.Select(report => report.Id).Should().Equal(oldest.Id, middle.Id, newest.Id);
+    }
+
+    [Fact]
+    public async Task ListingReports_ReturnsAtMostTenOldestReportsOfARowButCountsAll()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        Post post = await NotificationTestData.AddPostAsync(_factory, author);
+        List<Report> reports = [];
+        for (int index = 0; index < 12; index++)
+        {
+            User reporter = await NotificationTestData.AddUserAsync(_factory, $"identity-id-reporter-{index}", $"username-reporter-{index}");
+            reports.Add(await AddReportForPostAsync(reporter, post, ReportReason.Spam));
+            _factory.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        }
+
+        OffsetPageResponse<ReportQueueItemResponse> page = await GetPageAsync("/api/v1/reports");
+
+        ReportQueueItemResponse item = page.Items.Should().ContainSingle().Subject;
+        item.OpenReportCount.Should().Be(12);
+        item.Reasons.Should().Equal(new ReportReasonCountResponse("Spam", 12));
+        item.Reports.Select(report => report.Id).Should().Equal(reports.Take(10).Select(report => report.Id));
+    }
+
+    [Fact]
+    public async Task ListingReports_LeavesOutDeletedTargetsAndKeepsASuspendedUser()
+    {
+        User admin = await AddAdminAsync("identity-id", "username");
+        User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-3", "username-3");
+        User deletedUser = await NotificationTestData.AddUserAsync(_factory, "identity-id-4", "username-4");
+        User suspended = await NotificationTestData.AddUserAsync(_factory, "identity-id-5", "username-5");
+        Post deletedPost = await NotificationTestData.AddPostAsync(_factory, author);
+        await AddReportForPostAsync(reporter, deletedPost, ReportReason.Spam);
+        await AddReportForUserAsync(reporter, deletedUser, ReportReason.Spam);
+        await AddReportForUserAsync(reporter, suspended, ReportReason.Spam);
+        await NotificationTestData.DeletePostAsync(_factory, deletedPost);
+        await NotificationTestData.DeleteUserAsync(_factory, deletedUser);
+        await _factory.ExecuteDbContextAsync(async db =>
+        {
+            User stored = await db.Set<User>().SingleAsync(u => u.Id == suspended.Id, TestContext.Current.CancellationToken);
+            stored.Suspend("reason", admin.Id, _factory.TimeProvider.GetUtcNow());
+            return await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+
+        OffsetPageResponse<ReportQueueItemResponse> page = await GetPageAsync("/api/v1/reports");
+
+        page.TotalCount.Should().Be(1);
+        ReportQueueItemResponse item = page.Items.Should().ContainSingle().Subject;
+        item.TargetUserId.Should().Be(suspended.Id);
+        item.User!.IsSuspended.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ListingReports_FiltersByTargetTypeAndByAnyReasonOfARowWhileCountingAllItsReasons()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User reporterOne = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        User reporterTwo = await NotificationTestData.AddUserAsync(_factory, "identity-id-3", "username-3");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-4", "username-4");
+        Post post = await NotificationTestData.AddPostAsync(_factory, author);
+        await AddReportForPostAsync(reporterOne, post, ReportReason.Spam);
+        await AddReportForPostAsync(reporterTwo, post, ReportReason.Violence);
+        await AddReportForUserAsync(reporterOne, author, ReportReason.Harassment);
+
+        OffsetPageResponse<ReportQueueItemResponse> posts = await GetPageAsync("/api/v1/reports?targetType=Post");
+        OffsetPageResponse<ReportQueueItemResponse> users = await GetPageAsync("/api/v1/reports?targetType=User");
+        OffsetPageResponse<ReportQueueItemResponse> violence = await GetPageAsync("/api/v1/reports?reason=Violence");
+        OffsetPageResponse<ReportQueueItemResponse> none = await GetPageAsync("/api/v1/reports?targetType=User&reason=Violence");
+
+        posts.TotalCount.Should().Be(1);
+        posts.Items.Should().ContainSingle().Which.TargetType.Should().Be("Post");
+        users.TotalCount.Should().Be(1);
+        users.Items.Should().ContainSingle().Which.TargetType.Should().Be("User");
+        violence.TotalCount.Should().Be(1);
+        violence.Items.Should().ContainSingle().Which.Reasons.Should().HaveCount(2);
+        none.TotalCount.Should().Be(0);
+        none.Items.Should().BeEmpty();
     }
 
     [Fact]
@@ -259,6 +373,9 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
         body.GetProperty("page").GetInt32().Should().Be(1);
         body.GetProperty("pageSize").GetInt32().Should().Be(20);
         body.GetProperty("totalCount").GetInt32().Should().Be(1);
+        body.GetProperty("items")[0].EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+            "targetType", "targetPostId", "targetUserId", "openReportCount", "reasons", "oldestReportedAt",
+            "reportId", "post", "user", "reports");
     }
 
     [Fact]
@@ -274,13 +391,13 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
             _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
         }
 
-        OffsetPageResponse<ReportResponse> middle = await GetPageAsync("/api/v1/reports?pageSize=2&page=2");
-        OffsetPageResponse<ReportResponse> last = await GetPageAsync("/api/v1/reports?pageSize=2&page=3");
-        OffsetPageResponse<ReportResponse> pastEnd = await GetPageAsync("/api/v1/reports?pageSize=2&page=99");
-        OffsetPageResponse<ReportResponse> hugePage = await GetPageAsync($"/api/v1/reports?pageSize=50&page={int.MaxValue}");
+        OffsetPageResponse<ReportQueueItemResponse> middle = await GetPageAsync("/api/v1/reports?pageSize=2&page=2");
+        OffsetPageResponse<ReportQueueItemResponse> last = await GetPageAsync("/api/v1/reports?pageSize=2&page=3");
+        OffsetPageResponse<ReportQueueItemResponse> pastEnd = await GetPageAsync("/api/v1/reports?pageSize=2&page=99");
+        OffsetPageResponse<ReportQueueItemResponse> hugePage = await GetPageAsync($"/api/v1/reports?pageSize=50&page={int.MaxValue}");
 
-        middle.Items.Select(item => item.Id).Should().Equal(reports[2].Id, reports[3].Id);
-        last.Items.Select(item => item.Id).Should().Equal(reports[4].Id);
+        middle.Items.Select(item => item.ReportId).Should().Equal(reports[2].Id, reports[3].Id);
+        last.Items.Select(item => item.ReportId).Should().Equal(reports[4].Id);
         pastEnd.Items.Should().BeEmpty();
         pastEnd.Page.Should().Be(99);
         pastEnd.TotalCount.Should().Be(5);
@@ -300,8 +417,8 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
             _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
         }
 
-        OffsetPageResponse<ReportResponse> smallest = await GetPageAsync("/api/v1/reports?pageSize=1");
-        OffsetPageResponse<ReportResponse> largest = await GetPageAsync("/api/v1/reports?pageSize=50");
+        OffsetPageResponse<ReportQueueItemResponse> smallest = await GetPageAsync("/api/v1/reports?pageSize=1");
+        OffsetPageResponse<ReportQueueItemResponse> largest = await GetPageAsync("/api/v1/reports?pageSize=50");
 
         smallest.Items.Should().ContainSingle();
         smallest.TotalCount.Should().Be(3);
@@ -310,27 +427,28 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task ListingReports_OrdersReportsMadeAtTheSameInstantByIdAscendingOnEveryPage()
+    public async Task ListingReports_OrdersRowsWithTheSameOldestInstantByTargetIdOnEveryPage()
     {
         await AddAdminAsync("identity-id", "username");
         User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
-        List<Report> reports = [];
+        List<User> targets = [];
         for (int index = 0; index < 5; index++)
         {
             User target = await NotificationTestData.AddUserAsync(_factory, $"identity-id-target-{index}", $"username-target-{index}");
-            reports.Add(await AddReportForUserAsync(reporter, target, ReportReason.Spam));
+            targets.Add(target);
+            await AddReportForUserAsync(reporter, target, ReportReason.Spam);
         }
 
-        List<Guid> expected = reports.Select(report => report.Id).Order().ToList();
+        List<Guid> expected = targets.Select(target => target.Id).Order().ToList();
 
-        OffsetPageResponse<ReportResponse> firstPage = await GetPageAsync("/api/v1/reports?pageSize=2&page=1");
-        OffsetPageResponse<ReportResponse> secondPage = await GetPageAsync("/api/v1/reports?pageSize=2&page=2");
-        OffsetPageResponse<ReportResponse> thirdPage = await GetPageAsync("/api/v1/reports?pageSize=2&page=3");
-        OffsetPageResponse<ReportResponse> repeated = await GetPageAsync("/api/v1/reports?pageSize=2&page=1");
+        OffsetPageResponse<ReportQueueItemResponse> firstPage = await GetPageAsync("/api/v1/reports?pageSize=2&page=1");
+        OffsetPageResponse<ReportQueueItemResponse> secondPage = await GetPageAsync("/api/v1/reports?pageSize=2&page=2");
+        OffsetPageResponse<ReportQueueItemResponse> thirdPage = await GetPageAsync("/api/v1/reports?pageSize=2&page=3");
+        OffsetPageResponse<ReportQueueItemResponse> repeated = await GetPageAsync("/api/v1/reports?pageSize=2&page=1");
 
-        firstPage.Items.Concat(secondPage.Items).Concat(thirdPage.Items).Select(item => item.Id)
+        firstPage.Items.Concat(secondPage.Items).Concat(thirdPage.Items).Select(item => item.TargetUserId!.Value)
             .Should().Equal(expected);
-        repeated.Items.Select(item => item.Id).Should().Equal(firstPage.Items.Select(item => item.Id));
+        repeated.Items.Select(item => item.ReportId).Should().Equal(firstPage.Items.Select(item => item.ReportId));
     }
 
     [Theory]
@@ -338,6 +456,10 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
     [InlineData("?page=-1", "page")]
     [InlineData("?pageSize=0", "pageSize")]
     [InlineData("?pageSize=51", "pageSize")]
+    [InlineData("?targetType=Comment", "targetType")]
+    [InlineData("?targetType=post", "targetType")]
+    [InlineData("?reason=Unknown", "reason")]
+    [InlineData("?reason=spam", "reason")]
     public async Task ListingReportsWithAnInvalidQuery_ReturnsValidationProblem(string query, string field)
     {
         await AddAdminAsync("identity-id", "username");
@@ -448,13 +570,13 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be(code);
     }
 
-    private async Task<OffsetPageResponse<ReportResponse>> GetPageAsync(string uri)
+    private async Task<OffsetPageResponse<ReportQueueItemResponse>> GetPageAsync(string uri)
     {
         using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Get, uri);
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        return (await response.Content.ReadFromJsonAsync<OffsetPageResponse<ReportResponse>>(TestContext.Current.CancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync<OffsetPageResponse<ReportQueueItemResponse>>(TestContext.Current.CancellationToken))!;
     }
 
     private async Task<User> AddAdminAsync(string identityId, string username)

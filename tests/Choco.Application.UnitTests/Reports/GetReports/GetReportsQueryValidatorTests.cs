@@ -7,7 +7,7 @@ namespace Choco.Application.UnitTests.Reports.GetReports;
 
 public sealed class GetReportsQueryValidatorTests
 {
-    private static readonly GetReportsQuery ValidQuery = new(GetReportsQuery.DefaultPage, GetReportsQuery.DefaultPageSize);
+    private static readonly GetReportsQuery ValidQuery = new(null, null, GetReportsQuery.DefaultPage, GetReportsQuery.DefaultPageSize);
 
     private readonly GetReportsQueryValidator _validator = new();
 
@@ -65,5 +65,58 @@ public sealed class GetReportsQueryValidatorTests
         TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
 
         result.ShouldHaveValidationErrorFor(q => q.PageSize).Only();
+    }
+
+    [Theory]
+    [InlineData("Post")]
+    [InlineData("User")]
+    public void Validate_WithKnownTargetType_HasNoErrors(string targetType)
+    {
+        GetReportsQuery query = ValidQuery with { TargetType = targetType };
+
+        TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
+
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("post")]
+    [InlineData("Comment")]
+    public void Validate_WithUnknownTargetType_HasTargetTypeError(string targetType)
+    {
+        GetReportsQuery query = ValidQuery with { TargetType = targetType };
+
+        TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
+
+        result.ShouldHaveValidationErrorFor(q => q.TargetType).Only();
+    }
+
+    [Theory]
+    [InlineData("Spam")]
+    [InlineData("Harassment")]
+    [InlineData("HateSpeech")]
+    [InlineData("Violence")]
+    [InlineData("Other")]
+    public void Validate_WithKnownReason_HasNoErrors(string reason)
+    {
+        GetReportsQuery query = ValidQuery with { Reason = reason };
+
+        TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
+
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("spam")]
+    [InlineData("Unknown")]
+    public void Validate_WithUnknownReason_HasReasonError(string reason)
+    {
+        GetReportsQuery query = ValidQuery with { Reason = reason };
+
+        TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
+
+        result.ShouldHaveValidationErrorFor(q => q.Reason).Only();
     }
 }
