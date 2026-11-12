@@ -61,6 +61,55 @@ public sealed class AdminRolesController : ApiController
             : HandleFailure(result);
     }
 
+    /// <summary>Changes the name and permissions of a role.</summary>
+    /// <remarks>Only a caller with the permission to update roles may call it. It replaces both the name and the whole set of permissions, so sending the same body again changes nothing. System roles and the default role can be changed too; their key stays. The caller must hold every permission the role has now and every permission in the body, and cannot change a role assigned to the caller. The change applies to the role's holders on their next request. Leading and trailing whitespace is removed from the name.</remarks>
+    /// <param name="id" example="00000000-0000-0000-0000-000000000001">The role's id.</param>
+    /// <param name="command">The new name and permissions.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The role with its new name and permissions.</response>
+    /// <response code="400">The id is empty, the name is missing, blank or too long, or a permission is not in the catalog; errors lists the field.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller may not update roles, holds the role, or lacks a permission of the role or of the body.</response>
+    /// <response code="404">No role has this id.</response>
+    /// <response code="409">Another role already has this name, ignoring case.</response>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(RoleResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateRoleCommand command, CancellationToken cancellationToken)
+    {
+        Result<RoleResponse> result = await Sender.Send(command with { Id = id }, cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
+    /// <summary>Deletes a role.</summary>
+    /// <remarks>Only a caller with the permission to delete roles may call it. Everyone who holds the role loses it. The default role and roles the system created cannot be deleted. The caller must hold every permission of the role and cannot delete a role assigned to the caller. A deleted role is no longer found, so deleting it again returns 404.</remarks>
+    /// <param name="id" example="00000000-0000-0000-0000-000000000001">The role's id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="204">The role was deleted.</response>
+    /// <response code="400">The id is empty.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller may not delete roles, holds the role, or lacks a permission of the role.</response>
+    /// <response code="404">No role has this id.</response>
+    /// <response code="409">The role is the default role or was created by the system.</response>
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        Result<RoleResponse> result = await Sender.Send(new DeleteRoleCommand(id), cancellationToken);
+
+        return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
+
     /// <summary>Gets one role with the permissions it holds.</summary>
     /// <remarks>Only a caller with the permission to read roles may call it. The role's permissions are in alphabetical order.</remarks>
     /// <param name="id" example="00000000-0000-0000-0000-000000000001">The role's id.</param>

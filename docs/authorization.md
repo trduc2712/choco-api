@@ -18,7 +18,9 @@ Rules on assigning and revoking roles:
 - Assigning or revoking a role needs `roles.assign`.
 - Listing roles (`GET /api/v1/admin/roles`), reading one role (`GET /api/v1/admin/roles/{id}`) and listing the permissions of the catalog (`GET /api/v1/admin/permissions`) need `roles.read`. `roles.assign` does not include it, so a user who may assign roles but not read them gets `403`.
 - Creating a role (`POST /api/v1/admin/roles`) needs `roles.create`, and the new role may only list permissions the caller holds (`403` otherwise). Role names are unique ignoring case (`409 Role.NameTaken`). A created role is never the default role and has no system key.
-- `roles.update` and `roles.delete` are in the catalog for the endpoints that change and delete roles; no endpoint checks them yet.
+- Changing a role (`PUT /api/v1/admin/roles/{id}`) needs `roles.update`. It replaces the name and the whole set of permissions. The caller must hold every permission the role has now and every permission in the body, so nobody lowers or raises a role beyond their own power (`403`). The default role and system roles can be changed; their key stays.
+- Deleting a role (`DELETE /api/v1/admin/roles/{id}`) needs `roles.delete`, and the caller must hold every permission of the role. Everyone who holds it loses it. The default role and roles the system created cannot be deleted (`409`).
+- A caller cannot change or delete a role assigned to them (`403 Role.HeldByCaller`). The default role does not count as assigned, because every signed-in user has it without a `user_roles` row, so it can be changed.
 - A user can only assign or revoke a role whose permissions they all hold themselves, so nobody hands out more power than they have.
 - The default role cannot be assigned or revoked.
 - The last administrator cannot lose the administrator role (`409 Role.LastAdministrator`).
@@ -52,5 +54,4 @@ The seeder only creates system roles that are missing; it never changes a role t
 
 ## Known Gaps
 
-- There are no endpoints to create, rename or delete roles or to change their permissions. Changing a role needs a migration.
 - A request with an authorizer whose endpoint does not declare `403` is missing `403` in the OpenAPI document, and nothing reports it.
