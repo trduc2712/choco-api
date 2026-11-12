@@ -73,6 +73,9 @@ erDiagram
   varchar_64_ identity_id
   boolean is_deleted
   timestamp_with_time_zone modified_at
+  timestamp_with_time_zone suspended_at
+  uuid suspended_by FK
+  varchar_150_ suspension_reason
   varchar_64_ username
 }
 "public.comments" {

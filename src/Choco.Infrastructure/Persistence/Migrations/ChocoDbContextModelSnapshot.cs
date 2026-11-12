@@ -749,6 +749,22 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .HasColumnName("modified_at")
                         .HasComment("When the row was last changed.");
 
+                    b.Property<DateTimeOffset?>("SuspendedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("suspended_at")
+                        .HasComment("When an administrator suspended the user; null when the user is not suspended. A suspended user can read but cannot create or change anything.");
+
+                    b.Property<Guid?>("SuspendedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("suspended_by")
+                        .HasComment("Administrator who suspended the user; null when the user is not suspended.");
+
+                    b.Property<string>("SuspensionReason")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("suspension_reason")
+                        .HasComment("Why the user was suspended, shown to the user; null when the user is not suspended.");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -762,6 +778,9 @@ namespace Choco.Infrastructure.Persistence.Migrations
                     b.HasIndex("IdentityId")
                         .IsUnique()
                         .HasDatabaseName("ix_users_identity_id");
+
+                    b.HasIndex("SuspendedBy")
+                        .HasDatabaseName("ix_users_suspended_by");
 
                     b.HasIndex("Username")
                         .IsUnique()
@@ -963,6 +982,15 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_user_follows_users_follower_id");
+                });
+
+            modelBuilder.Entity("Choco.Domain.Users.User", b =>
+                {
+                    b.HasOne("Choco.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("SuspendedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_users_users_suspended_by");
                 });
 
             modelBuilder.Entity("Choco.Domain.Users.UserRole", b =>

@@ -154,6 +154,13 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
         return users;
     }
 
+    public Task<int> CountActiveWithRoleAsync(Guid roleId, CancellationToken cancellationToken = default)
+    {
+        return DbSet.CountAsync(
+            user => user.SuspendedAt == null && user.Roles.Any(userRole => userRole.RoleId == roleId),
+            cancellationToken);
+    }
+
     public Task<int> CountWithRoleAsync(Guid roleId, CancellationToken cancellationToken = default)
     {
         return DbSet.CountAsync(user => user.Roles.Any(userRole => userRole.RoleId == roleId), cancellationToken);
