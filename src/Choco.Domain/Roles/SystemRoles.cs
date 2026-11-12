@@ -8,7 +8,7 @@ public static class SystemRoles
     public static readonly IReadOnlyList<SystemRoleDefinition> All =
     [
         new(Member, "Member", IsDefault: true, Permissions: []),
-        new(Admin, "Administrator", IsDefault: false, Permissions: [Permission.AssignRoles, Permission.DeleteAnyPost, Permission.DeleteAnyComment, Permission.HandleReports, Permission.ReadAnyFeedback, Permission.ChangeFeedbackStatus, Permission.ReadAuditLog])
+        new(Admin, "Administrator", IsDefault: false, Permissions: [Permission.AssignRoles, Permission.ReadRoles, Permission.CreateRoles, Permission.UpdateRoles, Permission.DeleteRoles, Permission.DeleteAnyPost, Permission.DeleteAnyComment, Permission.HandleReports, Permission.ReadAnyFeedback, Permission.ChangeFeedbackStatus, Permission.ReadAuditLog])
     ];
 }
 
