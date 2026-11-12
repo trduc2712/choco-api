@@ -13,6 +13,6 @@ internal sealed class ResolveReportCommandValidator : AbstractValidator<ResolveR
 
         RuleFor(command => command.Outcome)
             .Must(outcome => ReportEnums.TryParse<ReportOutcome>(outcome, out _))
-            .WithMessage("'{PropertyName}' must be one of: Dismissed, ActionTaken.");
+            .WithMessage("'{PropertyName}' must be one of: Dismissed, ContentRemoved, UserSuspended.");
     }
 }

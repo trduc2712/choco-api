@@ -43,6 +43,29 @@ internal sealed class ReportRepository : Repository<Report>, IReportRepository
             .ToListAsync(cancellationToken);
     }
 
+    public Task<Report?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return DbSet.AsNoTracking().FirstOrDefaultAsync(report => report.Id == id, cancellationToken);
+    }
+
+    public async Task ResolveOpenAboutTheSameTargetAsync(
+        Report report, ReportOutcome outcome, Guid resolverId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        IQueryable<Report> open = DbSet.Where(other => other.Status == ReportStatus.Open);
+
+        open = report.TargetType == ReportTargetType.Post
+            ? open.Where(other => other.TargetPostId == report.TargetPostId)
+            : open.Where(other => other.TargetUserId == report.TargetUserId);
+
+        await open.ExecuteUpdateAsync(
+            setters => setters
+                .SetProperty(other => other.Status, ReportStatus.Resolved)
+                .SetProperty(other => other.Outcome, (ReportOutcome?)outcome)
+                .SetProperty(other => other.ResolvedById, (Guid?)resolverId)
+                .SetProperty(other => other.ResolvedAt, (DateTimeOffset?)now),
+            cancellationToken);
+    }
+
     public Task<int> CountOpenAsync(CancellationToken cancellationToken)
     {
         return DbSet.AsNoTracking().CountAsync(report => report.Status == ReportStatus.Open, cancellationToken);

@@ -479,7 +479,7 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("outcome")
-                        .HasComment("Decision on the report, Dismissed or ActionTaken; null while open.");
+                        .HasComment("Decision on the report: Dismissed, ContentRemoved or UserSuspended; null while open.");
 
                     b.Property<string>("Reason")
                         .IsRequired()

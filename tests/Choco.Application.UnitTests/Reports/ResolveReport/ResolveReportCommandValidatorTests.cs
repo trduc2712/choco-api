@@ -14,7 +14,8 @@ public sealed class ResolveReportCommandValidatorTests
 
     [Theory]
     [InlineData("Dismissed")]
-    [InlineData("ActionTaken")]
+    [InlineData("ContentRemoved")]
+    [InlineData("UserSuspended")]
     public void Validate_WithKnownOutcome_HasNoErrors(string outcome)
     {
         ResolveReportCommand command = ValidCommand with { Outcome = outcome };
@@ -22,6 +23,19 @@ public sealed class ResolveReportCommandValidatorTests
         TestValidationResult<ResolveReportCommand> result = _validator.TestValidate(command);
 
         result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Theory]
+    [InlineData("ActionTaken")]
+    [InlineData("dismissed")]
+    [InlineData("")]
+    public void Validate_WithAnOutcomeThatNoLongerExistsOrIsMisspelled_HasOutcomeError(string outcome)
+    {
+        ResolveReportCommand command = ValidCommand with { Outcome = outcome };
+
+        TestValidationResult<ResolveReportCommand> result = _validator.TestValidate(command);
+
+        result.ShouldHaveValidationErrorFor(c => c.Outcome).Only();
     }
 
     [Fact]

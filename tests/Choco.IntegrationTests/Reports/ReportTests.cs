@@ -369,10 +369,10 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
         User target = await NotificationTestData.AddUserAsync(_factory, "identity-id-3", "username-3");
         Report report = await AddReportForUserAsync(reporter, target, ReportReason.Spam);
         DateTimeOffset resolvedAt = _factory.TimeProvider.GetUtcNow();
-        using HttpRequestMessage first = PutRequest($"/api/v1/reports/{report.Id}/resolution", new { outcome = "ActionTaken" });
+        using HttpRequestMessage first = PutRequest($"/api/v1/reports/{report.Id}/resolution", new { outcome = "Dismissed" });
         using HttpResponseMessage firstResponse = await _client.SendAsync(first, TestContext.Current.CancellationToken);
         _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
-        using HttpRequestMessage second = PutRequest($"/api/v1/reports/{report.Id}/resolution", new { outcome = "Dismissed" });
+        using HttpRequestMessage second = PutRequest($"/api/v1/reports/{report.Id}/resolution", new { outcome = "UserSuspended" });
 
         using HttpResponseMessage secondResponse = await _client.SendAsync(second, TestContext.Current.CancellationToken);
 
@@ -380,9 +380,11 @@ public sealed class ReportTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
         secondResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
         Report stored = (await GetReportsAsync()).Should().ContainSingle().Subject;
         stored.Status.Should().Be(ReportStatus.Resolved);
-        stored.Outcome.Should().Be(ReportOutcome.ActionTaken);
+        stored.Outcome.Should().Be(ReportOutcome.Dismissed);
         stored.ResolvedById.Should().Be(admin.Id);
         stored.ResolvedAt.Should().Be(resolvedAt);
+        (await _factory.ExecuteDbContextAsync(dbContext => dbContext.Set<User>().AsNoTracking()
+            .SingleAsync(user => user.Id == target.Id, TestContext.Current.CancellationToken))).IsSuspended.Should().BeFalse();
     }
 
     [Fact]

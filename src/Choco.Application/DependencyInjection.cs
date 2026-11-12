@@ -29,6 +29,7 @@ public static class DependencyInjection
 
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<Users.MyProfileWriter>();
+        services.AddScoped<Users.UserSuspender>();
         services.AddScoped<Posts.PostResponseReader>();
         services.AddScoped<Posts.VisiblePostFinder>();
         services.AddScoped<Notifications.NotificationDispatcher>();
