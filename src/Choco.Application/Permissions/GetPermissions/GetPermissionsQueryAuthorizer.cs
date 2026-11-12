@@ -8,6 +8,6 @@ internal sealed class GetPermissionsQueryAuthorizer : IAuthorizer<GetPermissions
 {
     public PermissionRequirement GetRequirement(GetPermissionsQuery request)
     {
-        return new PermissionRequirement(Permission.AssignRoles, PermissionScope.Platform);
+        return new PermissionRequirement(Permission.ReadRoles, PermissionScope.Platform);
     }
 }
