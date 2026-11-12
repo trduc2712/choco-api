@@ -104,7 +104,7 @@ public sealed class GetRolesTests : IClassFixture<ChocoApiFactory>, IAsyncLifeti
 
         JsonElement[] roles = (await GetJsonAsync()).EnumerateArray().ToArray();
 
-        roles.Select(role => role.GetProperty("name").GetString()).Should().Equal("Administrator", "Member");
+        roles.Select(role => role.GetProperty("name").GetString()).Should().Equal("Administrator", "Member", "Moderator");
         JsonElement admin = roles[0];
         admin.GetProperty("id").GetGuid().Should().Be(adminRoleId);
         admin.GetProperty("systemKey").GetString().Should().Be(SystemRoles.Admin);

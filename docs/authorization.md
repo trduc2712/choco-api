@@ -29,6 +29,22 @@ Rules on assigning and revoking roles:
 - The last administrator cannot lose the administrator role (`409 Role.LastAdministrator`).
 - Assigning a role the user already holds, or revoking one they do not hold, changes nothing.
 
+## System Roles
+
+The seeder creates these roles when migrations are applied, so a role added later appears in every environment at its next
+deploy. It never changes a role that exists; see [Adding a Permission](#adding-a-permission).
+
+| Role | Key | Permissions |
+|---|---|---|
+| Member | `member` | none. It is the default role: every signed-in user has it without being assigned it. |
+| Moderator | `moderator` | `reports.handle`, `posts.delete-any`, `comments.delete-any`, `content.read-any`, `users.read-any`, `users.suspend` |
+| Administrator | `admin` | every permission of the catalog |
+
+A moderator works the moderation queue: handles reports, removes posts and comments, reads any post, comment and user, and
+suspends users. A moderator cannot hand out power or read what is not moderation: no `roles.*` permission, no
+`audit-log.read`, no `feedback.read-any` or `feedback.change-status`. Because a user can only suspend someone whose
+permissions they all hold, a moderator can suspend members and other moderators but not an administrator.
+
 ## Suspended Users
 
 An administrator with `users.suspend` can suspend a user with a reason. A suspended user can still sign in and read, but
@@ -64,7 +80,7 @@ A new environment has no administrator, so nobody can assign roles. The first ad
 
 The assignment records no assigner (`assigned_by` is null). It only adds the role: removing an id from the setting does not revoke anything. Revoke a role with `DELETE /api/v1/users/{userId}/roles/{roleId}`.
 
-If the setting is not empty and the API cannot reach the database at start, the API does not start. The administrator role is created by the migration that adds the `roles` table, so apply the setting after that migration has run in the environment; before it, the deployed code ignores the setting.
+If the setting is not empty and the API cannot reach the database at start, the API does not start. The administrator role is created by the seeder when migrations are applied to the environment, so apply the setting after that has happened; before it, the deployed code ignores the setting.
 
 ## Adding a Permission
 
