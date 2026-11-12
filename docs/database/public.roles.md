@@ -33,6 +33,7 @@ Named sets of permissions that users can hold. Roles and their permissions can c
 | Name                | Definition                                                                                        |
 | ------------------- | ------------------------------------------------------------------------------------------------- |
 | ix_roles_is_default | CREATE UNIQUE INDEX ix_roles_is_default ON public.roles USING btree (is_default) WHERE is_default |
+| ix_roles_name       | CREATE UNIQUE INDEX ix_roles_name ON public.roles USING btree (lower((name)::text))               |
 | ix_roles_system_key | CREATE UNIQUE INDEX ix_roles_system_key ON public.roles USING btree (system_key)                  |
 | pk_roles            | CREATE UNIQUE INDEX pk_roles ON public.roles USING btree (id)                                     |
 

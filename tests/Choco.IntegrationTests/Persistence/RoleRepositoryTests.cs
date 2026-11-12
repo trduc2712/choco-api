@@ -95,6 +95,30 @@ public sealed class RoleRepositoryTests : IClassFixture<ChocoApiFactory>, IAsync
         permissions.Should().ContainSingle().Which.Should().Be(Permission.AssignRoles);
     }
 
+    [Fact]
+    public async Task NameExists_IgnoresCase()
+    {
+        await AddAsync(CreateRole("Role-Name", isDefault: false, []));
+        using IServiceScope scope = _factory.Services.CreateScope();
+        IRoleRepository roleRepository = scope.ServiceProvider.GetRequiredService<IRoleRepository>();
+
+        bool sameNameInOtherCase = await roleRepository.NameExistsAsync("rOLE-nAME", TestContext.Current.CancellationToken);
+        bool otherName = await roleRepository.NameExistsAsync("other-name", TestContext.Current.CancellationToken);
+
+        sameNameInOtherCase.Should().BeTrue();
+        otherName.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RolesWhoseNamesDifferOnlyInCase_CannotBothBeSaved()
+    {
+        await AddAsync(CreateRole("role-name", isDefault: false, []));
+
+        Func<Task> act = () => AddAsync(CreateRole("ROLE-NAME", isDefault: false, []));
+
+        await act.Should().ThrowAsync<DbUpdateException>();
+    }
+
     private static Role CreateRole(string key, bool isDefault, IReadOnlyCollection<string> permissions)
     {
         return Role.CreateSystem(new SystemRoleDefinition(key, key, isDefault, permissions));

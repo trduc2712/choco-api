@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 
 using Choco.Domain.AuditLogs;
 using Choco.Domain.Users;
@@ -20,6 +21,21 @@ public sealed class RoleAuditTests(ChocoApiFactory factory) : AuditTestsBase(fac
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, administrator.Id, AuditAction.RoleAssigned, AuditTargetType.User, member.Id, member.Id, "Role: Administrator");
+    }
+
+    [Fact]
+    public async Task CreateRole_RecordsRoleCreatedWithTheRoleName()
+    {
+        Guid administratorRoleId = await GetAdministratorRoleIdAsync();
+        User administrator = await AddUserAsync("identity-id", "username", administratorRoleId);
+        using HttpRequestMessage request = Request(HttpMethod.Post, "/api/v1/admin/roles", new { name = "Reviewer", permissions = new[] { "reports.handle" } });
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        System.Text.Json.JsonElement body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(TestContext.Current.CancellationToken);
+        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
+        ShouldBeEntry(entry, administrator.Id, AuditAction.RoleCreated, AuditTargetType.Role, body.GetProperty("id").GetGuid(), detail: "Role: Reviewer");
     }
 
     [Fact]

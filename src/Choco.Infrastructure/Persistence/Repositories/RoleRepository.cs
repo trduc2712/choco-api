@@ -43,6 +43,13 @@ internal sealed class RoleRepository : Repository<Role>, IRoleRepository
         return DbSet.AsNoTracking().FirstOrDefaultAsync(role => role.Id == id, cancellationToken);
     }
 
+    public Task<bool> NameExistsAsync(string name, CancellationToken cancellationToken = default)
+    {
+        string lowered = name.ToLower();
+
+        return DbSet.AnyAsync(role => role.Name.ToLower() == lowered, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Role>> ListForReadAsync(CancellationToken cancellationToken = default)
     {
         return await DbSet

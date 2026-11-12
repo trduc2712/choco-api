@@ -25,7 +25,7 @@ public sealed class AdminAuditLogsController : ApiController
     /// <remarks>Only a caller with the permission to read the audit log may call it. Entries cannot be changed or deleted through the API. Use the filters to narrow the list; leave them out for every entry. A time range includes from and excludes to. Pages are numbered from 1. The response carries the page, the page size and totalCount, the number of entries that match the filters across all pages. A page past the last one is not an error; its items are empty. The source address and user agent of a request are not part of the response.</remarks>
     /// <param name="actorId" example="00000000-0000-0000-0000-000000000001">Only entries made by this user.</param>
     /// <param name="action" example="PostDeleted">Only entries of this action, such as PostDeleted or RoleAssigned.</param>
-    /// <param name="targetType" example="Post">Only entries about this kind of object: Post, Comment, User, Report or Feedback.</param>
+    /// <param name="targetType" example="Post">Only entries about this kind of object: Post, Comment, User, Report, Feedback or Role.</param>
     /// <param name="targetId" example="00000000-0000-0000-0000-000000000002">Only entries about the object with this id.</param>
     /// <param name="affectedUserId" example="00000000-0000-0000-0000-000000000003">Only entries that affected this user.</param>
     /// <param name="from" example="2026-01-01T00:00:00+00:00">Only entries at or after this time.</param>

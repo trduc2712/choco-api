@@ -10,7 +10,7 @@ namespace Choco.Contract.AuditLogs;
 /// <param name="ActorRoles">The names of the roles the actor held when the action happened.</param>
 /// <param name="ClientId">The client application that sent the request, or null when it is unknown.</param>
 /// <param name="Action">What was done, such as PostDeleted or RoleAssigned.</param>
-/// <param name="TargetType">The kind of object the action was done to: Post, Comment, User, Report or Feedback.</param>
+/// <param name="TargetType">The kind of object the action was done to: Post, Comment, User, Report, Feedback or Role.</param>
 /// <param name="TargetId">The id of the object the action was done to.</param>
 /// <param name="AffectedUser">The user whose data or account the action changed, when it is not the actor; null otherwise.</param>
 /// <param name="Detail">A short note that qualifies the action, such as a role name or a new status; null when there is none.</param>
