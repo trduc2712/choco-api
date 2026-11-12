@@ -13,14 +13,7 @@ internal sealed class GetRolesQueryHandler(IRoleRepository roleRepository)
     {
         IReadOnlyList<Role> roles = await roleRepository.ListForReadAsync(cancellationToken);
 
-        IReadOnlyList<RoleResponse> response = roles
-            .Select(role => new RoleResponse(
-                role.Id,
-                role.SystemKey,
-                role.Name,
-                role.IsDefault,
-                role.Permissions.Order(StringComparer.Ordinal).ToList()))
-            .ToList();
+        IReadOnlyList<RoleResponse> response = roles.Select(role => role.ToResponse()).ToList();
 
         return Result<IReadOnlyList<RoleResponse>>.Success(response);
     }

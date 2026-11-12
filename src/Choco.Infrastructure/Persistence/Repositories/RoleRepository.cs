@@ -38,6 +38,11 @@ internal sealed class RoleRepository : Repository<Role>, IRoleRepository
             .Where(role => role.IsDefault || assignedRoleIds.Contains(role.Id));
     }
 
+    public Task<Role?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return DbSet.AsNoTracking().FirstOrDefaultAsync(role => role.Id == id, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Role>> ListForReadAsync(CancellationToken cancellationToken = default)
     {
         return await DbSet
