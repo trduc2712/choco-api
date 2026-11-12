@@ -94,6 +94,25 @@ public sealed class ModerationAuditTests(ChocoApiFactory factory) : AuditTestsBa
     }
 
     [Fact]
+    public async Task ResolveReportOfAPostWithContentRemoved_RecordsTheOutcomeAndTheAuthorOfThePost()
+    {
+        User author = await AddUserAsync("identity-id-2", "username-2");
+        User reporter = await AddUserAsync("identity-id-3", "username-3");
+        User administrator = await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
+        Post post = await AddPostAsync(author);
+        Report report = Report.CreateForPost(reporter.Id, post.Id, author.Id, ReportReason.Spam, null, Factory.TimeProvider.GetUtcNow()).Value;
+        await AddAsync(report);
+        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/reports/{report.Id}/resolution", new { outcome = "ContentRemoved" });
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
+        ShouldBeEntry(
+            entry, administrator.Id, AuditAction.ReportResolved, AuditTargetType.Report, report.Id, author.Id, "Outcome: ContentRemoved");
+    }
+
+    [Fact]
     public async Task ResolveReportOfAUser_RecordsTheReportedUserAsAffectedUser()
     {
         User target = await AddUserAsync("identity-id-2", "username-2");
@@ -101,14 +120,14 @@ public sealed class ModerationAuditTests(ChocoApiFactory factory) : AuditTestsBa
         User administrator = await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
         Report report = Report.CreateForUser(reporter.Id, target.Id, ReportReason.Harassment, null, Factory.TimeProvider.GetUtcNow()).Value;
         await AddAsync(report);
-        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/reports/{report.Id}/resolution", new { outcome = "ActionTaken" });
+        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/reports/{report.Id}/resolution", new { outcome = "Dismissed" });
 
         using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.IsSuccessStatusCode.Should().BeTrue();
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(
-            entry, administrator.Id, AuditAction.ReportResolved, AuditTargetType.Report, report.Id, target.Id, "Outcome: ActionTaken");
+            entry, administrator.Id, AuditAction.ReportResolved, AuditTargetType.Report, report.Id, target.Id, "Outcome: Dismissed");
     }
 
     [Fact]

@@ -43,7 +43,7 @@ internal sealed class ReportConfiguration : IEntityTypeConfiguration<Report>
         builder.Property(report => report.Outcome)
             .HasConversion<string>()
             .HasMaxLength(Report.EnumMaxLength)
-            .HasComment("Decision on the report, Dismissed or ActionTaken; null while open.");
+            .HasComment("Decision on the report: Dismissed, ContentRemoved or UserSuspended; null while open.");
         builder.Property(report => report.ResolvedById).HasComment("Moderator who decided; null while open.");
         builder.Property(report => report.ResolvedAt).HasComment("When the decision was made; null while open.");
 

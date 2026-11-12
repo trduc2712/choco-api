@@ -117,10 +117,10 @@ public sealed class ReportTests
     {
         Report report = OpenReport();
 
-        report.Resolve(ReportOutcome.ActionTaken, ResolverId, ResolvedAt);
+        report.Resolve(ReportOutcome.ContentRemoved, ResolverId, ResolvedAt);
 
         report.Status.Should().Be(ReportStatus.Resolved);
-        report.Outcome.Should().Be(ReportOutcome.ActionTaken);
+        report.Outcome.Should().Be(ReportOutcome.ContentRemoved);
         report.ResolvedById.Should().Be(ResolverId);
         report.ResolvedAt.Should().Be(ResolvedAt);
     }
@@ -130,14 +130,60 @@ public sealed class ReportTests
     {
         Guid otherResolverId = new("00000000-0000-0000-0000-000000000006");
         Report report = OpenReport();
-        report.Resolve(ReportOutcome.ActionTaken, ResolverId, ResolvedAt);
+        report.Resolve(ReportOutcome.ContentRemoved, ResolverId, ResolvedAt);
 
         report.Resolve(ReportOutcome.Dismissed, otherResolverId, ResolvedAt.AddDays(1));
 
         report.Status.Should().Be(ReportStatus.Resolved);
-        report.Outcome.Should().Be(ReportOutcome.ActionTaken);
+        report.Outcome.Should().Be(ReportOutcome.ContentRemoved);
         report.ResolvedById.Should().Be(ResolverId);
         report.ResolvedAt.Should().Be(ResolvedAt);
+    }
+
+    [Theory]
+    [InlineData(ReportOutcome.Dismissed)]
+    [InlineData(ReportOutcome.ContentRemoved)]
+    [InlineData(ReportOutcome.UserSuspended)]
+    public void CheckOutcomeApplies_ForAReportAboutAPost_AcceptsEveryOutcome(ReportOutcome outcome)
+    {
+        Result result = OpenReport().CheckOutcomeApplies(outcome);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(ReportOutcome.Dismissed)]
+    [InlineData(ReportOutcome.UserSuspended)]
+    public void CheckOutcomeApplies_ForAReportAboutAUser_AcceptsDismissedAndUserSuspended(ReportOutcome outcome)
+    {
+        Report report = Report.CreateForUser(ReporterId, UserId, ReportReason.Harassment, null, CreatedAt).Value;
+
+        Result result = report.CheckOutcomeApplies(outcome);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CheckOutcomeApplies_ContentRemovedForAReportAboutAUser_ReturnsOutcomeNotApplicableError()
+    {
+        Report report = Report.CreateForUser(ReporterId, UserId, ReportReason.Harassment, null, CreatedAt).Value;
+
+        Result result = report.CheckOutcomeApplies(ReportOutcome.ContentRemoved);
+
+        result.Error.Should().Be(ReportErrors.OutcomeNotApplicable);
+    }
+
+    [Theory]
+    [InlineData(ReportReason.Spam, "Reported for spam")]
+    [InlineData(ReportReason.Harassment, "Reported for harassment")]
+    [InlineData(ReportReason.HateSpeech, "Reported for hate speech")]
+    [InlineData(ReportReason.Violence, "Reported for violence")]
+    [InlineData(ReportReason.Other, "Reported for other reasons")]
+    public void SuspensionReason_NamesTheReasonOfTheReportAndNothingElse(ReportReason reason, string expected)
+    {
+        Report report = Report.CreateForPost(ReporterId, PostId, PostAuthorId, reason, "details written by the reporter", CreatedAt).Value;
+
+        report.SuspensionReason.Should().Be(expected);
     }
 
     private static Report OpenReport()

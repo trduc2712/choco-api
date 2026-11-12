@@ -67,6 +67,15 @@ public sealed class Report : AggregateRoot
             Guid.NewGuid(), reporterId, ReportTargetType.User, null, userId, reason, NormalizeDetails(details), now));
     }
 
+    public string SuspensionReason => "Reported for " + ReasonInWords(Reason);
+
+    public Result CheckOutcomeApplies(ReportOutcome outcome)
+    {
+        return outcome == ReportOutcome.ContentRemoved && TargetType != ReportTargetType.Post
+            ? Result.Failure(ReportErrors.OutcomeNotApplicable)
+            : Result.Success();
+    }
+
     public void Resolve(ReportOutcome outcome, Guid resolverId, DateTimeOffset now)
     {
         if (Status == ReportStatus.Resolved)
@@ -78,6 +87,18 @@ public sealed class Report : AggregateRoot
         Outcome = outcome;
         ResolvedById = resolverId;
         ResolvedAt = now;
+    }
+
+    private static string ReasonInWords(ReportReason reason)
+    {
+        return reason switch
+        {
+            ReportReason.Spam => "spam",
+            ReportReason.Harassment => "harassment",
+            ReportReason.HateSpeech => "hate speech",
+            ReportReason.Violence => "violence",
+            _ => "other reasons"
+        };
     }
 
     private static string? NormalizeDetails(string? details)
