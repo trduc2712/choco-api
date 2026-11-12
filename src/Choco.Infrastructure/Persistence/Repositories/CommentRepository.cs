@@ -1,4 +1,5 @@
 using Choco.Domain.Comments;
+using Choco.Domain.Primitives.Entities;
 using Choco.Domain.UserBlocks;
 using Choco.Domain.Users;
 
@@ -21,6 +22,60 @@ internal sealed class CommentRepository : Repository<Comment>, ICommentRepositor
             .IgnoreQueryFilters()
             .AsNoTracking()
             .FirstOrDefaultAsync(comment => comment.Id == id, cancellationToken);
+    }
+
+    public Task<int> CountIncludingDeletedForReadAsync(CommentListFilter filter, CancellationToken cancellationToken = default)
+    {
+        return Filter(filter).CountAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Comment>> ListIncludingDeletedForReadAsync(
+        CommentListFilter filter, int skip, int take, CancellationToken cancellationToken = default)
+    {
+        return await Filter(filter)
+            .OrderByDescending(comment => comment.CreatedAt)
+            .ThenByDescending(comment => comment.Id)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
+    private IQueryable<Comment> Filter(CommentListFilter filter)
+    {
+        IQueryable<Comment> comments = DbSet.IgnoreQueryFilters().AsNoTracking();
+
+        comments = filter.State == ContentState.Deleted
+            ? comments.Where(comment => comment.IsDeleted)
+            : comments.Where(comment => !comment.IsDeleted);
+
+        foreach (string term in filter.Terms)
+        {
+            string pattern = LikePatterns.Contains(term);
+            comments = comments.Where(comment => EF.Functions.ILike(
+                EF.Functions.Unaccent(comment.Content), EF.Functions.Unaccent(pattern), LikePatterns.Escape));
+        }
+
+        if (filter.AuthorId is { } authorId)
+        {
+            comments = comments.Where(comment => comment.AuthorId == authorId);
+        }
+
+        if (filter.PostId is { } postId)
+        {
+            comments = comments.Where(comment => comment.PostId == postId);
+        }
+
+        if (filter.From is { } from)
+        {
+            comments = comments.Where(comment => comment.CreatedAt >= from);
+        }
+
+        if (filter.To is { } to)
+        {
+            comments = comments.Where(comment => comment.CreatedAt < to);
+        }
+
+        return comments;
     }
 
     public async Task<IReadOnlyList<Comment>> ListByPostForReadAsync(

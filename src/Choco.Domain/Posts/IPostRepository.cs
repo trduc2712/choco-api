@@ -8,6 +8,11 @@ public interface IPostRepository : IRepository<Post>
 
     Task<Post?> GetByIdIncludingDeletedForReadAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<int> CountIncludingDeletedForReadAsync(PostListFilter filter, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Post>> ListIncludingDeletedForReadAsync(
+        PostListFilter filter, int skip, int take, CancellationToken cancellationToken = default);
+
     Task<int> CountByAuthorForReadAsync(Guid authorId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Post>> ListByAuthorForReadAsync(

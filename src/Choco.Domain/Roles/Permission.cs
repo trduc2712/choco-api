@@ -16,6 +16,7 @@ public static class Permission
     public const string ChangeFeedbackStatus = "feedback.change-status";
     public const string ReadAuditLog = "audit-log.read";
     public const string ReadAnyUser = "users.read-any";
+    public const string ReadAnyContent = "content.read-any";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
@@ -30,6 +31,7 @@ public static class Permission
         ReadAnyFeedback,
         ChangeFeedbackStatus,
         ReadAuditLog,
-        ReadAnyUser
+        ReadAnyUser,
+        ReadAnyContent
     };
 }
