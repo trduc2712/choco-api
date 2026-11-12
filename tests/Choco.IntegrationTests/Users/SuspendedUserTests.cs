@@ -123,6 +123,30 @@ public sealed class SuspendedUserTests : IClassFixture<ChocoApiFactory>, IAsyncL
     }
 
     [Fact]
+    public async Task PostsAndCommentsOfASuspendedUser_StayVisibleToOthers()
+    {
+        User suspended = await AddUserAsync("identity-id-2", "username-2");
+        await AddUserAsync("identity-id", "username");
+        Choco.Domain.Posts.Post post = Choco.Domain.Posts.Post.Create("content", suspended.Id);
+        Choco.Domain.Comments.Comment comment = Choco.Domain.Comments.Comment.Create(post.Id, suspended.Id, "comment");
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Add(post);
+            dbContext.Add(comment);
+            dbContext.Set<User>().Single(user => user.Id == suspended.Id).Suspend("reason", suspended.Id, ChocoApiFactory.StartTime);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+
+        using HttpResponseMessage postResponse = await SendAsync("identity-id", HttpMethod.Get, $"/api/v1/posts/{post.Id}", null);
+        using HttpResponseMessage commentsResponse = await SendAsync("identity-id", HttpMethod.Get, $"/api/v1/posts/{post.Id}/comments", null);
+
+        postResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        commentsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement comments = await commentsResponse.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        comments.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("id").GetGuid()).Should().Equal(comment.Id);
+    }
+
+    [Fact]
     public async Task Me_OfASuspendedUser_CarriesTheReasonAndTheTime()
     {
         User user = await AddSuspendedUserAsync("identity-id", "reason");

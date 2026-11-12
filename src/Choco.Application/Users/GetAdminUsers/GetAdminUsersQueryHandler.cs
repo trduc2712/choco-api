@@ -14,7 +14,7 @@ internal sealed class GetAdminUsersQueryHandler(
     public async Task<Result<OffsetPageResponse<AdminUserResponse>>> Handle(
         GetAdminUsersQuery query, CancellationToken cancellationToken)
     {
-        UserState state = UserStates.TryParse(query.State, out UserState parsedState) ? parsedState : UserState.Active;
+        UserState? state = UserStates.TryParse(query.State, out UserState parsedState) ? parsedState : null;
         string? text = string.IsNullOrWhiteSpace(query.Q) ? null : query.Q.Trim();
         var filter = new UserListFilter(text, query.RoleId, state);
         long skip = (long)(query.Page - 1) * query.PageSize;
@@ -39,6 +39,7 @@ internal sealed class GetAdminUsersQueryHandler(
                     .Select(userRole => new AdminUserRoleResponse(userRole.RoleId, roleNames[userRole.RoleId]))
                     .OrderBy(role => role.Name, StringComparer.Ordinal)
                     .ToList(),
+                user.IsSuspended,
                 user.IsDeleted))
             .ToList();
 

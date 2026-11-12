@@ -107,6 +107,7 @@ public sealed class GetAdminUsersTests : IClassFixture<ChocoApiFactory>, IAsyncL
         first.GetProperty("username").GetString().Should().Be("username-3");
         first.GetProperty("displayName").GetString().Should().Be("Display Name 3");
         first.GetProperty("createdAt").GetDateTimeOffset().Should().Be(ChocoApiFactory.StartTime.AddHours(2));
+        first.GetProperty("isSuspended").GetBoolean().Should().BeFalse();
         first.GetProperty("isDeleted").GetBoolean().Should().BeFalse();
         first.GetProperty("roles").GetArrayLength().Should().Be(0);
         body.GetProperty("page").GetInt32().Should().Be(1);
@@ -161,17 +162,100 @@ public sealed class GetAdminUsersTests : IClassFixture<ChocoApiFactory>, IAsyncL
     }
 
     [Fact]
-    public async Task StateActive_ListsOnlyActiveUsers()
+    public async Task StateActive_ListsOnlyUsersWhoAreNeitherDeletedNorSuspended()
     {
         await AddCallerAsync(Permission.ReadAnyUser);
         User deleted = await AddUserAsync("identity-id-2", "username-2");
         await AddUserAsync("identity-id-3", "username-3");
+        User suspended = await AddUserAsync("identity-id-4", "username-4");
         await DeleteUserAsync(deleted.Id);
+        await SuspendUserAsync(suspended.Id);
 
         JsonElement body = await GetJsonAsync($"{Path}?state=active");
 
         body.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("username").GetString())
             .Should().BeEquivalentTo("username", "username-3");
+    }
+
+    [Fact]
+    public async Task Entries_ShowWhetherTheUserIsSuspended()
+    {
+        await AddCallerAsync(Permission.ReadAnyUser);
+        User suspended = await AddUserAsync("identity-id-2", "username-2");
+        await AddUserAsync("identity-id-3", "username-3");
+        await SuspendUserAsync(suspended.Id);
+
+        JsonElement body = await GetJsonAsync($"{Path}?q=username-");
+
+        JsonElement[] items = body.GetProperty("items").EnumerateArray().ToArray();
+        items.Single(item => item.GetProperty("username").GetString() == "username-2").GetProperty("isSuspended").GetBoolean().Should().BeTrue();
+        items.Single(item => item.GetProperty("username").GetString() == "username-3").GetProperty("isSuspended").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task WithoutState_SuspendedUsersAreListedToo()
+    {
+        await AddCallerAsync(Permission.ReadAnyUser);
+        User suspended = await AddUserAsync("identity-id-2", "username-2");
+        await SuspendUserAsync(suspended.Id);
+
+        JsonElement body = await GetJsonAsync(Path);
+
+        body.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("username").GetString())
+            .Should().BeEquivalentTo("username", "username-2");
+        body.GetProperty("totalCount").GetInt32().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task StateSuspended_ListsOnlySuspendedUsersWhoAreNotDeleted()
+    {
+        await AddCallerAsync(Permission.ReadAnyUser);
+        User suspended = await AddUserAsync("identity-id-2", "username-2");
+        await AddUserAsync("identity-id-3", "username-3");
+        User suspendedAndDeleted = await AddUserAsync("identity-id-4", "username-4");
+        await SuspendUserAsync(suspended.Id);
+        await SuspendUserAsync(suspendedAndDeleted.Id);
+        await DeleteUserAsync(suspendedAndDeleted.Id);
+
+        JsonElement body = await GetJsonAsync($"{Path}?state=suspended");
+
+        JsonElement item = body.GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
+        item.GetProperty("id").GetGuid().Should().Be(suspended.Id);
+        item.GetProperty("isSuspended").GetBoolean().Should().BeTrue();
+        item.GetProperty("isDeleted").GetBoolean().Should().BeFalse();
+        body.GetProperty("totalCount").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task StateDeleted_ListsADeletedUserWhoWasSuspendedAndShowsBothFlags()
+    {
+        await AddCallerAsync(Permission.ReadAnyUser);
+        User suspendedAndDeleted = await AddUserAsync("identity-id-2", "username-2");
+        await SuspendUserAsync(suspendedAndDeleted.Id);
+        await DeleteUserAsync(suspendedAndDeleted.Id);
+
+        JsonElement body = await GetJsonAsync($"{Path}?state=deleted");
+
+        JsonElement item = body.GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
+        item.GetProperty("isSuspended").GetBoolean().Should().BeTrue();
+        item.GetProperty("isDeleted").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StateSuspended_CombinesWithTheOtherFilters()
+    {
+        await AddCallerAsync(Permission.ReadAnyUser);
+        Role role = await AddRoleAsync("Reviewer");
+        User match = await AddUserAsync("identity-id-2", "username-2", role.Id);
+        User otherRole = await AddUserAsync("identity-id-3", "username-3");
+        User otherName = await AddUserAsync("identity-id-4", "username-4", role.Id);
+        await SuspendUserAsync(match.Id);
+        await SuspendUserAsync(otherRole.Id);
+        await SuspendUserAsync(otherName.Id);
+
+        JsonElement body = await GetJsonAsync($"{Path}?state=suspended&roleId={role.Id}&q=username-2");
+
+        body.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("id").GetGuid()).Should().Equal(match.Id);
     }
 
     [Fact]
@@ -292,7 +376,7 @@ public sealed class GetAdminUsersTests : IClassFixture<ChocoApiFactory>, IAsyncL
     }
 
     [Theory]
-    [InlineData("state=suspended", "state")]
+    [InlineData("state=banned", "state")]
     [InlineData("state=Active", "state")]
     [InlineData("roleId=00000000-0000-0000-0000-000000000000", "roleId")]
     [InlineData("page=0", "page")]
@@ -379,6 +463,15 @@ public sealed class GetAdminUsersTests : IClassFixture<ChocoApiFactory>, IAsyncL
         });
 
         return role;
+    }
+
+    private Task SuspendUserAsync(Guid id)
+    {
+        return _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Set<User>().Single(user => user.Id == id).Suspend("reason", id, ChocoApiFactory.StartTime);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
     }
 
     private Task DeleteUserAsync(Guid id)

@@ -4,7 +4,7 @@ using Choco.Contract.Abstractions.Messaging;
 namespace Choco.Contract.Users;
 
 /// <summary>Lists users for administrators, newest sign-up first.</summary>
-/// <param name="State">Only users in this state: active or deleted. Null for active users.</param>
+/// <param name="State">Only users in this state: active (not suspended), suspended or deleted. Null for every user who is not deleted, suspended or not.</param>
 /// <param name="RoleId">Only users who hold this role. Holders of the default role are every user. Null for any role.</param>
 /// <param name="Page">The page number, from 1. Defaults to 1 at the endpoint.</param>
 /// <param name="PageSize">The page size, from 1 to 50. Defaults to 20 at the endpoint.</param>

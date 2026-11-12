@@ -22,6 +22,7 @@ public sealed class GetAdminUsersQueryValidatorTests
 
     [Theory]
     [InlineData("active")]
+    [InlineData("suspended")]
     [InlineData("deleted")]
     public void Validate_WithKnownState_HasNoErrors(string state)
     {
@@ -33,7 +34,7 @@ public sealed class GetAdminUsersQueryValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData("Active")]
-    [InlineData("suspended")]
+    [InlineData("banned")]
     public void Validate_WithUnknownState_HasStateError(string state)
     {
         TestValidationResult<GetAdminUsersQuery> result = _validator.TestValidate(ValidQuery with { State = state });
