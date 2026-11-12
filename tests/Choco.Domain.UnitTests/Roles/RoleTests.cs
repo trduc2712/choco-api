@@ -1,4 +1,5 @@
 using Choco.Domain.Roles;
+using Choco.SharedKernel.Results;
 
 namespace Choco.Domain.UnitTests.Roles;
 
@@ -153,6 +154,136 @@ public sealed class RoleTests
         Func<Role> act = () => Role.Create("Name", ["unknown.permission"]);
 
         act.Should().Throw<ArgumentException>().WithParameterName("permissions");
+    }
+
+    [Fact]
+    public void Update_WithValidData_ReplacesTheNameAndPermissionsAndKeepsTheRest()
+    {
+        Role role = Role.CreateSystem(ValidDefinition);
+
+        role.Update("  New Name  ", [Permission.ReadAuditLog, Permission.ReadAuditLog, Permission.HandleReports]);
+
+        role.Name.Should().Be("New Name");
+        role.Permissions.Should().BeEquivalentTo([Permission.ReadAuditLog, Permission.HandleReports]);
+        role.SystemKey.Should().Be("system-key");
+        role.IsDefault.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Update_WithoutPermissions_RemovesAllOfThem()
+    {
+        Role role = Role.CreateSystem(ValidDefinition);
+
+        role.Update("Name", []);
+
+        role.Permissions.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Update_WithBlankName_ThrowsArgumentExceptionAndKeepsTheRole(string? name)
+    {
+        Role role = Role.CreateSystem(ValidDefinition);
+
+        Action act = () => role.Update(name!, [Permission.ReadAuditLog]);
+
+        act.Should().Throw<ArgumentException>().WithParameterName("name");
+        role.Name.Should().Be("Name");
+        role.Permissions.Should().BeEquivalentTo([Permission.AssignRoles]);
+    }
+
+    [Fact]
+    public void Update_WithUnknownPermission_ThrowsArgumentExceptionAndKeepsTheRole()
+    {
+        Role role = Role.CreateSystem(ValidDefinition);
+
+        Action act = () => role.Update("New Name", ["unknown.permission"]);
+
+        act.Should().Throw<ArgumentException>().WithParameterName("permissions");
+        role.Name.Should().Be("Name");
+        role.Permissions.Should().BeEquivalentTo([Permission.AssignRoles]);
+    }
+
+    [Fact]
+    public void CheckCanBeChangedBy_ActorHoldingEveryPermissionInvolved_Succeeds()
+    {
+        Role role = Role.CreateSystem(ValidDefinition);
+
+        Result result = role.CheckCanBeChangedBy([Permission.AssignRoles, Permission.ReadAuditLog], actorHoldsRole: false, [Permission.ReadAuditLog]);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CheckCanBeChangedBy_ActorHoldingTheRole_FailsWithHeldByCaller()
+    {
+        Role role = Role.CreateSystem(ValidDefinition);
+
+        Result result = role.CheckCanBeChangedBy([Permission.AssignRoles], actorHoldsRole: true, []);
+
+        result.Error.Should().Be(RoleErrors.HeldByCaller);
+    }
+
+    [Fact]
+    public void CheckCanBeChangedBy_ActorLackingAPermissionOfTheRole_FailsWithDenied()
+    {
+        Role role = Role.CreateSystem(ValidDefinition);
+
+        Result result = role.CheckCanBeChangedBy([Permission.ReadAuditLog], actorHoldsRole: false, []);
+
+        result.Error.Should().Be(PermissionErrors.Denied);
+    }
+
+    [Fact]
+    public void CheckCanBeChangedBy_ActorLackingANewPermission_FailsWithDenied()
+    {
+        Role role = Role.CreateSystem(ValidDefinition);
+
+        Result result = role.CheckCanBeChangedBy([Permission.AssignRoles], actorHoldsRole: false, [Permission.ReadAuditLog]);
+
+        result.Error.Should().Be(PermissionErrors.Denied);
+    }
+
+    [Fact]
+    public void CheckCanBeChangedBy_ActorHoldingTheRoleAndLackingPermissions_FailsWithHeldByCaller()
+    {
+        Role role = Role.CreateSystem(ValidDefinition);
+
+        Result result = role.CheckCanBeChangedBy([], actorHoldsRole: true, [Permission.ReadAuditLog]);
+
+        result.Error.Should().Be(RoleErrors.HeldByCaller);
+    }
+
+    [Fact]
+    public void CheckCanBeDeleted_RoleCreatedByPeople_Succeeds()
+    {
+        Role role = Role.Create("Name", []);
+
+        Result result = role.CheckCanBeDeleted();
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CheckCanBeDeleted_DefaultRole_FailsWithDefaultNotDeletable()
+    {
+        Role role = Role.CreateSystem(ValidDefinition);
+
+        Result result = role.CheckCanBeDeleted();
+
+        result.Error.Should().Be(RoleErrors.DefaultNotDeletable);
+    }
+
+    [Fact]
+    public void CheckCanBeDeleted_SystemRoleThatIsNotDefault_FailsWithSystemNotDeletable()
+    {
+        Role role = Role.CreateSystem(ValidDefinition with { IsDefault = false });
+
+        Result result = role.CheckCanBeDeleted();
+
+        result.Error.Should().Be(RoleErrors.SystemNotDeletable);
     }
 
     [Fact]

@@ -102,11 +102,26 @@ public sealed class RoleRepositoryTests : IClassFixture<ChocoApiFactory>, IAsync
         using IServiceScope scope = _factory.Services.CreateScope();
         IRoleRepository roleRepository = scope.ServiceProvider.GetRequiredService<IRoleRepository>();
 
-        bool sameNameInOtherCase = await roleRepository.NameExistsAsync("rOLE-nAME", TestContext.Current.CancellationToken);
-        bool otherName = await roleRepository.NameExistsAsync("other-name", TestContext.Current.CancellationToken);
+        bool sameNameInOtherCase = await roleRepository.NameExistsAsync("rOLE-nAME", cancellationToken: TestContext.Current.CancellationToken);
+        bool otherName = await roleRepository.NameExistsAsync("other-name", cancellationToken: TestContext.Current.CancellationToken);
 
         sameNameInOtherCase.Should().BeTrue();
         otherName.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NameExists_ExcludingTheRoleItself_IgnoresItsOwnName()
+    {
+        Role role = CreateRole("Role-Name", isDefault: false, []);
+        await AddAsync(role);
+        using IServiceScope scope = _factory.Services.CreateScope();
+        IRoleRepository roleRepository = scope.ServiceProvider.GetRequiredService<IRoleRepository>();
+
+        bool exceptItself = await roleRepository.NameExistsAsync("role-name", role.Id, TestContext.Current.CancellationToken);
+        bool exceptAnotherRole = await roleRepository.NameExistsAsync("role-name", Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        exceptItself.Should().BeFalse();
+        exceptAnotherRole.Should().BeTrue();
     }
 
     [Fact]

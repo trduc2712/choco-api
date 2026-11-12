@@ -43,11 +43,13 @@ internal sealed class RoleRepository : Repository<Role>, IRoleRepository
         return DbSet.AsNoTracking().FirstOrDefaultAsync(role => role.Id == id, cancellationToken);
     }
 
-    public Task<bool> NameExistsAsync(string name, CancellationToken cancellationToken = default)
+    public Task<bool> NameExistsAsync(
+        string name, Guid? exceptRoleId = null, CancellationToken cancellationToken = default)
     {
         string lowered = name.ToLower();
 
-        return DbSet.AnyAsync(role => role.Name.ToLower() == lowered, cancellationToken);
+        return DbSet.AnyAsync(
+            role => role.Name.ToLower() == lowered && role.Id != exceptRoleId, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Role>> ListForReadAsync(CancellationToken cancellationToken = default)

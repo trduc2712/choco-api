@@ -31,7 +31,7 @@ internal sealed class CreateRoleCommandHandler(
             return Result<RoleResponse>.Failure(PermissionErrors.Denied);
         }
 
-        if (await roleRepository.NameExistsAsync(role.Name, cancellationToken))
+        if (await roleRepository.NameExistsAsync(role.Name, cancellationToken: cancellationToken))
         {
             return Result<RoleResponse>.Failure(RoleErrors.NameTaken);
         }

@@ -10,7 +10,7 @@ public interface IRoleRepository : IRepository<Role>
 
     Task<Role?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken = default);
 
-    Task<bool> NameExistsAsync(string name, CancellationToken cancellationToken = default);
+    Task<bool> NameExistsAsync(string name, Guid? exceptRoleId = null, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Role>> ListForReadAsync(CancellationToken cancellationToken = default);
 
