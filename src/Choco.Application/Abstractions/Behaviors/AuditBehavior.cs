@@ -64,6 +64,8 @@ internal sealed class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
             IReadOnlyCollection<string> actorRoles =
                 await _roleRepository.GetPlatformRoleNamesForReadAsync(actorIdResult.Value, cancellationToken);
 
+            await describer.CaptureAsync(request, cancellationToken);
+
             TResponse response = await next(cancellationToken);
 
             if (response.IsFailure)
@@ -71,28 +73,32 @@ internal sealed class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
                 return response;
             }
 
-            AuditDescription description = await describer.DescribeAsync(request, response, cancellationToken);
+            IReadOnlyList<AuditDescription> descriptions =
+                await describer.DescribeAllAsync(request, response, cancellationToken);
 
-            Guid? affectedUserId = description.AffectedUserId == actorIdResult.Value
-                ? null
-                : description.AffectedUserId;
+            foreach (AuditDescription description in descriptions)
+            {
+                Guid? affectedUserId = description.AffectedUserId == actorIdResult.Value
+                    ? null
+                    : description.AffectedUserId;
 
-            AuditLogEntry entry = AuditLogEntry.Create(
-                _timeProvider.GetUtcNow(),
-                AuditActorType.User,
-                actorIdResult.Value,
-                actorRoles,
-                _requestContext.ClientId,
-                description.Action,
-                description.TargetType,
-                description.TargetId,
-                affectedUserId,
-                description.Detail,
-                _requestContext.TraceId,
-                _requestContext.UserAgent,
-                _requestContext.IpAddress);
+                AuditLogEntry entry = AuditLogEntry.Create(
+                    _timeProvider.GetUtcNow(),
+                    AuditActorType.User,
+                    actorIdResult.Value,
+                    actorRoles,
+                    _requestContext.ClientId,
+                    description.Action,
+                    description.TargetType,
+                    description.TargetId,
+                    affectedUserId,
+                    description.Detail,
+                    _requestContext.TraceId,
+                    _requestContext.UserAgent,
+                    _requestContext.IpAddress);
 
-            _auditLogRepository.Add(entry);
+                _auditLogRepository.Add(entry);
+            }
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
