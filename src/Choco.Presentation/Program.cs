@@ -1,10 +1,13 @@
 using Choco.Application;
 using Choco.Infrastructure;
+using Choco.Infrastructure.Health;
 using Choco.Presentation;
+using Choco.Presentation.Health;
 using Choco.Presentation.Logging;
 using Choco.Presentation.Notifications;
 using Choco.Presentation.OpenApi;
 
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpLogging;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -30,6 +33,16 @@ app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<NotificationsHub>(NotificationsHub.Path);
-app.MapHealthChecks("/health").WithHttpLogging(HttpLoggingFields.None);
+HealthCheckOptions liveness = new() { Predicate = _ => false };
+app.MapHealthChecks("/health", liveness).WithHttpLogging(HttpLoggingFields.None);
+app.MapHealthChecks("/health/live", liveness).WithHttpLogging(HttpLoggingFields.None);
+app.MapHealthChecks(
+        "/health/ready",
+        new HealthCheckOptions
+        {
+            Predicate = registration => registration.Tags.Contains(HealthCheckTags.Ready),
+            ResponseWriter = ReadinessResponseWriter.WriteAsync
+        })
+    .WithHttpLogging(HttpLoggingFields.None);
 
 app.Run();
