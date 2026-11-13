@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # NUKE
 .nuke/temp/
+
+# Private notes for grooming, kept on the developer machine
+notes/
