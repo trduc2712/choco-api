@@ -1,6 +1,7 @@
 using Choco.Application;
 using Choco.Infrastructure;
 using Choco.Presentation;
+using Choco.Presentation.Logging;
 using Choco.Presentation.Notifications;
 using Choco.Presentation.OpenApi;
 
@@ -14,6 +15,7 @@ builder.Services.AddPresentation(builder.Configuration);
 
 WebApplication app = builder.Build();
 
+app.UseMiddleware<UserLogScopeMiddleware>();
 app.UseResponseCompression();
 app.UseHttpLogging();
 app.UseExceptionHandler();

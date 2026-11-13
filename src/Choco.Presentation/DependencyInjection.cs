@@ -8,6 +8,7 @@ using Choco.Application.Abstractions.Notifications;
 using Choco.Application.Abstractions.Requests;
 using Choco.Presentation.Authentication;
 using Choco.Presentation.Authorization;
+using Choco.Presentation.Logging;
 using Choco.Presentation.Notifications;
 using Choco.Presentation.OpenApi;
 using Choco.Presentation.Options;
@@ -59,6 +60,7 @@ public static class DependencyInjection
                     StatusCodes.Status400BadRequest,
                     detail: null);
                 problem.Extensions["code"] = "Validation.Failed";
+                TraceIds.Set(problem, context.HttpContext);
 
                 return new BadRequestObjectResult(problem);
             });
@@ -81,7 +83,8 @@ public static class DependencyInjection
         })
         .AddApiDocumentation(configuration);
         services.AddHealthChecks();
-        services.AddProblemDetails();
+        services.AddProblemDetails(options =>
+            options.CustomizeProblemDetails = context => TraceIds.Set(context.ProblemDetails, context.HttpContext));
         services.AddHttpLogging(options =>
         {
             options.LoggingFields = HttpLoggingFields.RequestMethod
