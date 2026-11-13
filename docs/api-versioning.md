@@ -34,8 +34,10 @@ uses concrete versioned URLs, so Try it out sends requests to that version.
 The signed Clerk webhook requires `/api/v1/webhooks/clerk`; the previous
 `/api/webhooks/clerk` URL is removed. Update the webhook endpoint URL in each
 Clerk environment, including local tunnels. Signature verification still
-protects the endpoint and no bearer token is required. The health endpoint
-remains `/health`.
+protects the endpoint and no bearer token is required. The health endpoints
+are not versioned: `/health` and `/health/live` answer whether the process is
+alive, and `/health/ready` also checks the database and the object storage and
+answers 503 when one fails.
 
 ## Adding a Version
 

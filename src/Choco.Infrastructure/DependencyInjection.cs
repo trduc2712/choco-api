@@ -19,6 +19,7 @@ using Choco.Domain.UserBlocks;
 using Choco.Domain.UserFollows;
 using Choco.Domain.Users;
 using Choco.Infrastructure.Authentication;
+using Choco.Infrastructure.Health;
 using Choco.Infrastructure.Options;
 using Choco.Infrastructure.Persistence;
 using Choco.Infrastructure.Persistence.Interceptors;
@@ -35,6 +36,8 @@ namespace Choco.Infrastructure;
 
 public static class DependencyInjection
 {
+    private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(5);
+
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<DatabaseOptions>()
@@ -110,6 +113,10 @@ public static class DependencyInjection
         });
 
         services.AddSingleton<IObjectStorage, S3ObjectStorage>();
+
+        services.AddHealthChecks()
+            .AddCheck<DatabaseHealthCheck>("database", tags: [HealthCheckTags.Ready], timeout: ReadinessTimeout)
+            .AddCheck<ObjectStorageHealthCheck>("storage", tags: [HealthCheckTags.Ready], timeout: ReadinessTimeout);
 
         return services;
     }
