@@ -17,6 +17,7 @@ public static class DependencyInjection
         {
             config.RegisterServicesFromAssembly(AssemblyReference.Assembly);
             config.AddOpenBehavior(typeof(LoggingBehavior<,>));
+            config.AddOpenBehavior(typeof(AccessDeniedAuditBehavior<,>));
             config.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
             config.AddOpenBehavior(typeof(SuspensionBehavior<,>));
             config.AddOpenBehavior(typeof(ValidationBehavior<,>));
@@ -27,6 +28,7 @@ public static class DependencyInjection
         services.AddAuthorizersFromAssembly(AssemblyReference.Assembly);
         services.AddAuditDescribersFromAssembly(AssemblyReference.Assembly);
 
+        services.AddScoped<AuditEntryBuilder>();
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<Users.MyProfileWriter>();
         services.AddScoped<Users.UserSuspender>();
