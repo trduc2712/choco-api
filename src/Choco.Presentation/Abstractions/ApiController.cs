@@ -1,4 +1,5 @@
 using Choco.Presentation.Extensions;
+using Choco.Presentation.Logging;
 using Choco.Presentation.Validation;
 using Choco.SharedKernel.Results;
 
@@ -34,6 +35,7 @@ public abstract class ApiController : ControllerBase
             : ProblemDetailsFactory.CreateProblemDetails(HttpContext, statusCode: statusCode, detail: result.Error.Description);
 
         problemDetails.Extensions["code"] = result.Error.Code;
+        TraceIds.Set(problemDetails, HttpContext);
 
         if (result.Error is ErrorWithExtensions errorWithExtensions)
         {
