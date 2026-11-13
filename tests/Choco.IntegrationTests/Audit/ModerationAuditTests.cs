@@ -94,7 +94,7 @@ public sealed class ModerationAuditTests(ChocoApiFactory factory) : AuditTestsBa
     }
 
     [Fact]
-    public async Task ResolveReportOfAPostWithContentRemoved_RecordsTheOutcomeAndTheAuthorOfThePost()
+    public async Task ResolveReportOfAPostWithContentRemoved_RecordsTheOutcomeAndThePostDeletion()
     {
         User author = await AddUserAsync("identity-id-2", "username-2");
         User reporter = await AddUserAsync("identity-id-3", "username-3");
@@ -107,9 +107,94 @@ public sealed class ModerationAuditTests(ChocoApiFactory factory) : AuditTestsBa
         using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
+        List<AuditLogEntry> entries = await ReadEntriesAsync();
+        entries.Should().HaveCount(2);
+        AuditLogEntry resolved = entries.Single(entry => entry.Action == AuditAction.ReportResolved);
+        AuditLogEntry deleted = entries.Single(entry => entry.Action == AuditAction.PostDeleted);
         ShouldBeEntry(
-            entry, administrator.Id, AuditAction.ReportResolved, AuditTargetType.Report, report.Id, author.Id, "Outcome: ContentRemoved");
+            resolved, administrator.Id, AuditAction.ReportResolved, AuditTargetType.Report, report.Id, author.Id, "Outcome: ContentRemoved");
+        ShouldBeEntry(deleted, administrator.Id, AuditAction.PostDeleted, AuditTargetType.Post, post.Id, author.Id);
+        deleted.TraceId.Should().Be(resolved.TraceId);
+    }
+
+    [Fact]
+    public async Task ResolveReportOfAPostWithContentRemoved_WhenThePostIsAlreadyDeleted_RecordsOnlyTheOutcome()
+    {
+        User author = await AddUserAsync("identity-id-2", "username-2");
+        User reporter = await AddUserAsync("identity-id-3", "username-3");
+        await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
+        Post post = await AddPostAsync(author);
+        Report report = Report.CreateForPost(reporter.Id, post.Id, author.Id, ReportReason.Spam, null, Factory.TimeProvider.GetUtcNow()).Value;
+        await AddAsync(report);
+        await Factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Remove(post);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/reports/{report.Id}/resolution", new { outcome = "ContentRemoved" });
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
+        entry.Action.Should().Be(AuditAction.ReportResolved);
+    }
+
+    [Fact]
+    public async Task ResolveReportOfAPostWithUserSuspended_RecordsTheOutcomeAndTheSuspensionOfTheAuthor()
+    {
+        User author = await AddUserAsync("identity-id-2", "username-2");
+        User reporter = await AddUserAsync("identity-id-3", "username-3");
+        User administrator = await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
+        Post post = await AddPostAsync(author);
+        Report report = Report.CreateForPost(reporter.Id, post.Id, author.Id, ReportReason.Spam, null, Factory.TimeProvider.GetUtcNow()).Value;
+        await AddAsync(report);
+        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/reports/{report.Id}/resolution", new { outcome = "UserSuspended" });
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        List<AuditLogEntry> entries = await ReadEntriesAsync();
+        entries.Should().HaveCount(2);
+        AuditLogEntry resolved = entries.Single(entry => entry.Action == AuditAction.ReportResolved);
+        AuditLogEntry suspended = entries.Single(entry => entry.Action == AuditAction.UserSuspended);
+        ShouldBeEntry(
+            resolved, administrator.Id, AuditAction.ReportResolved, AuditTargetType.Report, report.Id, author.Id, "Outcome: UserSuspended");
+        ShouldBeEntry(
+            suspended, administrator.Id, AuditAction.UserSuspended, AuditTargetType.User, author.Id, author.Id, $"Reason: {report.SuspensionReason}");
+        suspended.TraceId.Should().Be(resolved.TraceId);
+    }
+
+    [Fact]
+    public async Task ResolveReportOfAUserWithUserSuspended_WhenTheUserIsAlreadySuspended_RecordsOnlyTheOutcome()
+    {
+        User target = User.Create("identity-id-2", "username-2", "Display Name", null);
+        User reporter = await AddUserAsync("identity-id-3", "username-3");
+        User administrator = await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
+        target.Suspend("Earlier reason", administrator.Id, ChocoApiFactory.StartTime);
+        await AddAsync(target);
+        Report report = Report.CreateForUser(reporter.Id, target.Id, ReportReason.Harassment, null, Factory.TimeProvider.GetUtcNow()).Value;
+        await AddAsync(report);
+        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/reports/{report.Id}/resolution", new { outcome = "UserSuspended" });
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
+        entry.Action.Should().Be(AuditAction.ReportResolved);
+    }
+
+    [Fact]
+    public async Task ResolveReport_WhenTheReportDoesNotExist_RecordsNoEntry()
+    {
+        await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
+        using HttpRequestMessage request = Request(
+            HttpMethod.Put, $"/api/v1/reports/{Guid.NewGuid()}/resolution", new { outcome = "ContentRemoved" });
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await ReadEntriesAsync()).Should().BeEmpty();
     }
 
     [Fact]
