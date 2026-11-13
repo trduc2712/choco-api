@@ -29,5 +29,6 @@ public enum AuditAction
     PostUnliked,
     UserFollowed,
     UserUnfollowed,
-    FeedbackSent
+    FeedbackSent,
+    UserCreated
 }

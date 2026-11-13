@@ -1,6 +1,7 @@
 using Choco.Application.Abstractions.Auditing;
 using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Requests;
+using Choco.Contract.Abstractions.Messaging;
 using Choco.Domain.AuditLogs;
 using Choco.Domain.Primitives.Persistence;
 using Choco.Domain.Roles;
@@ -54,15 +55,22 @@ internal sealed class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
 
         return await _unitOfWork.InTransactionAsync(async () =>
         {
-            Result<Guid> actorIdResult = await _currentUser.GetIdAsync(cancellationToken);
+            bool isSystem = request is ISystemRequest;
+            Guid? actorId = null;
+            IReadOnlyCollection<string> actorRoles = [];
 
-            if (actorIdResult.IsFailure)
+            if (!isSystem)
             {
-                return FailureResult.Create<TResponse>(actorIdResult.Error);
-            }
+                Result<Guid> actorIdResult = await _currentUser.GetIdAsync(cancellationToken);
 
-            IReadOnlyCollection<string> actorRoles =
-                await _roleRepository.GetPlatformRoleNamesForReadAsync(actorIdResult.Value, cancellationToken);
+                if (actorIdResult.IsFailure)
+                {
+                    return FailureResult.Create<TResponse>(actorIdResult.Error);
+                }
+
+                actorId = actorIdResult.Value;
+                actorRoles = await _roleRepository.GetPlatformRoleNamesForReadAsync(actorId.Value, cancellationToken);
+            }
 
             await describer.CaptureAsync(request, cancellationToken);
 
@@ -78,14 +86,14 @@ internal sealed class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
 
             foreach (AuditDescription description in descriptions)
             {
-                Guid? affectedUserId = description.AffectedUserId == actorIdResult.Value
+                Guid? affectedUserId = description.AffectedUserId == actorId
                     ? null
                     : description.AffectedUserId;
 
                 AuditLogEntry entry = AuditLogEntry.Create(
                     _timeProvider.GetUtcNow(),
-                    AuditActorType.User,
-                    actorIdResult.Value,
+                    isSystem ? AuditActorType.System : AuditActorType.User,
+                    actorId,
                     actorRoles,
                     _requestContext.ClientId,
                     description.Action,
