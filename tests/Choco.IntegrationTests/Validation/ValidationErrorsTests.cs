@@ -171,13 +171,18 @@ public sealed class ValidationErrorsTests : IClassFixture<VersioningApiFactory>,
     [Fact]
     public async Task IdentityProviderRejection_ReturnsRejectedCodeUnderTheJsonFieldName()
     {
-        _factory.IdentityProvider.RespondWith(_ => new HttpResponseMessage(HttpStatusCode.UnprocessableEntity)
-        {
-            Content = JsonContent.Create(new
+        _factory.IdentityProvider.RespondWith(request => request.Method == HttpMethod.Get
+            ? new HttpResponseMessage(HttpStatusCode.OK)
             {
-                errors = new[] { new { code = "form_param_format_invalid", meta = new { param_name = "first_name" } } }
-            })
-        });
+                Content = JsonContent.Create(new { id = "identity-id", username = "username", first_name = "First Name" })
+            }
+            : new HttpResponseMessage(HttpStatusCode.UnprocessableEntity)
+            {
+                Content = JsonContent.Create(new
+                {
+                    errors = new[] { new { code = "form_param_format_invalid", meta = new { param_name = "first_name" } } }
+                })
+            });
 
         JsonElement problem = await SendAsync(
             HttpMethod.Put, "/api/v1/me/profile", new { username = "username-updated", firstName = "First Name", lastName = "Last Name" });

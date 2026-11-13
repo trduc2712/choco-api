@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 using Choco.Domain.AuditLogs;
 using Choco.Domain.Roles;
@@ -34,16 +35,21 @@ public sealed class RoleAuditTests(ChocoApiFactory factory) : AuditTestsBase(fac
         using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        System.Text.Json.JsonElement body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(TestContext.Current.CancellationToken);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, administrator.Id, AuditAction.RoleCreated, AuditTargetType.Role, body.GetProperty("id").GetGuid(), detail: "Role: Reviewer");
+        entry.Changes.Should().BeEquivalentTo(new[]
+        {
+            new AuditChange("name", After: "Reviewer"),
+            new AuditChange("permissions", Added: ["reports.handle"], Removed: [])
+        });
     }
 
     [Fact]
     public async Task UpdateRole_RecordsRoleUpdatedWithTheNewRoleName()
     {
         User administrator = await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
-        Role target = Role.Create("Reviewer", []);
+        Role target = Role.Create("Reviewer", ["audit-log.read"]);
         await Factory.ExecuteDbContextAsync(dbContext =>
         {
             dbContext.Add(target);
@@ -56,13 +62,26 @@ public sealed class RoleAuditTests(ChocoApiFactory factory) : AuditTestsBase(fac
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, administrator.Id, AuditAction.RoleUpdated, AuditTargetType.Role, target.Id, detail: "Role: Senior Reviewer");
+        entry.Changes.Should().BeEquivalentTo(new[]
+        {
+            new AuditChange("name", "Reviewer", "Senior Reviewer"),
+            new AuditChange("permissions", Added: ["reports.handle"], Removed: ["audit-log.read"])
+        });
+
+        using HttpRequestMessage read = Request(HttpMethod.Get, $"/api/v1/admin/audit-logs?targetId={target.Id}");
+        using HttpResponseMessage auditResponse = await Client.SendAsync(read, TestContext.Current.CancellationToken);
+        auditResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement auditBody = await auditResponse.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        JsonElement changes = auditBody.GetProperty("items").EnumerateArray().Single().GetProperty("changes");
+        changes[0].GetProperty("before").GetString().Should().Be("Reviewer");
+        changes[1].GetProperty("removed").EnumerateArray().Single().GetString().Should().Be("audit-log.read");
     }
 
     [Fact]
     public async Task DeleteRole_RecordsRoleDeletedWithTheRoleName()
     {
         User administrator = await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
-        Role target = Role.Create("Reviewer", []);
+        Role target = Role.Create("Reviewer", ["audit-log.read"]);
         await Factory.ExecuteDbContextAsync(dbContext =>
         {
             dbContext.Add(target);
@@ -75,6 +94,11 @@ public sealed class RoleAuditTests(ChocoApiFactory factory) : AuditTestsBase(fac
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, administrator.Id, AuditAction.RoleDeleted, AuditTargetType.Role, target.Id, detail: "Role: Reviewer");
+        entry.Changes.Should().BeEquivalentTo(new[]
+        {
+            new AuditChange("name", Before: "Reviewer"),
+            new AuditChange("permissions", Added: [], Removed: ["audit-log.read"])
+        });
     }
 
     [Fact]

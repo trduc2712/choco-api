@@ -7,4 +7,5 @@ public sealed record AuditDescription(
     AuditTargetType TargetType,
     Guid TargetId,
     Guid? AffectedUserId = null,
-    string? Detail = null);
+    string? Detail = null,
+    IReadOnlyList<AuditChange>? Changes = null);

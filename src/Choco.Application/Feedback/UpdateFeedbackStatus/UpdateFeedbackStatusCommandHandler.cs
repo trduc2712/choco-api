@@ -1,5 +1,7 @@
+using Choco.Application.Abstractions.Auditing;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Feedback;
+using Choco.Domain.AuditLogs;
 using Choco.Domain.FeedbackEntries;
 using Choco.Domain.Primitives.Persistence;
 using Choco.Domain.Users;
@@ -10,7 +12,8 @@ namespace Choco.Application.Feedback.UpdateFeedbackStatus;
 internal sealed class UpdateFeedbackStatusCommandHandler(
     IFeedbackEntryRepository feedbackRepository,
     IUserRepository userRepository,
-    IUnitOfWork unitOfWork) : ICommandHandler<UpdateFeedbackStatusCommand, FeedbackResponse>
+    IUnitOfWork unitOfWork,
+    AuditChanges auditChanges) : ICommandHandler<UpdateFeedbackStatusCommand, FeedbackResponse>
 {
     public async Task<Result<FeedbackResponse>> Handle(
         UpdateFeedbackStatusCommand command, CancellationToken cancellationToken)
@@ -23,12 +26,16 @@ internal sealed class UpdateFeedbackStatusCommandHandler(
 
         FeedbackWire.TryParse(command.Status, out FeedbackStatus status);
 
+        FeedbackStatus before = entry.Status;
         entry.ChangeStatus(status);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         User? author = await userRepository.GetByIdForReadAsync(entry.AuthorId, cancellationToken);
 
-        return Result<FeedbackResponse>.Success(entry.ToResponse(author));
+        FeedbackResponse response = entry.ToResponse(author);
+        return auditChanges.Record(Result<FeedbackResponse>.Success(response), before == entry.Status
+            ? []
+            : [new AuditChange("status", FeedbackWire.ToWire(before), response.Status)]);
     }
 }

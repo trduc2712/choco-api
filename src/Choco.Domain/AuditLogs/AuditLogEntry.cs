@@ -22,6 +22,7 @@ public sealed class AuditLogEntry : BaseEntity
     public Guid TargetId { get; private set; }
     public Guid? AffectedUserId { get; private set; }
     public string? Detail { get; private set; }
+    public AuditChange[] Changes { get; private set; } = [];
     public string? TraceId { get; private set; }
     public string? UserAgent { get; private set; }
     public IPAddress? IpAddress { get; private set; }
@@ -42,7 +43,8 @@ public sealed class AuditLogEntry : BaseEntity
         string? detail,
         string? traceId,
         string? userAgent,
-        IPAddress? ipAddress)
+        IPAddress? ipAddress,
+        AuditChange[] changes)
         : base(id)
     {
         OccurredAt = occurredAt;
@@ -55,6 +57,7 @@ public sealed class AuditLogEntry : BaseEntity
         TargetId = targetId;
         AffectedUserId = affectedUserId;
         Detail = detail;
+        Changes = changes;
         TraceId = traceId;
         UserAgent = userAgent;
         IpAddress = ipAddress;
@@ -73,7 +76,8 @@ public sealed class AuditLogEntry : BaseEntity
         string? detail,
         string? traceId,
         string? userAgent,
-        IPAddress? ipAddress)
+        IPAddress? ipAddress,
+        IReadOnlyList<AuditChange>? changes = null)
     {
         ArgumentNullException.ThrowIfNull(actorRoles);
 
@@ -116,7 +120,8 @@ public sealed class AuditLogEntry : BaseEntity
             detail,
             traceId,
             Truncate(userAgent, UserAgentMaxLength),
-            ipAddress);
+            ipAddress,
+            changes is null ? [] : [.. changes]);
     }
 
     private static string? Truncate(string? value, int maxLength)

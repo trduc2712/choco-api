@@ -52,7 +52,9 @@ internal sealed class GetAuditLogsQueryHandler(
                 entry.TargetId,
                 ToUser(entry.AffectedUserId, usernames),
                 entry.Detail,
-                entry.TraceId))
+                entry.TraceId,
+                entry.Changes.Select(change => new AuditChangeResponse(
+                    change.Field, change.Before, change.After, change.Added, change.Removed)).ToArray()))
             .ToList();
 
         return Result<OffsetPageResponse<AuditLogResponse>>.Success(

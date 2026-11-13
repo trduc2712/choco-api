@@ -11,12 +11,14 @@ namespace Choco.Application.Reports.ResolveReport;
 internal sealed class ResolveReportCommandAuditDescriber(
     IReportRepository reportRepository,
     IPostRepository postRepository,
-    IUserRepository userRepository) : IAuditDescriber<ResolveReportCommand, Result>
+    IUserRepository userRepository,
+    AuditChanges auditChanges) : IAuditDescriber<ResolveReportCommand, Result>
 {
     private AuditDescription? _sideEffect;
 
     public async Task CaptureAsync(ResolveReportCommand request, CancellationToken cancellationToken)
     {
+        _sideEffect = null;
         Report? report = await reportRepository.GetByIdForReadAsync(request.ReportId, cancellationToken);
 
         if (report is null || report.Status == ReportStatus.Resolved)
@@ -48,7 +50,8 @@ internal sealed class ResolveReportCommandAuditDescriber(
         }
 
         return new AuditDescription(
-            AuditAction.ReportResolved, AuditTargetType.Report, request.ReportId, affectedUserId, $"Outcome: {request.Outcome}");
+            AuditAction.ReportResolved, AuditTargetType.Report, request.ReportId, affectedUserId, $"Outcome: {report?.Outcome}",
+            auditChanges.Get(response));
     }
 
     public async Task<IReadOnlyList<AuditDescription>> DescribeAllAsync(
@@ -56,7 +59,7 @@ internal sealed class ResolveReportCommandAuditDescriber(
     {
         AuditDescription resolved = await DescribeAsync(request, response, cancellationToken);
 
-        return _sideEffect is null ? [resolved] : [resolved, _sideEffect];
+        return _sideEffect is null || resolved.Changes is not { Count: > 0 } ? [resolved] : [resolved, _sideEffect];
     }
 
     private async Task<AuditDescription?> DescribePostRemovalAsync(Report report, CancellationToken cancellationToken)
@@ -87,7 +90,8 @@ internal sealed class ResolveReportCommandAuditDescriber(
 
         return user is { IsSuspended: false }
             ? new AuditDescription(
-                AuditAction.UserSuspended, AuditTargetType.User, user.Id, user.Id, $"Reason: {report.SuspensionReason}")
+                AuditAction.UserSuspended, AuditTargetType.User, user.Id, user.Id, $"Reason: {report.SuspensionReason}",
+                [AuditChanges.Suspension(true)])
             : null;
     }
 }

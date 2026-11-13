@@ -4,7 +4,7 @@
 
 | Name                                                  | Columns | Comment                                                                                                                            | Type       |
 | ----------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| [public.audit_logs](public.audit_logs.md)             | 14      | Append-only record of who did what to which object. One row per successful action of a user or the system; rows are never changed. | BASE TABLE |
+| [public.audit_logs](public.audit_logs.md)             | 15      | Append-only record of who did what to which object. One row per successful action of a user or the system; rows are never changed. | BASE TABLE |
 | [public.comments](public.comments.md)                 | 8       | Comments that users write on posts.                                                                                                | BASE TABLE |
 | [public.feedback_entries](public.feedback_entries.md) | 14      | Bug reports and suggestions about the app that signed-in users send, waiting for or finished with an administrator's triage.       | BASE TABLE |
 | [public.notifications](public.notifications.md)       | 8       | Things that happened to a user, such as a new follower, shown to that user.                                                        | BASE TABLE |
@@ -60,6 +60,7 @@ erDiagram
   text__ actor_roles
   varchar_32_ actor_type
   uuid affected_user_id
+  jsonb changes
   varchar_256_ client_id
   varchar_200_ detail
   uuid id

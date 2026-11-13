@@ -5,12 +5,13 @@ using Choco.SharedKernel.Results;
 
 namespace Choco.Application.Users.RemoveMyAvatar;
 
-internal sealed class RemoveMyAvatarCommandAuditDescriber : IAuditDescriber<RemoveMyAvatarCommand, Result<UserProfileResponse>>
+internal sealed class RemoveMyAvatarCommandAuditDescriber(AuditChanges auditChanges) : IAuditDescriber<RemoveMyAvatarCommand, Result<UserProfileResponse>>
 {
     public Task<AuditDescription> DescribeAsync(
         RemoveMyAvatarCommand request, Result<UserProfileResponse> response, CancellationToken cancellationToken)
     {
         return Task.FromResult(new AuditDescription(
-            AuditAction.AvatarRemoved, AuditTargetType.User, response.Value.Id, response.Value.Id));
+            AuditAction.AvatarRemoved, AuditTargetType.User, response.Value.Id, response.Value.Id,
+            Changes: auditChanges.Get(response)));
     }
 }

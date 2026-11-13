@@ -1,12 +1,25 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 using Choco.Domain.AuditLogs;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Choco.Infrastructure.Persistence.Configurations;
 
 internal sealed class AuditLogEntryConfiguration : IEntityTypeConfiguration<AuditLogEntry>
 {
+    private static readonly JsonSerializerOptions ChangesJson = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    private static string SerializeChanges(AuditChange[] changes) => JsonSerializer.Serialize(changes, ChangesJson);
+
+    private static AuditChange[] DeserializeChanges(string json) => JsonSerializer.Deserialize<AuditChange[]>(json, ChangesJson)!;
+
     public void Configure(EntityTypeBuilder<AuditLogEntry> builder)
     {
         builder.ToTable("audit_logs", table => table.HasComment(
@@ -54,6 +67,16 @@ internal sealed class AuditLogEntryConfiguration : IEntityTypeConfiguration<Audi
         builder.Property(entry => entry.Detail)
             .HasMaxLength(AuditLogEntry.DetailMaxLength)
             .HasComment("Short note that qualifies the action, such as a role name or a new status. Never holds post or comment content.");
+
+        builder.Property(entry => entry.Changes)
+            .HasConversion(changes => SerializeChanges(changes), json => DeserializeChanges(json),
+                new ValueComparer<AuditChange[]>(
+                    (left, right) => SerializeChanges(left!) == SerializeChanges(right!),
+                    changes => StringComparer.Ordinal.GetHashCode(SerializeChanges(changes)),
+                    changes => DeserializeChanges(SerializeChanges(changes))))
+            .HasColumnType("jsonb")
+            .HasDefaultValueSql("'[]'::jsonb")
+            .HasComment("Fields changed by the action. Content and personal data are represented by field name only.");
 
         builder.Property(entry => entry.TraceId)
             .HasMaxLength(AuditLogEntry.TraceIdMaxLength)

@@ -62,6 +62,14 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .HasColumnName("affected_user_id")
                         .HasComment("User whose data or account the action changed, when it is not the actor, for example the author of a removed post.");
 
+                    b.Property<string>("Changes")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("changes")
+                        .HasDefaultValueSql("'[]'::jsonb")
+                        .HasComment("Fields changed by the action. Content and personal data are represented by field name only.");
+
                     b.Property<string>("ClientId")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")

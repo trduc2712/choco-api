@@ -32,9 +32,14 @@ public sealed class EditMyProfileTests(ChocoApiFactory factory) : IClassFixture<
     {
         User caller = await AddUsersAsync();
         JsonElement sent = default;
-        factory.IdentityProvider.RespondWithAsync(async (request, cancellationToken) =>
+        factory.IdentityProvider.RespondWithAsync(async (providerRequest, cancellationToken) =>
         {
-            string json = await request.Content!.ReadAsStringAsync(cancellationToken);
+            if (providerRequest.Method == HttpMethod.Get)
+            {
+                return ProviderProfile("username", "Display Name", null, AvatarUrl);
+            }
+
+            string json = await providerRequest.Content!.ReadAsStringAsync(cancellationToken);
             sent = JsonSerializer.Deserialize<JsonElement>(json);
             return ProviderProfile("username-updated", "First Name", "Last Name", AvatarUrl);
         });
@@ -48,7 +53,8 @@ public sealed class EditMyProfileTests(ChocoApiFactory factory) : IClassFixture<
         (await response.Content.ReadFromJsonAsync<UserProfileResponse>(TestContext.Current.CancellationToken)).Should().Be(expected);
         (await ReadProfileAsync(ProfilePath)).Should().Be(expected);
         (await ReadProfileAsync($"/api/v1/users/{caller.Id}", "identity-id-2")).Should().Be(expected);
-        HttpRequestMessage outgoing = factory.IdentityProvider.Requests.Should().ContainSingle().Subject;
+        factory.IdentityProvider.Requests.Select(outgoing => outgoing.Method).Should().Equal(HttpMethod.Get, HttpMethod.Patch);
+        HttpRequestMessage outgoing = factory.IdentityProvider.Requests.Last();
         outgoing.Method.Should().Be(HttpMethod.Patch);
         outgoing.RequestUri.Should().Be(new Uri(ChocoApiFactory.IdentityProviderUrl, "users/identity-id"));
         sent.GetProperty("username").GetString().Should().Be("username-updated");
@@ -80,10 +86,12 @@ public sealed class EditMyProfileTests(ChocoApiFactory factory) : IClassFixture<
     public async Task UnavailableUsernameLeavesProfileUnchanged(string username, bool rejectedByProvider)
     {
         User caller = await AddUsersAsync();
-        factory.IdentityProvider.RespondWith(_ => new HttpResponseMessage(HttpStatusCode.UnprocessableEntity)
-        {
-            Content = JsonContent.Create(new { errors = new[] { new { code = "form_identifier_exists", meta = new { param_name = "username" } } } })
-        });
+        factory.IdentityProvider.RespondWith(outgoing => outgoing.Method == HttpMethod.Get
+            ? ProviderProfile("username", "Display Name", null, AvatarUrl)
+            : new HttpResponseMessage(HttpStatusCode.UnprocessableEntity)
+            {
+                Content = JsonContent.Create(new { errors = new[] { new { code = "form_identifier_exists", meta = new { param_name = "username" } } } })
+            });
         using HttpRequestMessage request = Request(HttpMethod.Put, ProfilePath);
         request.Content = ProfileBody(username);
 
@@ -94,7 +102,7 @@ public sealed class EditMyProfileTests(ChocoApiFactory factory) : IClassFixture<
         ProblemDetails problem = (await response.Content.ReadFromJsonAsync<ProblemDetails>(TestContext.Current.CancellationToken))!;
         ((JsonElement)problem.Extensions["code"]!).GetString().Should().Be("User.UsernameTaken");
         (await ReadProfileAsync(ProfilePath)).Should().Be(new UserProfileResponse(caller.Id, "username", "Display Name", AvatarUrl, null));
-        factory.IdentityProvider.Requests.Should().HaveCount(rejectedByProvider ? 1 : 0);
+        factory.IdentityProvider.Requests.Should().HaveCount(rejectedByProvider ? 2 : 0);
     }
 
     [Fact]

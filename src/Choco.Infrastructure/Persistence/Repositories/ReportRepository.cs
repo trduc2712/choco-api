@@ -36,7 +36,7 @@ internal sealed class ReportRepository : Repository<Report>, IReportRepository
         return DbSet.AsNoTracking().FirstOrDefaultAsync(report => report.Id == id, cancellationToken);
     }
 
-    public async Task ResolveOpenAboutTheSameTargetAsync(
+    public Task<int> ResolveOpenAboutTheSameTargetAsync(
         Report report, ReportOutcome outcome, Guid resolverId, DateTimeOffset now, CancellationToken cancellationToken)
     {
         IQueryable<Report> open = DbSet.Where(other => other.Status == ReportStatus.Open);
@@ -45,7 +45,7 @@ internal sealed class ReportRepository : Repository<Report>, IReportRepository
             ? open.Where(other => other.TargetPostId == report.TargetPostId)
             : open.Where(other => other.TargetUserId == report.TargetUserId);
 
-        await open.ExecuteUpdateAsync(
+        return open.ExecuteUpdateAsync(
             setters => setters
                 .SetProperty(other => other.Status, ReportStatus.Resolved)
                 .SetProperty(other => other.Outcome, (ReportOutcome?)outcome)
