@@ -24,5 +24,10 @@ public enum AuditAction
     RoleDeleted,
     RoleAssigned,
     RoleRevoked,
-    FeedbackStatusChanged
+    FeedbackStatusChanged,
+    PostLiked,
+    PostUnliked,
+    UserFollowed,
+    UserUnfollowed,
+    FeedbackSent
 }
