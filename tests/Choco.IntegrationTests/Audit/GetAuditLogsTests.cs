@@ -149,8 +149,8 @@ public sealed class GetAuditLogsTests(ChocoApiFactory factory) : AuditTestsBase(
         await AddEntryAsync(Guid.NewGuid(), Time.AddMinutes(1), targetId: TargetId);
         await AddEntryAsync(Guid.NewGuid(), Time.AddMinutes(2), targetId: TargetId);
 
-        JsonElement first = await GetJsonAsync($"{Path}?pageSize=2");
-        JsonElement second = await GetJsonAsync($"{Path}?pageSize=2&page=2");
+        JsonElement first = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=2");
+        JsonElement second = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=2&page=2");
 
         first.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("occurredAt").GetDateTimeOffset())
             .Should().Equal(Time.AddMinutes(2), Time.AddMinutes(1));
@@ -187,10 +187,10 @@ public sealed class GetAuditLogsTests(ChocoApiFactory factory) : AuditTestsBase(
             await AddEntryAsync(Guid.NewGuid(), Time.AddMinutes(index));
         }
 
-        JsonElement middle = await GetJsonAsync($"{Path}?pageSize=2&page=2");
-        JsonElement last = await GetJsonAsync($"{Path}?pageSize=2&page=3");
-        JsonElement pastEnd = await GetJsonAsync($"{Path}?pageSize=2&page=99");
-        JsonElement hugePage = await GetJsonAsync($"{Path}?pageSize=50&page={int.MaxValue}");
+        JsonElement middle = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=2&page=2");
+        JsonElement last = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=2&page=3");
+        JsonElement pastEnd = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=2&page=99");
+        JsonElement hugePage = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=50&page={int.MaxValue}");
 
         middle.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("occurredAt").GetDateTimeOffset())
             .Should().Equal(Time.AddMinutes(2), Time.AddMinutes(1));
@@ -212,8 +212,8 @@ public sealed class GetAuditLogsTests(ChocoApiFactory factory) : AuditTestsBase(
             await AddEntryAsync(Guid.NewGuid(), Time.AddMinutes(index));
         }
 
-        JsonElement smallest = await GetJsonAsync($"{Path}?pageSize=1");
-        JsonElement largest = await GetJsonAsync($"{Path}?pageSize=50");
+        JsonElement smallest = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=1");
+        JsonElement largest = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=50");
 
         smallest.GetProperty("items").GetArrayLength().Should().Be(1);
         smallest.GetProperty("totalCount").GetInt32().Should().Be(3);
@@ -233,10 +233,10 @@ public sealed class GetAuditLogsTests(ChocoApiFactory factory) : AuditTestsBase(
 
         List<Guid> expected = ids.OrderDescending().ToList();
 
-        JsonElement first = await GetJsonAsync($"{Path}?pageSize=2&page=1");
-        JsonElement second = await GetJsonAsync($"{Path}?pageSize=2&page=2");
-        JsonElement third = await GetJsonAsync($"{Path}?pageSize=2&page=3");
-        JsonElement repeated = await GetJsonAsync($"{Path}?pageSize=2&page=1");
+        JsonElement first = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=2&page=1");
+        JsonElement second = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=2&page=2");
+        JsonElement third = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=2&page=3");
+        JsonElement repeated = await GetJsonAsync($"{Path}?action=PostDeleted&pageSize=2&page=1");
 
         static IEnumerable<Guid> Ids(JsonElement body) => body.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("id").GetGuid());
 

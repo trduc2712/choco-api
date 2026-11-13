@@ -6,7 +6,7 @@ namespace Choco.Contract.AuditLogs;
 /// <summary>Lists audit log entries, newest first.</summary>
 /// <param name="ActorId">Only entries made by this user. Null for any actor.</param>
 /// <param name="Action">Only entries of this action, such as PostDeleted or RoleAssigned. Null for any action.</param>
-/// <param name="TargetType">Only entries about this kind of object: Post, Comment, User, Report, Feedback or Role. Null for any kind.</param>
+/// <param name="TargetType">Only entries about this kind of object: Post, Comment, User, Report, Feedback, Role, Request or AuditLog. Null for any kind.</param>
 /// <param name="TargetId">Only entries about the object with this id. Null for any object.</param>
 /// <param name="AffectedUserId">Only entries that affected this user. Null for any user.</param>
 /// <param name="From">Only entries at or after this time. Null for no lower limit.</param>

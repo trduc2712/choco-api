@@ -1,6 +1,5 @@
 using Choco.Application.Abstractions.Auditing;
 using Choco.Application.Abstractions.Authentication;
-using Choco.Application.Abstractions.Requests;
 using Choco.Contract.Abstractions.Messaging;
 using Choco.Domain.AuditLogs;
 using Choco.Domain.Primitives.Persistence;
@@ -19,26 +18,23 @@ internal sealed class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
     private readonly ICurrentUser _currentUser;
     private readonly IRoleRepository _roleRepository;
     private readonly IAuditLogRepository _auditLogRepository;
-    private readonly IRequestContext _requestContext;
+    private readonly AuditEntryBuilder _entryBuilder;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly TimeProvider _timeProvider;
 
     public AuditBehavior(
         IEnumerable<IAuditDescriber<TRequest, TResponse>> describers,
         ICurrentUser currentUser,
         IRoleRepository roleRepository,
         IAuditLogRepository auditLogRepository,
-        IRequestContext requestContext,
-        IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        AuditEntryBuilder entryBuilder,
+        IUnitOfWork unitOfWork)
     {
         _describers = describers;
         _currentUser = currentUser;
         _roleRepository = roleRepository;
         _auditLogRepository = auditLogRepository;
-        _requestContext = requestContext;
+        _entryBuilder = entryBuilder;
         _unitOfWork = unitOfWork;
-        _timeProvider = timeProvider;
     }
 
     public async Task<TResponse> Handle(
@@ -86,24 +82,8 @@ internal sealed class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
 
             foreach (AuditDescription description in descriptions)
             {
-                Guid? affectedUserId = description.AffectedUserId == actorId
-                    ? null
-                    : description.AffectedUserId;
-
-                AuditLogEntry entry = AuditLogEntry.Create(
-                    _timeProvider.GetUtcNow(),
-                    isSystem ? AuditActorType.System : AuditActorType.User,
-                    actorId,
-                    actorRoles,
-                    _requestContext.ClientId,
-                    description.Action,
-                    description.TargetType,
-                    description.TargetId,
-                    affectedUserId,
-                    description.Detail,
-                    _requestContext.TraceId,
-                    _requestContext.UserAgent,
-                    _requestContext.IpAddress);
+                AuditLogEntry entry = _entryBuilder.Create(
+                    isSystem ? AuditActorType.System : AuditActorType.User, actorId, actorRoles, description);
 
                 _auditLogRepository.Add(entry);
             }
