@@ -5,12 +5,13 @@ using Choco.SharedKernel.Results;
 
 namespace Choco.Application.Users.UploadMyAvatar;
 
-internal sealed class UploadMyAvatarCommandAuditDescriber : IAuditDescriber<UploadMyAvatarCommand, Result<UserProfileResponse>>
+internal sealed class UploadMyAvatarCommandAuditDescriber(AuditChanges auditChanges) : IAuditDescriber<UploadMyAvatarCommand, Result<UserProfileResponse>>
 {
     public Task<AuditDescription> DescribeAsync(
         UploadMyAvatarCommand request, Result<UserProfileResponse> response, CancellationToken cancellationToken)
     {
         return Task.FromResult(new AuditDescription(
-            AuditAction.AvatarUploaded, AuditTargetType.User, response.Value.Id, response.Value.Id));
+            AuditAction.AvatarUploaded, AuditTargetType.User, response.Value.Id, response.Value.Id,
+            Changes: auditChanges.Get(response)));
     }
 }

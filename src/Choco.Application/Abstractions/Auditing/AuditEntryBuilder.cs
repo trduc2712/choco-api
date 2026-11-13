@@ -28,6 +28,7 @@ internal sealed class AuditEntryBuilder(IRequestContext requestContext, TimeProv
             description.Detail,
             requestContext.TraceId,
             requestContext.UserAgent,
-            requestContext.IpAddress);
+            requestContext.IpAddress,
+            description.Changes);
     }
 }

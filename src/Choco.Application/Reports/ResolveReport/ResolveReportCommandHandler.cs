@@ -1,8 +1,10 @@
+using Choco.Application.Abstractions.Auditing;
 using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Authorization;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Application.Users;
 using Choco.Contract.Reports;
+using Choco.Domain.AuditLogs;
 using Choco.Domain.Posts;
 using Choco.Domain.Primitives.Persistence;
 using Choco.Domain.Reports;
@@ -20,7 +22,8 @@ internal sealed class ResolveReportCommandHandler(
     IUserRepository userRepository,
     UserSuspender suspender,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider) : ICommandHandler<ResolveReportCommand>
+    TimeProvider timeProvider,
+    AuditChanges auditChanges) : ICommandHandler<ResolveReportCommand>
 {
     public async Task<Result> Handle(ResolveReportCommand command, CancellationToken cancellationToken)
     {
@@ -68,12 +71,12 @@ internal sealed class ResolveReportCommandHandler(
             return action;
         }
 
-        await reportRepository.ResolveOpenAboutTheSameTargetAsync(
+        int resolved = await reportRepository.ResolveOpenAboutTheSameTargetAsync(
             report, outcome, callerId, timeProvider.GetUtcNow(), cancellationToken);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result.Success();
+        return auditChanges.Record(Result.Success(), resolved == 0 ? [] : [new AuditChange("outcome", After: outcome.ToString())]);
     }
 
     private async Task<Result> RemoveContentAsync(Report report, CancellationToken cancellationToken)

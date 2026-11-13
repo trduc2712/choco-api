@@ -5,7 +5,7 @@ using Choco.SharedKernel.Results;
 
 namespace Choco.Application.Roles.UpdateRole;
 
-internal sealed class UpdateRoleCommandAuditDescriber : IAuditDescriber<UpdateRoleCommand, Result<RoleResponse>>
+internal sealed class UpdateRoleCommandAuditDescriber(AuditChanges auditChanges) : IAuditDescriber<UpdateRoleCommand, Result<RoleResponse>>
 {
     public Task<AuditDescription> DescribeAsync(
         UpdateRoleCommand request, Result<RoleResponse> response, CancellationToken cancellationToken)
@@ -14,6 +14,7 @@ internal sealed class UpdateRoleCommandAuditDescriber : IAuditDescriber<UpdateRo
             AuditAction.RoleUpdated,
             AuditTargetType.Role,
             response.Value.Id,
-            Detail: $"Role: {response.Value.Name}"));
+            Detail: $"Role: {response.Value.Name}",
+            Changes: auditChanges.Get(response)));
     }
 }

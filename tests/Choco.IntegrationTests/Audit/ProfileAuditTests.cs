@@ -19,7 +19,9 @@ public sealed class ProfileAuditTests(ChocoApiFactory factory) : AuditTestsBase(
     public async Task UpdateMyProfile_RecordsProfileUpdatedWithoutTheNewValues()
     {
         User user = await AddUserAsync("identity-id", "username");
-        Factory.IdentityProvider.RespondWith(_ => ProviderProfile("username-updated", "First Name", "Last Name", AvatarUrl));
+        Factory.IdentityProvider.RespondWith(outgoing => outgoing.Method == HttpMethod.Get
+            ? ProviderProfile("username", "First Name", "Last Name Before", AvatarUrl)
+            : ProviderProfile("username-updated", "First Name", "Last Name", AvatarUrl));
         using HttpRequestMessage request = Request(
             HttpMethod.Put, ProfilePath, new { username = "username-updated", firstName = "First Name", lastName = "Last Name" });
 
@@ -28,6 +30,7 @@ public sealed class ProfileAuditTests(ChocoApiFactory factory) : AuditTestsBase(
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, user.Id, AuditAction.ProfileUpdated, AuditTargetType.User, user.Id);
+        entry.Changes.Should().Equal(new AuditChange("username"), new AuditChange("lastName"));
     }
 
     [Fact]
@@ -41,6 +44,7 @@ public sealed class ProfileAuditTests(ChocoApiFactory factory) : AuditTestsBase(
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, user.Id, AuditAction.BioUpdated, AuditTargetType.User, user.Id);
+        entry.Changes.Should().Equal(new AuditChange("bio"));
     }
 
     [Fact]
@@ -58,6 +62,7 @@ public sealed class ProfileAuditTests(ChocoApiFactory factory) : AuditTestsBase(
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, user.Id, AuditAction.AvatarUploaded, AuditTargetType.User, user.Id);
+        entry.Changes.Should().Equal(new AuditChange("avatar"));
     }
 
     [Fact]
@@ -94,6 +99,7 @@ public sealed class ProfileAuditTests(ChocoApiFactory factory) : AuditTestsBase(
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, user.Id, AuditAction.AvatarRemoved, AuditTargetType.User, user.Id);
+        entry.Changes.Should().BeEmpty();
     }
 
     private static HttpResponseMessage ProviderProfile(string username, string firstName, string? lastName, string avatarUrl) =>

@@ -1,3 +1,4 @@
+using Choco.Application.Abstractions.Auditing;
 using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Roles;
@@ -12,7 +13,8 @@ internal sealed class UpdateRoleCommandHandler(
     ICurrentUser currentUser,
     IUserRepository userRepository,
     IRoleRepository roleRepository,
-    IUnitOfWork unitOfWork) : ICommandHandler<UpdateRoleCommand, RoleResponse>
+    IUnitOfWork unitOfWork,
+    AuditChanges auditChanges) : ICommandHandler<UpdateRoleCommand, RoleResponse>
 {
     public async Task<Result<RoleResponse>> Handle(UpdateRoleCommand command, CancellationToken cancellationToken)
     {
@@ -52,10 +54,12 @@ internal sealed class UpdateRoleCommandHandler(
             return Result<RoleResponse>.Failure(RoleErrors.NameTaken);
         }
 
+        RoleResponse before = role.ToResponse();
         role.Update(command.Name, command.Permissions);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result<RoleResponse>.Success(role.ToResponse());
+        RoleResponse after = role.ToResponse();
+        return auditChanges.Record(Result<RoleResponse>.Success(after), RoleAuditChanges.Between(before, after));
     }
 }

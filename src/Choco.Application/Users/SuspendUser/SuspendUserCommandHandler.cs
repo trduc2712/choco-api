@@ -1,3 +1,4 @@
+using Choco.Application.Abstractions.Auditing;
 using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Users;
@@ -11,7 +12,8 @@ internal sealed class SuspendUserCommandHandler(
     ICurrentUser currentUser,
     IUserRepository userRepository,
     UserSuspender suspender,
-    IUnitOfWork unitOfWork) : ICommandHandler<SuspendUserCommand>
+    IUnitOfWork unitOfWork,
+    AuditChanges auditChanges) : ICommandHandler<SuspendUserCommand>
 {
     public async Task<Result> Handle(SuspendUserCommand command, CancellationToken cancellationToken)
     {
@@ -29,6 +31,7 @@ internal sealed class SuspendUserCommandHandler(
             return Result.Failure(UserErrors.NotFound);
         }
 
+        bool wasSuspended = user.IsSuspended;
         Result suspension = await suspender.SuspendAsync(user, actorIdResult.Value, command.Reason, cancellationToken);
 
         if (suspension.IsFailure)
@@ -38,6 +41,7 @@ internal sealed class SuspendUserCommandHandler(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result.Success();
+        return auditChanges.Record(Result.Success(),
+            wasSuspended == user.IsSuspended ? [] : [AuditChanges.Suspension(true)]);
     }
 }

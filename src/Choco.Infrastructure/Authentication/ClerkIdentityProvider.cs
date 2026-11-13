@@ -150,7 +150,11 @@ internal sealed class ClerkIdentityProvider : IIdentityProvider
         ClerkUserResponse clerkUser = (await response.Content.ReadFromJsonAsync<ClerkUserResponse>(SerializerOptions, cancellationToken))!;
         string fullName = string.Join(' ', new[] { clerkUser.FirstName, clerkUser.LastName }.Where(name => !string.IsNullOrWhiteSpace(name)));
 
-        return new IdpUser(clerkUser.Id, clerkUser.Username, fullName.Length > 0 ? fullName : null, clerkUser.ImageUrl);
+        return new IdpUser(clerkUser.Id, clerkUser.Username, fullName.Length > 0 ? fullName : null, clerkUser.ImageUrl)
+        {
+            FirstName = clerkUser.FirstName,
+            LastName = clerkUser.LastName
+        };
     }
 
     private sealed record ClerkErrors(ClerkError[]? Errors);

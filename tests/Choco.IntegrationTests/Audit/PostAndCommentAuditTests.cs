@@ -27,18 +27,21 @@ public sealed class PostAndCommentAuditTests(ChocoApiFactory factory) : AuditTes
         entry.ActorRoles.Should().Equal("Member");
     }
 
-    [Fact]
-    public async Task EditPost_RecordsPostEdited()
+    [Theory]
+    [InlineData("content-updated", true)]
+    [InlineData(" content ", false)]
+    public async Task EditPost_RecordsOnlyTheChangedField(string content, bool changed)
     {
         User author = await AddUserAsync("identity-id", "username");
         Post post = await AddPostAsync(author);
-        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/posts/{post.Id}", new { content = "content-updated" });
+        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/posts/{post.Id}", new { content });
 
         using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, author.Id, AuditAction.PostEdited, AuditTargetType.Post, post.Id);
+        entry.Changes.Should().Equal(changed ? [new AuditChange("content")] : Array.Empty<AuditChange>());
     }
 
     [Fact]

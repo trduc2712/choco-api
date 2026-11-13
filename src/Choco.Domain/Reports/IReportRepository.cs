@@ -16,6 +16,6 @@ public interface IReportRepository : IRepository<Report>
 
     Task<Report?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken);
 
-    Task ResolveOpenAboutTheSameTargetAsync(
+    Task<int> ResolveOpenAboutTheSameTargetAsync(
         Report report, ReportOutcome outcome, Guid resolverId, DateTimeOffset now, CancellationToken cancellationToken);
 }

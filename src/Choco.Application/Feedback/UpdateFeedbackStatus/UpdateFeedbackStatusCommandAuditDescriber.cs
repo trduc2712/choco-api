@@ -5,7 +5,7 @@ using Choco.SharedKernel.Results;
 
 namespace Choco.Application.Feedback.UpdateFeedbackStatus;
 
-internal sealed class UpdateFeedbackStatusCommandAuditDescriber
+internal sealed class UpdateFeedbackStatusCommandAuditDescriber(AuditChanges auditChanges)
     : IAuditDescriber<UpdateFeedbackStatusCommand, Result<FeedbackResponse>>
 {
     public Task<AuditDescription> DescribeAsync(
@@ -16,6 +16,7 @@ internal sealed class UpdateFeedbackStatusCommandAuditDescriber
             AuditTargetType.Feedback,
             response.Value.Id,
             response.Value.Author?.Id,
-            $"Status: {response.Value.Status}"));
+            $"Status: {response.Value.Status}",
+            Changes: auditChanges.Get(response)));
     }
 }

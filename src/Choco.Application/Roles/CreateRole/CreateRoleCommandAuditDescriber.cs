@@ -14,6 +14,7 @@ internal sealed class CreateRoleCommandAuditDescriber : IAuditDescriber<CreateRo
             AuditAction.RoleCreated,
             AuditTargetType.Role,
             response.Value.Id,
-            Detail: $"Role: {response.Value.Name}"));
+            Detail: $"Role: {response.Value.Name}",
+            Changes: RoleAuditChanges.Between(null, response.Value)));
     }
 }

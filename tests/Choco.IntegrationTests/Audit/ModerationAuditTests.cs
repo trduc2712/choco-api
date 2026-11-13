@@ -27,13 +27,26 @@ public sealed class ModerationAuditTests(ChocoApiFactory factory) : AuditTestsBa
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, administrator.Id, AuditAction.UserSuspended, AuditTargetType.User, target.Id, target.Id, "Reason: Repeated spam");
+        entry.Changes.Should().Equal(new AuditChange("isSuspended", "false", "true"));
     }
 
-    [Fact]
-    public async Task UnsuspendUser_RecordsUserUnsuspended()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task UnsuspendUser_RecordsOnlyAnActualStateChange(bool wasSuspended)
     {
         User administrator = await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
         User target = await AddUserAsync("identity-id-2", "username-2");
+        if (wasSuspended)
+        {
+            await Factory.ExecuteDbContextAsync(dbContext =>
+            {
+                dbContext.Attach(target);
+                target.Suspend("Suspension reason", administrator.Id, Factory.TimeProvider.GetUtcNow());
+                return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+            });
+        }
+
         using HttpRequestMessage request = Request(HttpMethod.Delete, $"/api/v1/admin/users/{target.Id}/suspension");
 
         using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -41,6 +54,7 @@ public sealed class ModerationAuditTests(ChocoApiFactory factory) : AuditTestsBa
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, administrator.Id, AuditAction.UserUnsuspended, AuditTargetType.User, target.Id, target.Id);
+        entry.Changes.Should().Equal(wasSuspended ? [new AuditChange("isSuspended", "true", "false")] : Array.Empty<AuditChange>());
     }
 
     [Fact]
@@ -91,6 +105,7 @@ public sealed class ModerationAuditTests(ChocoApiFactory factory) : AuditTestsBa
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(
             entry, administrator.Id, AuditAction.ReportResolved, AuditTargetType.Report, report.Id, author.Id, "Outcome: Dismissed");
+        entry.Changes.Should().Equal(new AuditChange("outcome", After: "Dismissed"));
     }
 
     [Fact]
@@ -259,6 +274,7 @@ public sealed class ModerationAuditTests(ChocoApiFactory factory) : AuditTestsBa
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(
             entry, administrator.Id, AuditAction.FeedbackStatusChanged, AuditTargetType.Feedback, feedback.Id, author.Id, "Status: in_progress");
+        entry.Changes.Should().Equal(new AuditChange("status", "new", "in_progress"));
     }
 
     private Task AddAsync(object entity)

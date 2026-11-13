@@ -14,6 +14,7 @@ internal sealed class DeleteRoleCommandAuditDescriber : IAuditDescriber<DeleteRo
             AuditAction.RoleDeleted,
             AuditTargetType.Role,
             response.Value.Id,
-            Detail: $"Role: {response.Value.Name}"));
+            Detail: $"Role: {response.Value.Name}",
+            Changes: RoleAuditChanges.Between(response.Value, null)));
     }
 }

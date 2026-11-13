@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddAuditDescribersFromAssembly(AssemblyReference.Assembly);
 
         services.AddScoped<AuditEntryBuilder>();
+        services.AddScoped<AuditChanges>();
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<Users.MyProfileWriter>();
         services.AddScoped<Users.UserSuspender>();

@@ -1,6 +1,8 @@
+using Choco.Application.Abstractions.Auditing;
 using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Posts;
+using Choco.Domain.AuditLogs;
 using Choco.Domain.Posts;
 using Choco.Domain.Primitives.Persistence;
 using Choco.Domain.Users;
@@ -15,19 +17,22 @@ internal sealed class EditPostCommandHandler : ICommandHandler<EditPostCommand, 
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly PostResponseReader _reader;
+    private readonly AuditChanges _auditChanges;
 
     public EditPostCommandHandler(
         ICurrentUser currentUser,
         IPostRepository postRepository,
         IUserRepository userRepository,
         IUnitOfWork unitOfWork,
-        PostResponseReader reader)
+        PostResponseReader reader,
+        AuditChanges auditChanges)
     {
         _currentUser = currentUser;
         _postRepository = postRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _reader = reader;
+        _auditChanges = auditChanges;
     }
 
     public async Task<Result<PostResponse>> Handle(EditPostCommand command, CancellationToken cancellationToken)
@@ -53,6 +58,7 @@ internal sealed class EditPostCommandHandler : ICommandHandler<EditPostCommand, 
             return Result<PostResponse>.Failure(PostErrors.NotFound);
         }
 
+        string previousContent = post.Content;
         Result editResult = post.Edit(command.Content, editorIdResult.Value);
 
         if (editResult.IsFailure)
@@ -62,7 +68,8 @@ internal sealed class EditPostCommandHandler : ICommandHandler<EditPostCommand, 
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result<PostResponse>.Success(
+        Result<PostResponse> result = Result<PostResponse>.Success(
             await _reader.ReadOneAsync(post, author, editorIdResult.Value, cancellationToken));
+        return _auditChanges.Record(result, previousContent == post.Content ? [] : [new AuditChange("content")]);
     }
 }
