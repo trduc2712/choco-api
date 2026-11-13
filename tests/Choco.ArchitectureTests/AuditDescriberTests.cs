@@ -1,7 +1,6 @@
 using Choco.Application.Abstractions.Auditing;
 using Choco.Contract.Abstractions.Messaging;
 using Choco.Contract.Notifications;
-using Choco.Contract.Users;
 
 using ApplicationAssemblyReference = Choco.Application.AssemblyReference;
 using ContractAssemblyReference = Choco.Contract.AssemblyReference;
@@ -13,9 +12,7 @@ public class AuditDescriberTests
     private static readonly IReadOnlyDictionary<Type, string> Exclusions = new Dictionary<Type, string>
     {
         [typeof(MarkNotificationReadCommand)] = "Changes only the caller's own notification state.",
-        [typeof(MarkAllNotificationsReadCommand)] = "Changes only the caller's own notification state.",
-        [typeof(CreateUserCommand)] = "Sent by the system when a user first appears, so no user is the actor.",
-        [typeof(BootstrapAdministratorsCommand)] = "Sent by the system at startup, so no user is the actor."
+        [typeof(MarkAllNotificationsReadCommand)] = "Changes only the caller's own notification state."
     };
 
     private static readonly IReadOnlyList<Type> Commands = ContractAssemblyReference.Assembly.GetTypes()
