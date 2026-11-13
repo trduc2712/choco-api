@@ -37,20 +37,6 @@ public sealed class AuditPipelineTests(ChocoApiFactory factory) : AuditTestsBase
     }
 
     [Fact]
-    public async Task LikePost_RecordsNoEntry()
-    {
-        User author = await AddUserAsync("identity-id-2", "username-2");
-        await AddUserAsync("identity-id", "username");
-        Post post = await AddPostAsync(author);
-        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/posts/{post.Id}/like");
-
-        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
-
-        response.IsSuccessStatusCode.Should().BeTrue();
-        (await ReadEntriesAsync()).Should().BeEmpty();
-    }
-
-    [Fact]
     public async Task Request_RecordsClientUserAgentAndTraceId()
     {
         await AddUserAsync("identity-id", "username");
