@@ -43,7 +43,7 @@ internal sealed class AuditLogEntryConfiguration : IEntityTypeConfiguration<Audi
         builder.Property(entry => entry.TargetType)
             .HasConversion<string>()
             .HasMaxLength(AuditLogEntry.EnumMaxLength)
-            .HasComment("Kind of object the action was done to: Post, Comment, User, Report, Feedback or Role.");
+            .HasComment("Kind of object the action was done to: Post, Comment, User, Report, Feedback, Role, Request or AuditLog.");
 
         builder.Property(entry => entry.TargetId)
             .HasComment("Id of the object the action was done to; the table it points to depends on target_type.");

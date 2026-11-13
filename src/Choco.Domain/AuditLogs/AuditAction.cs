@@ -30,5 +30,7 @@ public enum AuditAction
     UserFollowed,
     UserUnfollowed,
     FeedbackSent,
-    UserCreated
+    UserCreated,
+    AccessDenied,
+    AuditLogRead
 }
