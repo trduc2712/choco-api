@@ -99,7 +99,59 @@ internal sealed class ReportRepository : Repository<Report>, IReportRepository
             reports = reports.Where(report => report.Outcome == outcome);
         }
 
+        if (filter.From is { } from)
+        {
+            reports = reports.Where(report => report.CreatedAt >= from);
+        }
+
+        if (filter.To is { } to)
+        {
+            reports = reports.Where(report => report.CreatedAt < to);
+        }
+
+        if (filter.Search is { } search)
+        {
+            reports = WhereMatches(reports, search, includeReporter: true);
+        }
+
         return reports;
+    }
+
+    private IQueryable<Report> WhereMatches(IQueryable<Report> reports, ReportSearch search, bool includeReporter)
+    {
+        string namePattern = LikePatterns.Contains(search.Phrase);
+
+        IQueryable<Guid> userIdsByName = DbContext.Set<User>()
+            .Where(user =>
+                EF.Functions.ILike(EF.Functions.Unaccent(user.Username), EF.Functions.Unaccent(namePattern), LikePatterns.Escape)
+                || EF.Functions.ILike(EF.Functions.Unaccent(user.DisplayName), EF.Functions.Unaccent(namePattern), LikePatterns.Escape))
+            .Select(user => user.Id);
+
+        IQueryable<Guid> reporterIds = includeReporter
+            ? DbContext.Set<User>()
+                .Where(user => EF.Functions.ILike(EF.Functions.Unaccent(user.Username), EF.Functions.Unaccent(namePattern), LikePatterns.Escape))
+                .Select(user => user.Id)
+            : DbContext.Set<User>().Where(user => false).Select(user => user.Id);
+
+        IQueryable<Guid> postIdsByAuthor = DbContext.Set<Post>()
+            .Where(post => userIdsByName.Contains(post.AuthorId))
+            .Select(post => post.Id);
+
+        IQueryable<Post> postsWithWords = DbContext.Set<Post>();
+        foreach (string word in search.Words)
+        {
+            string wordPattern = LikePatterns.Contains(word);
+            postsWithWords = postsWithWords.Where(post => EF.Functions.ILike(
+                EF.Functions.Unaccent(post.Content), EF.Functions.Unaccent(wordPattern), LikePatterns.Escape));
+        }
+
+        IQueryable<Guid> postIdsByContent = postsWithWords.Select(post => post.Id);
+
+        return reports.Where(report =>
+            (report.TargetUserId != null && userIdsByName.Contains(report.TargetUserId.Value))
+            || (report.TargetPostId != null
+                && (postIdsByAuthor.Contains(report.TargetPostId.Value) || postIdsByContent.Contains(report.TargetPostId.Value)))
+            || reporterIds.Contains(report.ReporterId));
     }
 
     public Task<int> CountOpenAboutUserAsync(Guid userId, CancellationToken cancellationToken)
@@ -172,6 +224,11 @@ internal sealed class ReportRepository : Repository<Report>, IReportRepository
         if (filter.TargetType is { } targetType)
         {
             open = open.Where(report => report.TargetType == targetType);
+        }
+
+        if (filter.Search is { } search)
+        {
+            open = WhereMatches(open, search, includeReporter: false);
         }
 
         IQueryable<IGrouping<TargetKey, Report>> groups = open.GroupBy(report => new TargetKey

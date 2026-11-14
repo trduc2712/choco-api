@@ -37,5 +37,16 @@ internal sealed class GetAdminReportsQueryValidator : AbstractValidator<GetAdmin
             .Must(outcome => ReportEnums.TryParse<ReportOutcome>(outcome, out _))
             .When(query => query.Outcome is not null)
             .WithMessage("'{PropertyName}' must be one of: Dismissed, ContentRemoved, UserSuspended.");
+
+        RuleFor(query => query.To)
+            .GreaterThan(query => query.From!.Value)
+            .When(query => query.From is not null && query.To is not null)
+            .WithMessage("'{PropertyName}' must be later than 'From'.");
+
+        RuleFor(query => query.Q)
+            .Must(text => text!.Trim().Length <= GetAdminReportsQuery.SearchMaxLength)
+            .When(query => query.Q is not null)
+            .WithErrorCode("TooLong")
+            .WithMessage($"'{{PropertyName}}' must be {GetAdminReportsQuery.SearchMaxLength} characters or fewer after trimming.");
     }
 }

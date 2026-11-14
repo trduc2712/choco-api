@@ -20,7 +20,10 @@ internal sealed class GetAdminReportsQueryHandler(
             query.TargetId,
             ReportEnums.TryParse(query.Status, out ReportStatus status) ? status : null,
             ReportEnums.TryParse(query.Reason, out ReportReason reason) ? reason : null,
-            ReportEnums.TryParse(query.Outcome, out ReportOutcome outcome) ? outcome : null);
+            ReportEnums.TryParse(query.Outcome, out ReportOutcome outcome) ? outcome : null,
+            ReportSearches.Create(query.Q, GetAdminReportsQuery.MaxSearchWords),
+            query.From,
+            query.To);
         long skip = (long)(query.Page - 1) * query.PageSize;
 
         int totalCount = await reportRepository.CountForReadAsync(filter, cancellationToken);

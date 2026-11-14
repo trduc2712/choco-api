@@ -5,4 +5,7 @@ public sealed record ReportListFilter(
     Guid? TargetId,
     ReportStatus? Status,
     ReportReason? Reason,
-    ReportOutcome? Outcome);
+    ReportOutcome? Outcome,
+    ReportSearch? Search = null,
+    DateTimeOffset? From = null,
+    DateTimeOffset? To = null);
