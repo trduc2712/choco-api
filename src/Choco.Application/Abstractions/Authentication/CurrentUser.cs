@@ -63,7 +63,8 @@ internal sealed class CurrentUser : ICurrentUser
             }
 
             Result createUserResult = await _sender.Send(
-                new CreateUserCommand(idpUser.IdentityId, idpUser.Username ?? string.Empty, idpUser.FullName, idpUser.AvatarUrl),
+                new CreateUserCommand(
+                    idpUser.IdentityId, idpUser.Username ?? string.Empty, idpUser.FullName, idpUser.AvatarUrl, idpUser.UpdatedAt),
                 cancellationToken);
 
             if (createUserResult.IsFailure)

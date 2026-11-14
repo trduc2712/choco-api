@@ -37,6 +37,9 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(User.BioMaxLength)
             .HasComment("Short text the user wrote about themselves. Lives only in choco-api, not in Clerk; null when the user has none.");
 
+        builder.Property(user => user.IdentityUpdatedAt)
+            .HasComment("When Clerk last changed the account, taken from the event or the Clerk response that last wrote the profile; an event with an earlier or equal time is ignored. Null until the first sync.");
+
         builder.Property(user => user.SuspendedAt)
             .HasComment("When an administrator suspended the user; null when the user is not suspended. A suspended user can read but cannot create or change anything.");
 

@@ -23,7 +23,14 @@ public class SuspensionTests
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal([nameof(BootstrapAdministratorsCommand), nameof(CreateUserCommand)], systemRequests);
+        Assert.Equal(
+            [
+                nameof(BootstrapAdministratorsCommand),
+                nameof(CreateUserCommand),
+                nameof(SyncUserDeletionCommand),
+                nameof(SyncUserProfileCommand)
+            ],
+            systemRequests);
     }
 
     [Fact]
