@@ -61,11 +61,91 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
         secondPage.PageSize.Should().Be(2);
         secondPage.TotalCount.Should().Be(3);
         FeedbackSummaryResponse item = secondPage.Items.Single();
-        item.Author.Should().Be(new FeedbackAuthorResponse(author.Id, "username-2", "username-2"));
+        item.Author.Should().Be(new FeedbackAuthorResponse(author.Id, "username-2", "username-2", null));
         item.Category.Should().Be("bug");
         item.MessagePreview.Should().Be("first message");
         item.Status.Should().Be("new");
         item.CreatedAt.Should().Be(first.CreatedAt);
+    }
+
+    [Fact]
+    public async Task Listing_ShowsEachAuthorAvatarOrNullWhenThereIsNone()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User withAvatar = await AddUserWithAvatarAsync("identity-id-2", "username-2", "https://example.com/avatar.png");
+        User withoutAvatar = await NotificationTestData.AddUserAsync(_factory, "identity-id-3", "username-3");
+        FeedbackEntry first = await AddFeedbackAsync(withAvatar, FeedbackCategory.Bug, "first message");
+        _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
+        FeedbackEntry second = await AddFeedbackAsync(withoutAvatar, FeedbackCategory.Bug, "second message");
+
+        OffsetPageResponse<FeedbackSummaryResponse> page = await GetPageAsync(Path);
+
+        page.Items.Select(item => item.Id).Should().Equal(second.Id, first.Id);
+        page.Items[0].Author.Should().Be(new FeedbackAuthorResponse(withoutAvatar.Id, "username-3", "username-3", null));
+        page.Items[1].Author.Should().Be(new FeedbackAuthorResponse(withAvatar.Id, "username-2", "username-2", "https://example.com/avatar.png"));
+    }
+
+    [Fact]
+    public async Task Listing_ReturnsNullAuthorForADeletedAccount()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await AddUserWithAvatarAsync("identity-id-2", "username-2", "https://example.com/avatar.png");
+        await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message");
+        await NotificationTestData.DeleteUserAsync(_factory, author);
+
+        OffsetPageResponse<FeedbackSummaryResponse> page = await GetPageAsync(Path);
+
+        page.Items.Single().Author.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("https://example.com/avatar.png")]
+    [InlineData(null)]
+    public async Task Getting_ShowsTheAuthorAvatarOrNullWhenThereIsNone(string? avatarUrl)
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await AddUserWithAvatarAsync("identity-id-2", "username-2", avatarUrl);
+        FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message");
+        using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Get, $"{Path}/{entry.Id}");
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        JsonElement authorBody = body.GetProperty("author");
+        authorBody.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+            "id", "username", "displayName", "avatarUrl");
+        authorBody.GetProperty("avatarUrl").GetString().Should().Be(avatarUrl);
+    }
+
+    [Fact]
+    public async Task Getting_ReturnsNullAuthorForADeletedAccount()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await AddUserWithAvatarAsync("identity-id-2", "username-2", "https://example.com/avatar.png");
+        FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message");
+        await NotificationTestData.DeleteUserAsync(_factory, author);
+        using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Get, $"{Path}/{entry.Id}");
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        body.GetProperty("author").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task ChangingStatus_ReturnsTheAuthorWithTheAvatar()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await AddUserWithAvatarAsync("identity-id-2", "username-2", "https://example.com/avatar.png");
+        FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message");
+        using HttpRequestMessage request = Put($"{Path}/{entry.Id}/status", new { status = "resolved" });
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        FeedbackResponse body = (await response.Content.ReadFromJsonAsync<FeedbackResponse>(TestContext.Current.CancellationToken))!;
+        body.Author.Should().Be(new FeedbackAuthorResponse(author.Id, "username-2", "username-2", "https://example.com/avatar.png"));
     }
 
     [Fact]
@@ -498,6 +578,18 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
             (await db.Set<Role>().SingleAsync(role => role.SystemKey == SystemRoles.Admin, TestContext.Current.CancellationToken)).Permissions);
 
         permissions.Should().Contain([Permission.ReadAnyFeedback, Permission.ChangeFeedbackStatus]);
+    }
+
+    private async Task<User> AddUserWithAvatarAsync(string identityId, string username, string? avatarUrl)
+    {
+        User user = User.Create(identityId, username, null, avatarUrl);
+        await _factory.ExecuteDbContextAsync(db =>
+        {
+            db.Add(user);
+            return db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+
+        return user;
     }
 
     private static HttpRequestMessage Put(string path, object body)

@@ -46,7 +46,7 @@ internal static class FeedbackMappings
     {
         return new FeedbackSummaryResponse(
             entry.Id,
-            author is null ? null : new FeedbackAuthorResponse(author.Id, author.Username, author.DisplayName),
+            author is null ? null : new FeedbackAuthorResponse(author.Id, author.Username, author.DisplayName, author.AvatarUrl),
             FeedbackWire.ToWire(entry.Category),
             Preview(entry.Message),
             FeedbackWire.ToWire(entry.Status),
@@ -92,7 +92,7 @@ internal static class FeedbackMappings
     {
         return new FeedbackResponse(
             entry.Id,
-            author is null ? null : new FeedbackAuthorResponse(author.Id, author.Username, author.DisplayName),
+            author is null ? null : new FeedbackAuthorResponse(author.Id, author.Username, author.DisplayName, author.AvatarUrl),
             FeedbackWire.ToWire(entry.Category),
             entry.Message,
             entry.Context.ToDto(),

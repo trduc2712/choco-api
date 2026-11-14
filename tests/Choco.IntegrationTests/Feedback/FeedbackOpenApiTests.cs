@@ -53,6 +53,18 @@ public sealed class FeedbackOpenApiTests : IClassFixture<VersioningApiFactory>
     }
 
     [Fact]
+    public async Task OpenApi_DescribesTheAuthorAvatar()
+    {
+        JsonElement author = (await GetDocumentAsync()).GetProperty("components").GetProperty("schemas").GetProperty("FeedbackAuthorResponse");
+
+        author.GetProperty("properties").EnumerateObject().Select(property => property.Name)
+            .Should().BeEquivalentTo("id", "username", "displayName", "avatarUrl");
+        JsonElement avatarUrl = author.GetProperty("properties").GetProperty("avatarUrl");
+        avatarUrl.GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        avatarUrl.GetProperty("type").ToString().Should().Contain("string").And.Contain("null");
+    }
+
+    [Fact]
     public async Task OpenApi_DoesNotLetTheBodyCarryAUserAgent()
     {
         JsonElement schema = (await GetDocumentAsync()).GetProperty("components").GetProperty("schemas").GetProperty("CreateFeedbackCommand");
