@@ -30,6 +30,8 @@ public interface IUserRepository : IRepository<User>
 
     Task<User?> GetByIdWithRolesAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<User?> GetByIdWithRolesIncludingDeletedForReadAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<int> CountIncludingDeletedForReadAsync(UserListFilter filter, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<User>> ListWithRolesIncludingDeletedForReadAsync(

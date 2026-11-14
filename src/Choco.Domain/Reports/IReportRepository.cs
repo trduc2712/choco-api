@@ -26,4 +26,6 @@ public interface IReportRepository : IRepository<Report>
 
     Task<int> ResolveOpenAboutTheSameTargetAsync(
         Report report, ReportOutcome outcome, Guid resolverId, DateTimeOffset now, CancellationToken cancellationToken);
+
+    Task<int> CountOpenAboutUserAsync(Guid userId, CancellationToken cancellationToken);
 }
