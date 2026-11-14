@@ -24,6 +24,8 @@ internal static class OpenApiExtensions
             options.Document.AddSchemaTransformer(contractComments);
             options.Document.AddDocumentTransformer(contractComments);
             options.Document.AddSchemaTransformer<ValidationProblemSchemaTransformer>();
+            options.Document.AddSchemaTransformer<FeedbackEnumSchemaTransformer>();
+            options.Document.AddOperationTransformer<FeedbackEnumOperationTransformer>();
             options.Document.AddDocumentTransformer((document, context, _) =>
             {
                 ApiDocumentationOptions documentation = context.ApplicationServices

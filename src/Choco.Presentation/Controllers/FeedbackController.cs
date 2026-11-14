@@ -22,7 +22,7 @@ public sealed class FeedbackController : ApiController
     public FeedbackController(ISender sender) : base(sender) { }
 
     /// <summary>Sends feedback about the app.</summary>
-    /// <remarks>Any signed-in user with an active account may call this endpoint. The feedback is saved as new and credited to the caller; the body cannot name another author. A caller may send 5 feedback per hour and 20 per day. Over the limit, the response is 429 and its Retry-After header says how many seconds to wait. Sending the same feedback twice saves it twice.</remarks>
+    /// <remarks>Any signed-in user with an active account may call this endpoint. The feedback is saved as new and credited to the caller; the body cannot name another author. The browser's user agent is read from the User-Agent header, cut to 512 characters, and the body does not carry it. A caller may send 5 feedback per hour and 20 per day. Over the limit, the response is 429 and its Retry-After header says how many seconds to wait. Sending the same feedback twice saves it twice.</remarks>
     /// <param name="command">The kind of feedback, the message and where the user was in the app.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="201">The feedback was saved.</response>
@@ -39,7 +39,7 @@ public sealed class FeedbackController : ApiController
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Create([FromBody] CreateFeedbackCommand command, CancellationToken cancellationToken)
     {
-        Result<CreatedFeedbackResponse> result = await Sender.Send(command, cancellationToken);
+        Result<CreatedFeedbackResponse> result = await Sender.Send(command with { UserAgent = Request.Headers.UserAgent.ToString() }, cancellationToken);
 
         return result.IsSuccess ? StatusCode(StatusCodes.Status201Created, result.Value) : HandleFailure(result);
     }

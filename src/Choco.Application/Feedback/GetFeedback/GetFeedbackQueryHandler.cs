@@ -10,9 +10,9 @@ namespace Choco.Application.Feedback.GetFeedback;
 
 internal sealed class GetFeedbackQueryHandler(
     IFeedbackEntryRepository feedbackRepository,
-    IUserRepository userRepository) : IQueryHandler<GetFeedbackQuery, OffsetPageResponse<FeedbackResponse>>
+    IUserRepository userRepository) : IQueryHandler<GetFeedbackQuery, OffsetPageResponse<FeedbackSummaryResponse>>
 {
-    public async Task<Result<OffsetPageResponse<FeedbackResponse>>> Handle(
+    public async Task<Result<OffsetPageResponse<FeedbackSummaryResponse>>> Handle(
         GetFeedbackQuery query, CancellationToken cancellationToken)
     {
         FeedbackStatus? status = FeedbackWire.TryParse(query.Status, out FeedbackStatus parsedStatus)
@@ -31,9 +31,9 @@ internal sealed class GetFeedbackQueryHandler(
             ? []
             : await feedbackRepository.ListForReadAsync(filter, (int)skip, query.PageSize, cancellationToken);
 
-        IReadOnlyList<FeedbackResponse> items = await entries.ToResponsesAsync(userRepository, cancellationToken);
+        IReadOnlyList<FeedbackSummaryResponse> items = await entries.ToSummariesAsync(userRepository, cancellationToken);
 
-        return Result<OffsetPageResponse<FeedbackResponse>>.Success(
-            new OffsetPageResponse<FeedbackResponse>(items, query.Page, query.PageSize, totalCount));
+        return Result<OffsetPageResponse<FeedbackSummaryResponse>>.Success(
+            new OffsetPageResponse<FeedbackSummaryResponse>(items, query.Page, query.PageSize, totalCount));
     }
 }

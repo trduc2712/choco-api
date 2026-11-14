@@ -14,7 +14,7 @@ namespace Choco.IntegrationTests.Users;
 public sealed class SuspendedUserTests : IClassFixture<ChocoApiFactory>, IAsyncLifetime
 {
     private const string Id = "00000000-0000-0000-0000-000000000001";
-    private const string Feedback = """{"category":"bug","message":"message","context":{"path":"/path","locale":"en","theme":"system","userAgent":"user-agent","viewport":{"width":1280,"height":720},"appVersion":"app-version"}}""";
+    private const string Feedback = """{"category":"bug","message":"message","context":{"path":"/path","locale":"en","theme":"system","viewport":{"width":1280,"height":720},"appVersion":"app-version"}}""";
 
     private readonly ChocoApiFactory _factory;
     private readonly HttpClient _client;

@@ -59,7 +59,6 @@ public sealed class ValidationErrorsTests : IClassFixture<VersioningApiFactory>,
                 path = "path",
                 locale = "en",
                 theme = "system",
-                userAgent = "user-agent",
                 viewport = new { width = 0, height = 720 },
                 appVersion = "app-version"
             }
@@ -92,7 +91,6 @@ public sealed class ValidationErrorsTests : IClassFixture<VersioningApiFactory>,
                 path = "path",
                 locale = "fr",
                 theme = "blue",
-                userAgent = new string('u', 600),
                 viewport = new { width = 0, height = 0 },
                 appVersion = new string('a', 100)
             }
@@ -121,7 +119,6 @@ public sealed class ValidationErrorsTests : IClassFixture<VersioningApiFactory>,
                 path = "path",
                 locale = "fr",
                 theme = "blue",
-                userAgent = new string('u', 600),
                 viewport = new { width = 0, height = 0 },
                 appVersion = new string('a', 100)
             }

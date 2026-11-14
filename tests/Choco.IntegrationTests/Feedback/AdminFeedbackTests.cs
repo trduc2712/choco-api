@@ -49,8 +49,8 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
         _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
         FeedbackEntry third = await AddFeedbackAsync(author, FeedbackCategory.Other, "third message");
 
-        OffsetPageResponse<FeedbackResponse> firstPage = await GetPageAsync($"{Path}?pageSize=2");
-        OffsetPageResponse<FeedbackResponse> secondPage = await GetPageAsync($"{Path}?pageSize=2&page=2");
+        OffsetPageResponse<FeedbackSummaryResponse> firstPage = await GetPageAsync($"{Path}?pageSize=2");
+        OffsetPageResponse<FeedbackSummaryResponse> secondPage = await GetPageAsync($"{Path}?pageSize=2&page=2");
 
         firstPage.Items.Select(item => item.Id).Should().Equal(third.Id, second.Id);
         firstPage.Page.Should().Be(1);
@@ -60,15 +60,76 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
         secondPage.Page.Should().Be(2);
         secondPage.PageSize.Should().Be(2);
         secondPage.TotalCount.Should().Be(3);
-        FeedbackResponse item = secondPage.Items.Single();
+        FeedbackSummaryResponse item = secondPage.Items.Single();
         item.Author.Should().Be(new FeedbackAuthorResponse(author.Id, "username-2", "username-2"));
         item.Category.Should().Be("bug");
-        item.Message.Should().Be("first message");
+        item.MessagePreview.Should().Be("first message");
         item.Status.Should().Be("new");
-        item.Context.Should().Be(new FeedbackContextDto(
-            "/path", "ja", "dark", "user-agent", new FeedbackViewportDto(1280, 720), "app-version"));
         item.CreatedAt.Should().Be(first.CreatedAt);
-        item.UpdatedAt.Should().Be(first.ModifiedAt);
+    }
+
+    [Fact]
+    public async Task Listing_ReturnsOnlyTheSummaryFields()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message");
+        using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Get, Path);
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        body.GetProperty("items")[0].EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+            "id", "author", "category", "messagePreview", "status", "createdAt");
+    }
+
+    [Theory]
+    [InlineData(FeedbackSummaryResponse.MessagePreviewMaxLength, false)]
+    [InlineData(FeedbackSummaryResponse.MessagePreviewMaxLength + 1, true)]
+    public async Task Listing_CutsALongMessageToAPreviewAndLeavesAShortOneWhole(int length, bool cut)
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        string message = new('a', length);
+        FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, message);
+
+        OffsetPageResponse<FeedbackSummaryResponse> page = await GetPageAsync(Path);
+
+        page.Items.Single().MessagePreview.Should().Be(
+            cut ? new string('a', FeedbackSummaryResponse.MessagePreviewMaxLength) + "…" : message);
+        using HttpRequestMessage detail = NotificationTestData.CreateRequest(HttpMethod.Get, $"{Path}/{entry.Id}");
+        using HttpResponseMessage detailResponse = await _client.SendAsync(detail, TestContext.Current.CancellationToken);
+        FeedbackResponse body = (await detailResponse.Content.ReadFromJsonAsync<FeedbackResponse>(TestContext.Current.CancellationToken))!;
+        body.Message.Should().Be(message);
+    }
+
+    [Fact]
+    public async Task Listing_DoesNotSplitASurrogatePairWhenCuttingThePreview()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        string message = new string('a', FeedbackSummaryResponse.MessagePreviewMaxLength - 1) + "😀" + "tail";
+        await AddFeedbackAsync(author, FeedbackCategory.Bug, message);
+
+        OffsetPageResponse<FeedbackSummaryResponse> page = await GetPageAsync(Path);
+
+        page.Items.Single().MessagePreview.Should().Be(
+            new string('a', FeedbackSummaryResponse.MessagePreviewMaxLength - 1) + "…");
+    }
+
+    [Fact]
+    public async Task ChangingStatus_WithTheOldPatchRoute_IsNotFoundAnymore()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message");
+        using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Patch, $"{Path}/{entry.Id}");
+        request.Content = JsonContent.Create(new { status = "resolved" });
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
+        (await GetEntriesAsync()).Single().Status.Should().Be(FeedbackStatus.New);
     }
 
     [Fact]
@@ -102,10 +163,10 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
             _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
         }
 
-        OffsetPageResponse<FeedbackResponse> middle = await GetPageAsync($"{Path}?pageSize=2&page=2");
-        OffsetPageResponse<FeedbackResponse> last = await GetPageAsync($"{Path}?pageSize=2&page=3");
-        OffsetPageResponse<FeedbackResponse> pastEnd = await GetPageAsync($"{Path}?pageSize=2&page=99");
-        OffsetPageResponse<FeedbackResponse> hugePage = await GetPageAsync($"{Path}?pageSize=50&page={int.MaxValue}");
+        OffsetPageResponse<FeedbackSummaryResponse> middle = await GetPageAsync($"{Path}?pageSize=2&page=2");
+        OffsetPageResponse<FeedbackSummaryResponse> last = await GetPageAsync($"{Path}?pageSize=2&page=3");
+        OffsetPageResponse<FeedbackSummaryResponse> pastEnd = await GetPageAsync($"{Path}?pageSize=2&page=99");
+        OffsetPageResponse<FeedbackSummaryResponse> hugePage = await GetPageAsync($"{Path}?pageSize=50&page={int.MaxValue}");
 
         middle.Items.Select(item => item.Id).Should().Equal(entries[2].Id, entries[1].Id);
         last.Items.Select(item => item.Id).Should().Equal(entries[0].Id);
@@ -127,8 +188,8 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
             _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
         }
 
-        OffsetPageResponse<FeedbackResponse> smallest = await GetPageAsync($"{Path}?pageSize=1");
-        OffsetPageResponse<FeedbackResponse> largest = await GetPageAsync($"{Path}?pageSize=50");
+        OffsetPageResponse<FeedbackSummaryResponse> smallest = await GetPageAsync($"{Path}?pageSize=1");
+        OffsetPageResponse<FeedbackSummaryResponse> largest = await GetPageAsync($"{Path}?pageSize=50");
 
         smallest.Items.Should().ContainSingle();
         smallest.TotalCount.Should().Be(3);
@@ -149,10 +210,10 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
 
         List<Guid> expected = entries.Select(entry => entry.Id).OrderDescending().ToList();
 
-        OffsetPageResponse<FeedbackResponse> firstPage = await GetPageAsync($"{Path}?pageSize=2&page=1");
-        OffsetPageResponse<FeedbackResponse> secondPage = await GetPageAsync($"{Path}?pageSize=2&page=2");
-        OffsetPageResponse<FeedbackResponse> thirdPage = await GetPageAsync($"{Path}?pageSize=2&page=3");
-        OffsetPageResponse<FeedbackResponse> repeated = await GetPageAsync($"{Path}?pageSize=2&page=1");
+        OffsetPageResponse<FeedbackSummaryResponse> firstPage = await GetPageAsync($"{Path}?pageSize=2&page=1");
+        OffsetPageResponse<FeedbackSummaryResponse> secondPage = await GetPageAsync($"{Path}?pageSize=2&page=2");
+        OffsetPageResponse<FeedbackSummaryResponse> thirdPage = await GetPageAsync($"{Path}?pageSize=2&page=3");
+        OffsetPageResponse<FeedbackSummaryResponse> repeated = await GetPageAsync($"{Path}?pageSize=2&page=1");
 
         firstPage.Items.Concat(secondPage.Items).Concat(thirdPage.Items).Select(item => item.Id)
             .Should().Equal(expected);
@@ -170,10 +231,10 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
         _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
         FeedbackEntry resolvedSuggestion = await AddFeedbackAsync(author, FeedbackCategory.Suggestion, "resolved suggestion message", FeedbackStatus.Resolved);
 
-        OffsetPageResponse<FeedbackResponse> resolved = await GetPageAsync($"{Path}?status=resolved");
-        OffsetPageResponse<FeedbackResponse> bugs = await GetPageAsync($"{Path}?category=bug");
-        OffsetPageResponse<FeedbackResponse> resolvedBugs = await GetPageAsync($"{Path}?status=resolved&category=bug");
-        OffsetPageResponse<FeedbackResponse> inProgress = await GetPageAsync($"{Path}?status=in_progress");
+        OffsetPageResponse<FeedbackSummaryResponse> resolved = await GetPageAsync($"{Path}?status=resolved");
+        OffsetPageResponse<FeedbackSummaryResponse> bugs = await GetPageAsync($"{Path}?category=bug");
+        OffsetPageResponse<FeedbackSummaryResponse> resolvedBugs = await GetPageAsync($"{Path}?status=resolved&category=bug");
+        OffsetPageResponse<FeedbackSummaryResponse> inProgress = await GetPageAsync($"{Path}?status=in_progress");
 
         resolved.Items.Select(item => item.Id).Should().Equal(resolvedSuggestion.Id, resolvedBug.Id);
         resolved.TotalCount.Should().Be(2);
@@ -198,7 +259,7 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
 
         await AddFeedbackAsync(author, FeedbackCategory.Other, "other message");
 
-        OffsetPageResponse<FeedbackResponse> page = await GetPageAsync($"{Path}?status=resolved&category=bug&pageSize=2");
+        OffsetPageResponse<FeedbackSummaryResponse> page = await GetPageAsync($"{Path}?status=resolved&category=bug&pageSize=2");
 
         page.Items.Should().HaveCount(2);
         page.TotalCount.Should().Be(3);
@@ -290,14 +351,13 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
     [InlineData("in_progress", FeedbackStatus.InProgress)]
     [InlineData("resolved", FeedbackStatus.Resolved)]
     [InlineData("wont_fix", FeedbackStatus.WontFix)]
-    [InlineData("new", FeedbackStatus.New)]
     public async Task ChangingStatus_SavesItAndReturnsTheUpdatedFeedback(string status, FeedbackStatus expected)
     {
         await AddAdminAsync("identity-id", "username");
         User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
         FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message", FeedbackStatus.Resolved);
         _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
-        using HttpRequestMessage request = Patch($"{Path}/{entry.Id}", new { status });
+        using HttpRequestMessage request = Put($"{Path}/{entry.Id}/status", new { status });
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -316,6 +376,40 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
         }
     }
 
+    [Theory]
+    [InlineData(FeedbackStatus.InProgress)]
+    [InlineData(FeedbackStatus.Resolved)]
+    [InlineData(FeedbackStatus.WontFix)]
+    public async Task ChangingStatus_BackToNewAfterItLeftNew_ReturnsConflictAndChangesNothing(FeedbackStatus current)
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message", current);
+        _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
+        using HttpRequestMessage request = Put($"{Path}/{entry.Id}/status", new { status = "new" });
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        await AssertProblemAsync(response, HttpStatusCode.Conflict, "Feedback.CannotReturnToNew");
+        FeedbackEntry stored = (await GetEntriesAsync()).Should().ContainSingle().Subject;
+        stored.Status.Should().Be(current);
+        stored.ModifiedAt.Should().Be(entry.ModifiedAt);
+    }
+
+    [Fact]
+    public async Task ChangingStatusOfNewFeedbackToNew_ChangesNothing()
+    {
+        await AddAdminAsync("identity-id", "username");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message");
+        using HttpRequestMessage request = Put($"{Path}/{entry.Id}/status", new { status = "new" });
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await GetEntriesAsync()).Should().ContainSingle().Which.Status.Should().Be(FeedbackStatus.New);
+    }
+
     [Fact]
     public async Task ChangingStatusToTheSameStatus_ChangesNothing()
     {
@@ -323,7 +417,7 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
         User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
         FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message", FeedbackStatus.Resolved);
         _factory.TimeProvider.Advance(TimeSpan.FromHours(1));
-        using HttpRequestMessage request = Patch($"{Path}/{entry.Id}", new { status = "resolved" });
+        using HttpRequestMessage request = Put($"{Path}/{entry.Id}/status", new { status = "resolved" });
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -342,7 +436,7 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
         await AddAdminAsync("identity-id", "username");
         User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
         FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message");
-        using HttpRequestMessage request = Patch($"{Path}/{entry.Id}", new { status });
+        using HttpRequestMessage request = Put($"{Path}/{entry.Id}/status", new { status });
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -356,7 +450,7 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
     public async Task ChangingStatus_OfAnUnknownFeedback_ReturnsNotFound()
     {
         await AddAdminAsync("identity-id", "username");
-        using HttpRequestMessage request = Patch($"{Path}/{UnknownId}", new { status = "resolved" });
+        using HttpRequestMessage request = Put($"{Path}/{UnknownId}/status", new { status = "resolved" });
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -366,14 +460,14 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
     [Theory]
     [InlineData("GET", "")]
     [InlineData("GET", "/00000000-0000-0000-0000-000000000001")]
-    [InlineData("PATCH", "/00000000-0000-0000-0000-000000000001")]
+    [InlineData("PUT", "/00000000-0000-0000-0000-000000000001/status")]
     public async Task WithoutThePermission_ReturnsForbiddenAndChangesNothing(string method, string suffix)
     {
         User author = await NotificationTestData.AddUserAsync(_factory, "identity-id", "username");
         FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, "feedback message");
-        string path = suffix.Length == 0 ? Path : $"{Path}/{entry.Id}";
+        string path = suffix.Length == 0 ? Path : $"{Path}/{entry.Id}{(method == "PUT" ? "/status" : "")}";
         using HttpRequestMessage request = NotificationTestData.CreateRequest(new HttpMethod(method), path);
-        if (method == "PATCH")
+        if (method == "PUT")
         {
             request.Content = JsonContent.Create(new { status = "resolved" });
         }
@@ -387,7 +481,7 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
     [Theory]
     [InlineData("GET", "/api/v1/admin/feedback")]
     [InlineData("GET", "/api/v1/admin/feedback/00000000-0000-0000-0000-000000000001")]
-    [InlineData("PATCH", "/api/v1/admin/feedback/00000000-0000-0000-0000-000000000001")]
+    [InlineData("PUT", "/api/v1/admin/feedback/00000000-0000-0000-0000-000000000001/status")]
     public async Task NoToken_ReturnsUnauthorized(string method, string path)
     {
         using HttpRequestMessage request = new(new HttpMethod(method), path);
@@ -406,9 +500,9 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
         permissions.Should().Contain([Permission.ReadAnyFeedback, Permission.ChangeFeedbackStatus]);
     }
 
-    private static HttpRequestMessage Patch(string path, object body)
+    private static HttpRequestMessage Put(string path, object body)
     {
-        HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Patch, path);
+        HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Put, path);
         request.Content = JsonContent.Create(body);
         return request;
     }
@@ -422,13 +516,13 @@ public sealed class AdminFeedbackTests : IClassFixture<ChocoApiFactory>, IAsyncL
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be(code);
     }
 
-    private async Task<OffsetPageResponse<FeedbackResponse>> GetPageAsync(string uri)
+    private async Task<OffsetPageResponse<FeedbackSummaryResponse>> GetPageAsync(string uri)
     {
         using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Get, uri);
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        return (await response.Content.ReadFromJsonAsync<OffsetPageResponse<FeedbackResponse>>(TestContext.Current.CancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync<OffsetPageResponse<FeedbackSummaryResponse>>(TestContext.Current.CancellationToken))!;
     }
 
     private async Task<User> AddAdminAsync(string identityId, string username)

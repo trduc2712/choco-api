@@ -13,7 +13,7 @@ namespace Choco.Contract.Feedback;
 /// <example>{"status":"new","category":"bug","page":1,"pageSize":20,"q":"login error","author":"anh"}</example>
 public sealed record GetFeedbackQuery(
     string? Status, string? Category, int Page, int PageSize, string? Q = null, string? Author = null)
-    : IQuery<OffsetPageResponse<FeedbackResponse>>
+    : IQuery<OffsetPageResponse<FeedbackSummaryResponse>>
 {
     public const int DefaultPage = 1;
     public const int DefaultPageSize = 20;

@@ -27,7 +27,11 @@ internal sealed class UpdateFeedbackStatusCommandHandler(
         FeedbackWire.TryParse(command.Status, out FeedbackStatus status);
 
         FeedbackStatus before = entry.Status;
-        entry.ChangeStatus(status);
+        Result change = entry.ChangeStatus(status);
+        if (change.IsFailure)
+        {
+            return Result<FeedbackResponse>.Failure(change.Error);
+        }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

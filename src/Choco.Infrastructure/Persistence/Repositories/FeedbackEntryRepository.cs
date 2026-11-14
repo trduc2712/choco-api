@@ -28,6 +28,28 @@ internal sealed class FeedbackEntryRepository : Repository<FeedbackEntry>, IFeed
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<FeedbackEntry>> ListByAuthorForReadAsync(
+        Guid authorId,
+        (DateTimeOffset CreatedAt, Guid Id)? after,
+        int count,
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable<FeedbackEntry> entries = DbSet.AsNoTracking().Where(entry => entry.AuthorId == authorId);
+
+        if (after is { } position)
+        {
+            entries = entries.Where(entry => EF.Functions.LessThan(
+                ValueTuple.Create(entry.CreatedAt, entry.Id),
+                ValueTuple.Create(position.CreatedAt, position.Id)));
+        }
+
+        return await entries
+            .OrderByDescending(entry => entry.CreatedAt)
+            .ThenByDescending(entry => entry.Id)
+            .Take(count)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<int> CountForReadAsync(FeedbackFilter filter, CancellationToken cancellationToken = default)
     {
         return Filter(filter).CountAsync(cancellationToken);

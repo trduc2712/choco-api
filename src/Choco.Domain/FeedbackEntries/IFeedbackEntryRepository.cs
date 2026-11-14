@@ -12,6 +12,12 @@ public interface IFeedbackEntryRepository : IRepository<FeedbackEntry>
         int take,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<FeedbackEntry>> ListByAuthorForReadAsync(
+        Guid authorId,
+        (DateTimeOffset CreatedAt, Guid Id)? after,
+        int count,
+        CancellationToken cancellationToken = default);
+
     Task<int> CountForReadAsync(FeedbackFilter filter, CancellationToken cancellationToken = default);
 
     Task<int> CountByStatusAsync(FeedbackStatus status, CancellationToken cancellationToken = default);

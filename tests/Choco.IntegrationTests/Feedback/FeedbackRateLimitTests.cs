@@ -174,7 +174,6 @@ internal static class FeedbackRateLimitRequests
                 path = "/path",
                 locale = "en",
                 theme = "system",
-                userAgent = "user-agent",
                 viewport = new { width = 1280, height = 720 },
                 appVersion = "app-version"
             }
