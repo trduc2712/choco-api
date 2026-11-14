@@ -22,6 +22,8 @@ public interface IUserRepository : IRepository<User>
         int count,
         CancellationToken cancellationToken = default);
 
+    Task<bool> AddIfMissingAsync(User user, DateTimeOffset now, CancellationToken cancellationToken = default);
+
     Task<bool> ExistsByIdentityIdIncludingDeletedAsync(string identityId, CancellationToken cancellationToken = default);
 
     Task<User?> GetByIdentityIdIncludingDeletedAsync(string identityId, CancellationToken cancellationToken = default);
