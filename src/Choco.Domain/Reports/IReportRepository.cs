@@ -14,6 +14,14 @@ public interface IReportRepository : IRepository<Report>
         int take,
         CancellationToken cancellationToken);
 
+    Task<int> CountForReadAsync(ReportListFilter filter, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<Report>> ListForReadAsync(
+        ReportListFilter filter,
+        int skip,
+        int take,
+        CancellationToken cancellationToken);
+
     Task<Report?> GetByIdForReadAsync(Guid id, CancellationToken cancellationToken);
 
     Task<int> ResolveOpenAboutTheSameTargetAsync(
