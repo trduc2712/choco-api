@@ -60,6 +60,7 @@ erDiagram
   varchar_256_ display_name
   uuid id
   varchar_64_ identity_id
+  timestamp_with_time_zone identity_updated_at
   boolean is_deleted
   timestamp_with_time_zone modified_at
   timestamp_with_time_zone suspended_at
