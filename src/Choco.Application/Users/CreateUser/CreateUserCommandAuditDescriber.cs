@@ -6,16 +6,9 @@ using Choco.SharedKernel.Results;
 
 namespace Choco.Application.Users.CreateUser;
 
-internal sealed class CreateUserCommandAuditDescriber(IUserRepository userRepository)
+internal sealed class CreateUserCommandAuditDescriber(IUserRepository userRepository, AuditChanges auditChanges)
     : IAuditDescriber<CreateUserCommand, Result>
 {
-    private bool _existed;
-
-    public async Task CaptureAsync(CreateUserCommand request, CancellationToken cancellationToken)
-    {
-        _existed = await userRepository.ExistsByIdentityIdIncludingDeletedAsync(request.IdentityId, cancellationToken);
-    }
-
     public async Task<AuditDescription> DescribeAsync(
         CreateUserCommand request, Result response, CancellationToken cancellationToken)
     {
@@ -28,6 +21,6 @@ internal sealed class CreateUserCommandAuditDescriber(IUserRepository userReposi
     public async Task<IReadOnlyList<AuditDescription>> DescribeAllAsync(
         CreateUserCommand request, Result response, CancellationToken cancellationToken)
     {
-        return _existed ? [] : [await DescribeAsync(request, response, cancellationToken)];
+        return auditChanges.Get(response) is null ? [] : [await DescribeAsync(request, response, cancellationToken)];
     }
 }
