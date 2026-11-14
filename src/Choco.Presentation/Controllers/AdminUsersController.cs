@@ -68,6 +68,28 @@ public sealed class AdminUsersController : ApiController
         return result.IsSuccess ? NoContent() : HandleFailure(result);
     }
 
+    /// <summary>Reads one user.</summary>
+    /// <remarks>Only a caller with the permission to read any user may call it. It gives the whole picture of one user for a decision about a report or a dispute: profile, roles, the suspension and the number of open reports about the user. A suspended user shows the reason, the time and the user who suspended them; the username of that user stays known even after they delete their account, and is absent only when the account no longer exists. A user who deleted their account can still be read, with isDeleted true and the time of the deletion. openReportCount counts the open reports about the user themselves; reports about their posts are not counted. The email address is not part of the response, since the API does not hold it.</remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The id of the user.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The user.</response>
+    /// <response code="400">The user id is empty.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller may not read users.</response>
+    /// <response code="404">No user has this id.</response>
+    [HttpGet("{userId:guid}")]
+    [ProducesResponseType(typeof(AdminUserDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById(Guid userId, CancellationToken cancellationToken)
+    {
+        Result<AdminUserDetailResponse> result = await Sender.Send(new GetAdminUserQuery(userId), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
     /// <summary>Lists users, newest sign-up first.</summary>
     /// <remarks>Only a caller with the permission to read any user may call it. Use state, roleId and q to narrow the list; leave them out for every user who is not deleted, suspended or not. All filters combine with AND. Deleted users are left out unless state is deleted, so an account that an audit log entry points to can still be found. A user suspended by an administrator has isSuspended true; state=suspended lists only them, and state=active leaves them out. A search ignores case and accents (a, á and ả match each other; d and đ match each other) and surrounding whitespace, and a blank q is ignored. Filtering by the default role matches every user. Each entry lists the roles assigned to the user; the default role is not listed. Pages are numbered from 1. The response carries the page, the page size and totalCount, the number of users that match the filters across all pages. A page past the last one is not an error; its items are empty.</remarks>
     /// <param name="state" example="suspended">Only users in this state: active (not suspended), suspended or deleted. Leave it out for every user who is not deleted.</param>

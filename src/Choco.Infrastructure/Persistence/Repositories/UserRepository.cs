@@ -134,6 +134,15 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
             .SingleOrDefaultAsync(user => user.IdentityId == identityId, cancellationToken);
     }
 
+    public Task<User?> GetByIdWithRolesIncludingDeletedForReadAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return DbSet
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Include(user => user.Roles)
+            .FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
+    }
+
     public Task<User?> GetByIdWithRolesAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return DbSet

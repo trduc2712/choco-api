@@ -102,6 +102,13 @@ internal sealed class ReportRepository : Repository<Report>, IReportRepository
         return reports;
     }
 
+    public Task<int> CountOpenAboutUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        return DbSet
+            .AsNoTracking()
+            .CountAsync(report => report.Status == ReportStatus.Open && report.TargetUserId == userId, cancellationToken);
+    }
+
     public Task<int> CountQueueAsync(ReportQueueFilter filter, CancellationToken cancellationToken)
     {
         return Groups(filter).CountAsync(cancellationToken);
