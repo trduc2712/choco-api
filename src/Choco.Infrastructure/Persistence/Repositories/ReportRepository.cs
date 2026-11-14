@@ -54,6 +54,54 @@ internal sealed class ReportRepository : Repository<Report>, IReportRepository
             cancellationToken);
     }
 
+    public Task<int> CountForReadAsync(ReportListFilter filter, CancellationToken cancellationToken)
+    {
+        return Filter(filter).CountAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Report>> ListForReadAsync(
+        ReportListFilter filter, int skip, int take, CancellationToken cancellationToken)
+    {
+        return await Filter(filter)
+            .OrderByDescending(report => report.CreatedAt)
+            .ThenByDescending(report => report.Id)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
+    private IQueryable<Report> Filter(ReportListFilter filter)
+    {
+        IQueryable<Report> reports = DbSet.AsNoTracking();
+
+        if (filter.TargetType is { } targetType)
+        {
+            reports = reports.Where(report => report.TargetType == targetType);
+        }
+
+        if (filter.TargetId is { } targetId)
+        {
+            reports = reports.Where(report => report.TargetPostId == targetId || report.TargetUserId == targetId);
+        }
+
+        if (filter.Status is { } status)
+        {
+            reports = reports.Where(report => report.Status == status);
+        }
+
+        if (filter.Reason is { } reason)
+        {
+            reports = reports.Where(report => report.Reason == reason);
+        }
+
+        if (filter.Outcome is { } outcome)
+        {
+            reports = reports.Where(report => report.Outcome == outcome);
+        }
+
+        return reports;
+    }
+
     public Task<int> CountQueueAsync(ReportQueueFilter filter, CancellationToken cancellationToken)
     {
         return Groups(filter).CountAsync(cancellationToken);
