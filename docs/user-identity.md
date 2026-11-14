@@ -18,6 +18,9 @@ How a request is mapped to a user of this system, and why.
 5. The `user.created` webhook can arrive after the user's first request ([Part 2: race condition on user creation](https://clerk.com/articles/how-to-sync-clerk-user-data-to-your-database-2)). The API then reads the user from the Clerk Backend API and creates it, so clients never wait for the webhook.
 6. A soft-deleted user, or one Clerk no longer has, gets `401 User.Deleted`: the account no longer exists, so the caller has to sign in again.
 7. A user without a name in Clerk gets their username as display name. The rule lives in `User.Create`.
+8. Clerk is the source of truth for username, name and avatar. `user.updated` changes them and `user.deleted` soft-deletes the user, which frees the username (the unique index on `username` ignores deleted users).
+9. Events can arrive late, twice or out of order, so `users.identity_updated_at` stores the Clerk update time of the last event or Clerk response that wrote the profile. An event with the same or an earlier time is ignored. An event for a user the API does not know is acknowledged without a change.
+10. If a `user.updated` event gives a username that another user still holds, for example a user took the name just released by a rename whose event has not arrived yet, the webhook returns 409. Clerk retries the event, and it succeeds once the other user's event has been applied.
 
 ## Types
 
@@ -39,10 +42,7 @@ Queries by `identity_id` include soft-deleted users (`...IncludingDeleted`): the
 
 ### Sync
 
-- `user.updated` is not handled. Username, name and avatar stay as they were when the user was created.
-- `user.deleted` is not handled, so no code soft-deletes a user and `401 User.Deleted` is reached only when Clerk no longer has the user.
-- Because of the two gaps above, a username stays taken in `users` after it changes or its account is deleted in Clerk. A new Clerk user who takes that username fails to be created: their first request returns 500 and their `user.created` webhook fails on every retry.
-- A webhook and a first request creating the same user at the same moment hit the unique index on `identity_id`; one of them returns 500 and succeeds on retry.
+- `PUT /api/v1/me/profile` and the avatar endpoints write the local copy directly and do not move `identity_updated_at`. The `user.updated` event of the same edit then applies the same values again, which changes nothing. Routing these edits through the sync path is a separate issue.
 - A webhook with invalid data returns 400, so Clerk retries it for about a day before giving up.
 
 ### Calls to Clerk

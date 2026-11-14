@@ -44,7 +44,8 @@ internal sealed class CreateUserCommandHandler : ICommandHandler<CreateUserComma
         }
 
         DateTimeOffset now = _timeProvider.GetUtcNow();
-        User user = User.Create(command.IdentityId, command.Username, command.DisplayName, command.AvatarUrl);
+        User user = User.Create(
+            command.IdentityId, command.Username, command.DisplayName, command.AvatarUrl, command.IdentityUpdatedAt);
 
         if (_bootstrapOptions.Value.BootstrapAdminIdentityIds.Contains(command.IdentityId))
         {

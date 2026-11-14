@@ -15,7 +15,7 @@
 | [public.user_blocks](public.user_blocks.md)           | 4       | Active blocks between users.                                                                                                       | BASE TABLE |
 | [public.user_follows](public.user_follows.md)         | 4       | Active follow relationships between users.                                                                                         | BASE TABLE |
 | [public.user_roles](public.user_roles.md)             | 5       | Roles assigned to users, besides the default role that every signed-in user has.                                                   | BASE TABLE |
-| [public.users](public.users.md)                       | 13      | People who use choco-api. Sign-in lives in Clerk; each row is the local copy of one Clerk user.                                    | BASE TABLE |
+| [public.users](public.users.md)                       | 14      | People who use choco-api. Sign-in lives in Clerk; each row is the local copy of one Clerk user.                                    | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -172,6 +172,7 @@ erDiagram
   varchar_256_ display_name
   uuid id
   varchar_64_ identity_id
+  timestamp_with_time_zone identity_updated_at
   boolean is_deleted
   timestamp_with_time_zone modified_at
   timestamp_with_time_zone suspended_at

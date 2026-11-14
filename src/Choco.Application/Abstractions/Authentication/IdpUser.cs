@@ -4,4 +4,5 @@ public sealed record IdpUser(string IdentityId, string? Username, string? FullNa
 {
     public string? FirstName { get; init; }
     public string? LastName { get; init; }
+    public DateTimeOffset? UpdatedAt { get; init; }
 }

@@ -93,8 +93,8 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
     public async Task<bool> AddIfMissingAsync(User user, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         int inserted = await DbContext.Database.ExecuteSqlAsync($"""
-            INSERT INTO users (id, identity_id, username, display_name, avatar_url, is_deleted, created_at, modified_at)
-            VALUES ({user.Id}, {user.IdentityId}, {user.Username}, {user.DisplayName}, {user.AvatarUrl}, false, {now}, {now})
+            INSERT INTO users (id, identity_id, username, display_name, avatar_url, identity_updated_at, is_deleted, created_at, modified_at)
+            VALUES ({user.Id}, {user.IdentityId}, {user.Username}, {user.DisplayName}, {user.AvatarUrl}, {user.IdentityUpdatedAt}, false, {now}, {now})
             ON CONFLICT DO NOTHING
             """, cancellationToken);
 

@@ -153,12 +153,14 @@ internal sealed class ClerkIdentityProvider : IIdentityProvider
         return new IdpUser(clerkUser.Id, clerkUser.Username, fullName.Length > 0 ? fullName : null, clerkUser.ImageUrl)
         {
             FirstName = clerkUser.FirstName,
-            LastName = clerkUser.LastName
+            LastName = clerkUser.LastName,
+            UpdatedAt = clerkUser.UpdatedAt is { } updatedAt ? DateTimeOffset.FromUnixTimeMilliseconds(updatedAt) : null
         };
     }
 
     private sealed record ClerkErrors(ClerkError[]? Errors);
     private sealed record ClerkError(string Code, ClerkErrorMeta? Meta);
     private sealed record ClerkErrorMeta(string? ParamName);
-    private sealed record ClerkUserResponse(string Id, string? Username, string? FirstName, string? LastName, string? ImageUrl);
+    private sealed record ClerkUserResponse(
+        string Id, string? Username, string? FirstName, string? LastName, string? ImageUrl, long? UpdatedAt);
 }

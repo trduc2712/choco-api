@@ -20,6 +20,7 @@ public sealed class User : AggregateRoot, IAuditable, ISoftDeletable
     public string DisplayName { get; private set; } = null!;
     public string? AvatarUrl { get; private set; }
     public string? Bio { get; private set; }
+    public DateTimeOffset? IdentityUpdatedAt { get; private set; }
     public IReadOnlyCollection<UserRole> Roles => _roles.AsReadOnly();
     public DateTimeOffset? SuspendedAt { get; private set; }
     public Guid? SuspendedBy { get; private set; }
@@ -33,16 +34,28 @@ public sealed class User : AggregateRoot, IAuditable, ISoftDeletable
 
     private User() { }
 
-    private User(Guid id, string identityId, string username, string displayName, string? avatarUrl)
+    private User(
+        Guid id,
+        string identityId,
+        string username,
+        string displayName,
+        string? avatarUrl,
+        DateTimeOffset? identityUpdatedAt)
         : base(id)
     {
         IdentityId = identityId;
         Username = username;
         DisplayName = displayName;
         AvatarUrl = avatarUrl;
+        IdentityUpdatedAt = identityUpdatedAt;
     }
 
-    public static User Create(string identityId, string username, string? displayName, string? avatarUrl)
+    public static User Create(
+        string identityId,
+        string username,
+        string? displayName,
+        string? avatarUrl,
+        DateTimeOffset? identityUpdatedAt = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(identityId);
         ArgumentException.ThrowIfNullOrWhiteSpace(username);
@@ -52,7 +65,31 @@ public sealed class User : AggregateRoot, IAuditable, ISoftDeletable
             identityId,
             username,
             string.IsNullOrWhiteSpace(displayName) ? username : displayName,
-            avatarUrl);
+            avatarUrl,
+            identityUpdatedAt);
+    }
+
+    public bool IsStaleIdentityEvent(DateTimeOffset identityUpdatedAt)
+    {
+        return IdentityUpdatedAt is { } syncedAt && identityUpdatedAt <= syncedAt;
+    }
+
+    public bool SyncFromIdentity(
+        string username, string? displayName, string? avatarUrl, DateTimeOffset identityUpdatedAt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(username);
+
+        if (IsDeleted || IsStaleIdentityEvent(identityUpdatedAt))
+        {
+            return false;
+        }
+
+        Username = username;
+        DisplayName = string.IsNullOrWhiteSpace(displayName) ? username : displayName;
+        AvatarUrl = avatarUrl;
+        IdentityUpdatedAt = identityUpdatedAt;
+
+        return true;
     }
 
     public void ChangeProfileName(string username, string? displayName)

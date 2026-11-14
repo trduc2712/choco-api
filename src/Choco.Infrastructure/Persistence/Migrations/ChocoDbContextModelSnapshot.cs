@@ -747,6 +747,11 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .HasColumnName("identity_id")
                         .HasComment("Clerk user id (the sub claim) that links the row to its Clerk account.");
 
+                    b.Property<DateTimeOffset?>("IdentityUpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("identity_updated_at")
+                        .HasComment("When Clerk last changed the account, taken from the event or the Clerk response that last wrote the profile; an event with an earlier or equal time is ignored. Null until the first sync.");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted")

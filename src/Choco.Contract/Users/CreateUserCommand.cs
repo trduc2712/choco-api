@@ -6,4 +6,5 @@ public sealed record CreateUserCommand(
     string IdentityId,
     string Username,
     string? DisplayName,
-    string? AvatarUrl) : ICommand, ISystemRequest;
+    string? AvatarUrl,
+    DateTimeOffset? IdentityUpdatedAt = null) : ICommand, ISystemRequest;
