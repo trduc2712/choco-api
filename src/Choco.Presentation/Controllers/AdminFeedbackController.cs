@@ -30,12 +30,12 @@ public sealed class AdminFeedbackController : ApiController
     /// <param name="page" example="1">The page number, from 1. Defaults to 1.</param>
     /// <param name="pageSize" example="20">The page size, from 1 to 50. Defaults to 20.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
-    /// <response code="200">One page of feedback and the total count. The page can be empty.</response>
+    /// <response code="200">One page of feedback summaries and the total count. The page can be empty. Each summary carries a preview of the message; get the feedback by id for the whole message and its context.</response>
     /// <response code="400">The status, category, page or page size is invalid, or q or author is longer than 100 characters.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     /// <response code="403">The caller may not read feedback.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(OffsetPageResponse<FeedbackResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(OffsetPageResponse<FeedbackSummaryResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -48,7 +48,7 @@ public sealed class AdminFeedbackController : ApiController
         int pageSize = GetFeedbackQuery.DefaultPageSize,
         CancellationToken cancellationToken = default)
     {
-        Result<OffsetPageResponse<FeedbackResponse>> result = await Sender.Send(
+        Result<OffsetPageResponse<FeedbackSummaryResponse>> result = await Sender.Send(
             new GetFeedbackQuery(status, category, page, pageSize, q, author), cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
@@ -77,7 +77,7 @@ public sealed class AdminFeedbackController : ApiController
     }
 
     /// <summary>Changes the state of a piece of feedback.</summary>
-    /// <remarks>Only a caller with the permission to change feedback status may call it. Sending the state the feedback already has changes nothing, so the call is safe to repeat. The response is the updated feedback.</remarks>
+    /// <remarks>Only a caller with the permission to change feedback status may call it. Sending the state the feedback already has changes nothing, so the call is safe to repeat. Feedback that has left new (it is in progress, resolved or won't fix) cannot go back to new; it can move freely between the other states. The response is the updated feedback.</remarks>
     /// <param name="id" example="00000000-0000-0000-0000-000000000001">The feedback's id.</param>
     /// <param name="command">The new state: new, in_progress, resolved or wont_fix.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
@@ -86,12 +86,14 @@ public sealed class AdminFeedbackController : ApiController
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     /// <response code="403">The caller may not change feedback status. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No feedback has this id.</response>
-    [HttpPatch("{id:guid}")]
+    /// <response code="409">The feedback has left new and the request asks to make it new again.</response>
+    [HttpPut("{id:guid}/status")]
     [ProducesResponseType(typeof(FeedbackResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdateStatus(
         Guid id, [FromBody] UpdateFeedbackStatusCommand command, CancellationToken cancellationToken)
     {

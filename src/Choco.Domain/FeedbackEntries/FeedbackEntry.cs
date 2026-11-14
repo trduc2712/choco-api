@@ -1,4 +1,5 @@
 using Choco.Domain.Primitives.Entities;
+using Choco.SharedKernel.Results;
 
 namespace Choco.Domain.FeedbackEntries;
 
@@ -46,8 +47,15 @@ public sealed class FeedbackEntry : AggregateRoot, IAuditable
         return new FeedbackEntry(Guid.NewGuid(), authorId, category, trimmedMessage, context);
     }
 
-    public void ChangeStatus(FeedbackStatus status)
+    public Result ChangeStatus(FeedbackStatus status)
     {
+        if (status == FeedbackStatus.New && Status != FeedbackStatus.New)
+        {
+            return Result.Failure(FeedbackErrors.CannotReturnToNew);
+        }
+
         Status = status;
+
+        return Result.Success();
     }
 }

@@ -41,10 +41,6 @@ internal sealed class CreateFeedbackCommandValidator : AbstractValidator<CreateF
                 .Must(theme => FeedbackWire.TryParse<FeedbackTheme>(theme, out _))
                 .WithMessage($"'{{PropertyName}}' must be one of: {FeedbackWire.Options<FeedbackTheme>()}.");
 
-            RuleFor(command => command.Context.UserAgent)
-                .NotNull()
-                .MaximumLength(FeedbackContext.UserAgentMaxLength);
-
             RuleFor(command => command.Context.AppVersion)
                 .NotNull()
                 .MaximumLength(FeedbackContext.AppVersionMaxLength);

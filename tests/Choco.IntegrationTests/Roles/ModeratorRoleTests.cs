@@ -41,7 +41,7 @@ public sealed class ModeratorRoleTests : IClassFixture<ChocoApiFactory>, IAsyncL
     {
         { "GET", "/api/v1/admin/audit-logs", null },
         { "GET", "/api/v1/admin/feedback", null },
-        { "PATCH", $"/api/v1/admin/feedback/{Id}", """{"status":"resolved"}""" },
+        { "PUT", $"/api/v1/admin/feedback/{Id}/status", """{"status":"resolved"}""" },
         { "GET", "/api/v1/admin/roles", null },
         { "GET", "/api/v1/admin/permissions", null },
         { "POST", "/api/v1/admin/roles", """{"name":"Role","permissions":[]}""" },

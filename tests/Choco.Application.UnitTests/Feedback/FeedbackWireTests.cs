@@ -1,4 +1,5 @@
 using Choco.Application.Feedback;
+using Choco.Contract.Feedback;
 using Choco.Domain.FeedbackEntries;
 
 namespace Choco.Application.UnitTests.Feedback;
@@ -35,5 +36,14 @@ public sealed class FeedbackWireTests
     public void Options_ForCategory_ListsWireValuesInOrder()
     {
         FeedbackWire.Options<FeedbackCategory>().Should().Be("bug, suggestion, other");
+    }
+
+    [Fact]
+    public void WireValues_InTheContract_MatchTheDomainEnums()
+    {
+        FeedbackWireValues.Categories.Should().BeEquivalentTo(Enum.GetValues<FeedbackCategory>().Select(FeedbackWire.ToWire));
+        FeedbackWireValues.Statuses.Should().BeEquivalentTo(Enum.GetValues<FeedbackStatus>().Select(FeedbackWire.ToWire));
+        FeedbackWireValues.Locales.Should().BeEquivalentTo(Enum.GetValues<FeedbackLocale>().Select(FeedbackWire.ToWire));
+        FeedbackWireValues.Themes.Should().BeEquivalentTo(Enum.GetValues<FeedbackTheme>().Select(FeedbackWire.ToWire));
     }
 }

@@ -23,8 +23,8 @@ namespace Choco.Application.UnitTests.Abstractions.Behaviors;
 public sealed class ValidatorErrorCodesTests
 {
     private static readonly Guid Id = new("00000000-0000-0000-0000-000000000001");
-    private static readonly FeedbackContextDto Context = new(
-        "/path", "en", "system", "user-agent", new FeedbackViewportDto(1280, 720), "app-version");
+    private static readonly CreateFeedbackContextDto Context = new(
+        "/path", "en", "system", new FeedbackViewportDto(1280, 720), "app-version");
 
     [Fact]
     public void CreatePost_WithBlankContent_ReturnsRequired()
@@ -95,7 +95,7 @@ public sealed class ValidatorErrorCodesTests
     [Fact]
     public void CreateFeedback_WithInvalidCategoryAndNestedContext_ReturnsCodesWithFullFieldPath()
     {
-        FeedbackContextDto context = Context with
+        CreateFeedbackContextDto context = Context with
         {
             Path = "path",
             Locale = "fr",

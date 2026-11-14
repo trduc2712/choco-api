@@ -68,6 +68,57 @@ public sealed class CreateFeedbackTests : IClassFixture<ChocoApiFactory>, IAsync
         (await GetEntriesAsync()).Should().ContainSingle().Which.AuthorId.Should().Be(caller.Id);
     }
 
+    [Fact]
+    public async Task SendingFeedback_StoresTheUserAgentFromTheHeaderAndIgnoresOneInTheBody()
+    {
+        await NotificationTestData.AddUserAsync(_factory, "identity-id", "username");
+        Dictionary<string, object> body = Body();
+        body["context"] = new
+        {
+            path = "/path",
+            locale = "ja",
+            theme = "dark",
+            userAgent = "user-agent-from-body",
+            viewport = new { width = 1280, height = 720 },
+            appVersion = "app-version"
+        };
+        using HttpRequestMessage request = Post(body, "user-agent-from-header");
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await GetEntriesAsync()).Should().ContainSingle().Which.Context.UserAgent.Should().Be("user-agent-from-header");
+    }
+
+    [Fact]
+    public async Task SendingFeedbackWithoutAUserAgentHeader_StoresAnEmptyUserAgent()
+    {
+        await NotificationTestData.AddUserAsync(_factory, "identity-id", "username");
+        using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Post, Path);
+        request.Content = JsonContent.Create(Body());
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await GetEntriesAsync()).Should().ContainSingle().Which.Context.UserAgent.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(FeedbackContext.UserAgentMaxLength)]
+    [InlineData(FeedbackContext.UserAgentMaxLength + 1)]
+    [InlineData(FeedbackContext.UserAgentMaxLength * 4)]
+    public async Task SendingALongUserAgentHeader_CutsItToTheLimitAndStillCreates(int length)
+    {
+        await NotificationTestData.AddUserAsync(_factory, "identity-id", "username");
+        using HttpRequestMessage request = Post(Body(), new string('u', length));
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await GetEntriesAsync()).Should().ContainSingle().Which.Context.UserAgent
+            .Should().Be(new string('u', FeedbackContext.UserAgentMaxLength));
+    }
+
     [Theory]
     [InlineData(10)]
     [InlineData(2000)]
@@ -138,14 +189,13 @@ public sealed class CreateFeedbackTests : IClassFixture<ChocoApiFactory>, IAsync
         await NotificationTestData.AddUserAsync(_factory, "identity-id", "username");
         using HttpRequestMessage request = Post(Body(
             path: "/" + new string('p', FeedbackContext.PathMaxLength),
-            userAgent: new string('u', FeedbackContext.UserAgentMaxLength + 1),
             appVersion: new string('a', FeedbackContext.AppVersionMaxLength + 1)));
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         ValidationProblemDetails problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
-        problem.Errors.Keys.Should().BeEquivalentTo("context.path", "context.userAgent", "context.appVersion");
+        problem.Errors.Keys.Should().BeEquivalentTo("context.path", "context.appVersion");
     }
 
     [Fact]
@@ -154,7 +204,6 @@ public sealed class CreateFeedbackTests : IClassFixture<ChocoApiFactory>, IAsync
         await NotificationTestData.AddUserAsync(_factory, "identity-id", "username");
         using HttpRequestMessage request = Post(Body(
             path: "/" + new string('p', FeedbackContext.PathMaxLength - 1),
-            userAgent: new string('u', FeedbackContext.UserAgentMaxLength),
             appVersion: new string('a', FeedbackContext.AppVersionMaxLength)));
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -212,9 +261,10 @@ public sealed class CreateFeedbackTests : IClassFixture<ChocoApiFactory>, IAsync
         (await GetEntriesAsync()).Should().BeEmpty();
     }
 
-    private static HttpRequestMessage Post(object body)
+    private static HttpRequestMessage Post(object body, string userAgent = "user-agent")
     {
         HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Post, Path);
+        request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
         request.Content = JsonContent.Create(body);
         return request;
     }
@@ -225,7 +275,6 @@ public sealed class CreateFeedbackTests : IClassFixture<ChocoApiFactory>, IAsync
         string path = "/path",
         string locale = "ja",
         string theme = "dark",
-        string userAgent = "user-agent",
         int viewportWidth = 1280,
         int viewportHeight = 720,
         string appVersion = "app-version",
@@ -240,7 +289,6 @@ public sealed class CreateFeedbackTests : IClassFixture<ChocoApiFactory>, IAsync
                 path,
                 locale,
                 theme,
-                userAgent,
                 viewport = new { width = viewportWidth, height = viewportHeight },
                 appVersion
             }

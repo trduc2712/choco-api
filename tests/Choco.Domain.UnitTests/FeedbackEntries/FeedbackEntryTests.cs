@@ -1,4 +1,5 @@
 using Choco.Domain.FeedbackEntries;
+using Choco.SharedKernel.Results;
 
 namespace Choco.Domain.UnitTests.FeedbackEntries;
 
@@ -85,10 +86,46 @@ public sealed class FeedbackEntryTests
     {
         FeedbackEntry entry = FeedbackEntry.Create(AuthorId, FeedbackCategory.Bug, "feedback message", Context);
 
-        entry.ChangeStatus(status);
+        Result result = entry.ChangeStatus(status);
 
+        result.IsSuccess.Should().BeTrue();
         entry.Status.Should().Be(status);
         entry.Message.Should().Be("feedback message");
         entry.AuthorId.Should().Be(AuthorId);
+    }
+
+    [Theory]
+    [InlineData(FeedbackStatus.InProgress, FeedbackStatus.Resolved)]
+    [InlineData(FeedbackStatus.InProgress, FeedbackStatus.WontFix)]
+    [InlineData(FeedbackStatus.Resolved, FeedbackStatus.InProgress)]
+    [InlineData(FeedbackStatus.Resolved, FeedbackStatus.WontFix)]
+    [InlineData(FeedbackStatus.WontFix, FeedbackStatus.InProgress)]
+    [InlineData(FeedbackStatus.WontFix, FeedbackStatus.Resolved)]
+    [InlineData(FeedbackStatus.Resolved, FeedbackStatus.Resolved)]
+    [InlineData(FeedbackStatus.New, FeedbackStatus.New)]
+    public void ChangeStatus_BetweenTriagedStatesOrToTheSameStatus_Succeeds(FeedbackStatus from, FeedbackStatus to)
+    {
+        FeedbackEntry entry = FeedbackEntry.Create(AuthorId, FeedbackCategory.Bug, "feedback message", Context);
+        entry.ChangeStatus(from);
+
+        Result result = entry.ChangeStatus(to);
+
+        result.IsSuccess.Should().BeTrue();
+        entry.Status.Should().Be(to);
+    }
+
+    [Theory]
+    [InlineData(FeedbackStatus.InProgress)]
+    [InlineData(FeedbackStatus.Resolved)]
+    [InlineData(FeedbackStatus.WontFix)]
+    public void ChangeStatus_BackToNewAfterItLeftNew_FailsAndKeepsTheStatus(FeedbackStatus current)
+    {
+        FeedbackEntry entry = FeedbackEntry.Create(AuthorId, FeedbackCategory.Bug, "feedback message", Context);
+        entry.ChangeStatus(current);
+
+        Result result = entry.ChangeStatus(FeedbackStatus.New);
+
+        result.Error.Should().Be(FeedbackErrors.CannotReturnToNew);
+        entry.Status.Should().Be(current);
     }
 }

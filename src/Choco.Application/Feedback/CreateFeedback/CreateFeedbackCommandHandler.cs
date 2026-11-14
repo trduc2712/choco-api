@@ -23,7 +23,7 @@ internal sealed class CreateFeedbackCommandHandler(
 
         FeedbackWire.TryParse(command.Category, out FeedbackCategory category);
 
-        FeedbackEntry entry = FeedbackEntry.Create(caller.Value, category, command.Message, command.Context.ToDomain());
+        FeedbackEntry entry = FeedbackEntry.Create(caller.Value, category, command.Message, command.Context.ToDomain(command.UserAgent ?? string.Empty));
 
         feedbackRepository.Add(entry);
 

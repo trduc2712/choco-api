@@ -266,7 +266,7 @@ public sealed class ModerationAuditTests(ChocoApiFactory factory) : AuditTestsBa
         User administrator = await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
         FeedbackEntry feedback = FeedbackEntry.Create(author.Id, FeedbackCategory.Bug, "message of the feedback", Context);
         await AddAsync(feedback);
-        using HttpRequestMessage request = Request(HttpMethod.Patch, $"/api/v1/admin/feedback/{feedback.Id}", new { status = "in_progress" });
+        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/admin/feedback/{feedback.Id}/status", new { status = "in_progress" });
 
         using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
 

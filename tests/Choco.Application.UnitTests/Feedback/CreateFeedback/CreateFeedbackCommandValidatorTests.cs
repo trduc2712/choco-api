@@ -11,7 +11,7 @@ public sealed class CreateFeedbackCommandValidatorTests
     private static readonly CreateFeedbackCommand ValidCommand = new(
         "bug",
         "feedback message",
-        new FeedbackContextDto("/path", "en", "system", "user-agent", new FeedbackViewportDto(1280, 720), "app-version"));
+        new CreateFeedbackContextDto("/path", "en", "system", new FeedbackViewportDto(1280, 720), "app-version"));
 
     private readonly CreateFeedbackCommandValidator _validator = new();
 
@@ -160,28 +160,6 @@ public sealed class CreateFeedbackCommandValidatorTests
         var result = _validator.TestValidate(ValidCommand with { Context = ValidCommand.Context with { Theme = theme! } });
 
         result.ShouldHaveValidationErrorFor(command => command.Context.Theme).Only();
-    }
-
-    [Fact]
-    public void Validate_WithUserAgentOverLimit_RejectsUserAgent()
-    {
-        var result = _validator.TestValidate(ValidCommand with
-        {
-            Context = ValidCommand.Context with { UserAgent = new string('u', FeedbackContext.UserAgentMaxLength + 1) }
-        });
-
-        result.ShouldHaveValidationErrorFor(command => command.Context.UserAgent).Only();
-    }
-
-    [Fact]
-    public void Validate_WithUserAgentAtLimit_AcceptsUserAgent()
-    {
-        var result = _validator.TestValidate(ValidCommand with
-        {
-            Context = ValidCommand.Context with { UserAgent = new string('u', FeedbackContext.UserAgentMaxLength) }
-        });
-
-        result.ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]

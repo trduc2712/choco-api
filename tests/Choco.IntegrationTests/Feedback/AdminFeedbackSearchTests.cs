@@ -45,9 +45,9 @@ public sealed class AdminFeedbackSearchTests : IClassFixture<ChocoApiFactory>, I
         FeedbackEntry alphaOnly = await AddFeedbackAsync(author, FeedbackCategory.Bug, "only alpha here");
         await AddFeedbackAsync(author, FeedbackCategory.Bug, "nothing relevant");
 
-        OffsetPageResponse<FeedbackResponse> single = await GetPageAsync($"{Path}?q=alpha");
-        OffsetPageResponse<FeedbackResponse> multiple = await GetPageAsync($"{Path}?q=beta%20%20alpha");
-        OffsetPageResponse<FeedbackResponse> none = await GetPageAsync($"{Path}?q=alpha%20missing");
+        OffsetPageResponse<FeedbackSummaryResponse> single = await GetPageAsync($"{Path}?q=alpha");
+        OffsetPageResponse<FeedbackSummaryResponse> multiple = await GetPageAsync($"{Path}?q=beta%20%20alpha");
+        OffsetPageResponse<FeedbackSummaryResponse> none = await GetPageAsync($"{Path}?q=alpha%20missing");
 
         single.Items.Select(item => item.Id).Should().BeEquivalentTo([both.Id, alphaOnly.Id]);
         single.TotalCount.Should().Be(2);
@@ -64,7 +64,7 @@ public sealed class AdminFeedbackSearchTests : IClassFixture<ChocoApiFactory>, I
         User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
         await AddFeedbackAsync(author, FeedbackCategory.Bug, "one two three four five");
 
-        OffsetPageResponse<FeedbackResponse> page = await GetPageAsync($"{Path}?q=one%20two%20three%20four%20five%20missing");
+        OffsetPageResponse<FeedbackSummaryResponse> page = await GetPageAsync($"{Path}?q=one%20two%20three%20four%20five%20missing");
 
         page.TotalCount.Should().Be(1);
     }
@@ -80,9 +80,9 @@ public sealed class AdminFeedbackSearchTests : IClassFixture<ChocoApiFactory>, I
         FeedbackEntry second = await AddFeedbackAsync(byDisplayName, FeedbackCategory.Bug, "feedback message");
         await AddFeedbackAsync(other, FeedbackCategory.Bug, "feedback message");
 
-        OffsetPageResponse<FeedbackResponse> partial = await GetPageAsync($"{Path}?author=eedl");
-        OffsetPageResponse<FeedbackResponse> phrase = await GetPageAsync($"{Path}?author=Display%20Needle");
-        OffsetPageResponse<FeedbackResponse> reversedPhrase = await GetPageAsync($"{Path}?author=Needle%20Display");
+        OffsetPageResponse<FeedbackSummaryResponse> partial = await GetPageAsync($"{Path}?author=eedl");
+        OffsetPageResponse<FeedbackSummaryResponse> phrase = await GetPageAsync($"{Path}?author=Display%20Needle");
+        OffsetPageResponse<FeedbackSummaryResponse> reversedPhrase = await GetPageAsync($"{Path}?author=Needle%20Display");
 
         partial.Items.Select(item => item.Id).Should().BeEquivalentTo([first.Id, second.Id]);
         partial.TotalCount.Should().Be(2);
@@ -103,7 +103,7 @@ public sealed class AdminFeedbackSearchTests : IClassFixture<ChocoApiFactory>, I
         User author = await AddUserAsync("identity-id-2", "username-2", "Display Needle");
         FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, "Message With Needle");
 
-        OffsetPageResponse<FeedbackResponse> page = await GetPageAsync($"{Path}?{field}={Uri.EscapeDataString(text)}");
+        OffsetPageResponse<FeedbackSummaryResponse> page = await GetPageAsync($"{Path}?{field}={Uri.EscapeDataString(text)}");
 
         page.Items.Select(item => item.Id).Should().Equal(entry.Id);
     }
@@ -121,7 +121,7 @@ public sealed class AdminFeedbackSearchTests : IClassFixture<ChocoApiFactory>, I
         User author = await AddUserAsync("identity-id-2", "username-2", field == "author" ? stored : "Display Name");
         FeedbackEntry entry = await AddFeedbackAsync(author, FeedbackCategory.Bug, field == "q" ? stored : "feedback message");
 
-        OffsetPageResponse<FeedbackResponse> page = await GetPageAsync($"{Path}?{field}={Uri.EscapeDataString(text)}");
+        OffsetPageResponse<FeedbackSummaryResponse> page = await GetPageAsync($"{Path}?{field}={Uri.EscapeDataString(text)}");
 
         page.Items.Select(item => item.Id).Should().Equal(entry.Id);
     }
@@ -139,7 +139,7 @@ public sealed class AdminFeedbackSearchTests : IClassFixture<ChocoApiFactory>, I
         await AddFeedbackAsync(author, FeedbackCategory.Bug, "name snakeXcase here");
         await AddFeedbackAsync(author, FeedbackCategory.Bug, "path backXslash here");
 
-        OffsetPageResponse<FeedbackResponse> page = await GetPageAsync($"{Path}?q={Uri.EscapeDataString(text)}");
+        OffsetPageResponse<FeedbackSummaryResponse> page = await GetPageAsync($"{Path}?q={Uri.EscapeDataString(text)}");
 
         page.Items.Select(item => item.Id).Should().Equal(expected.Id);
         page.TotalCount.Should().Be(1);
@@ -156,7 +156,7 @@ public sealed class AdminFeedbackSearchTests : IClassFixture<ChocoApiFactory>, I
         FeedbackEntry expected = await AddFeedbackAsync(expectedAuthor, FeedbackCategory.Bug, "feedback message");
         await AddFeedbackAsync(otherAuthor, FeedbackCategory.Bug, "feedback message");
 
-        OffsetPageResponse<FeedbackResponse> page = await GetPageAsync($"{Path}?author={Uri.EscapeDataString(text)}");
+        OffsetPageResponse<FeedbackSummaryResponse> page = await GetPageAsync($"{Path}?author={Uri.EscapeDataString(text)}");
 
         page.Items.Select(item => item.Id).Should().Equal(expected.Id);
     }
@@ -180,8 +180,8 @@ public sealed class AdminFeedbackSearchTests : IClassFixture<ChocoApiFactory>, I
         await AddFeedbackAsync(other, FeedbackCategory.Bug, "needle message", FeedbackStatus.Resolved);
 
         const string query = "?q=needle&author=username-2&status=resolved&category=bug&pageSize=2";
-        OffsetPageResponse<FeedbackResponse> first = await GetPageAsync(Path + query);
-        OffsetPageResponse<FeedbackResponse> second = await GetPageAsync(Path + query + "&page=2");
+        OffsetPageResponse<FeedbackSummaryResponse> first = await GetPageAsync(Path + query);
+        OffsetPageResponse<FeedbackSummaryResponse> second = await GetPageAsync(Path + query + "&page=2");
 
         first.Items.Select(item => item.Id).Should().Equal(matches[2].Id, matches[1].Id);
         first.TotalCount.Should().Be(3);
@@ -202,7 +202,7 @@ public sealed class AdminFeedbackSearchTests : IClassFixture<ChocoApiFactory>, I
         await AddFeedbackAsync(author, FeedbackCategory.Bug, "first message");
         await AddFeedbackAsync(author, FeedbackCategory.Bug, "second message");
 
-        OffsetPageResponse<FeedbackResponse> page = await GetPageAsync(Path + query);
+        OffsetPageResponse<FeedbackSummaryResponse> page = await GetPageAsync(Path + query);
 
         page.TotalCount.Should().Be(2);
         page.Items.Should().HaveCount(2);
@@ -217,8 +217,8 @@ public sealed class AdminFeedbackSearchTests : IClassFixture<ChocoApiFactory>, I
         string text = new('a', GetFeedbackQuery.SearchMaxLength);
         string padded = $"  {text}  ";
 
-        OffsetPageResponse<FeedbackResponse> exact = await GetPageAsync($"{Path}?{field}={text}");
-        OffsetPageResponse<FeedbackResponse> trimmed = await GetPageAsync($"{Path}?{field}={Uri.EscapeDataString(padded)}");
+        OffsetPageResponse<FeedbackSummaryResponse> exact = await GetPageAsync($"{Path}?{field}={text}");
+        OffsetPageResponse<FeedbackSummaryResponse> trimmed = await GetPageAsync($"{Path}?{field}={Uri.EscapeDataString(padded)}");
 
         exact.TotalCount.Should().Be(0);
         trimmed.TotalCount.Should().Be(0);
@@ -254,21 +254,21 @@ public sealed class AdminFeedbackSearchTests : IClassFixture<ChocoApiFactory>, I
             return db.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
 
-        OffsetPageResponse<FeedbackResponse> byAuthor = await GetPageAsync($"{Path}?author=username-");
-        OffsetPageResponse<FeedbackResponse> byWords = await GetPageAsync($"{Path}?q=needle");
+        OffsetPageResponse<FeedbackSummaryResponse> byAuthor = await GetPageAsync($"{Path}?author=username-");
+        OffsetPageResponse<FeedbackSummaryResponse> byWords = await GetPageAsync($"{Path}?q=needle");
 
         byAuthor.Items.Select(item => item.Id).Should().Equal(kept.Id);
         byAuthor.TotalCount.Should().Be(1);
         byWords.TotalCount.Should().Be(2);
     }
 
-    private async Task<OffsetPageResponse<FeedbackResponse>> GetPageAsync(string uri)
+    private async Task<OffsetPageResponse<FeedbackSummaryResponse>> GetPageAsync(string uri)
     {
         using HttpRequestMessage request = NotificationTestData.CreateRequest(HttpMethod.Get, uri);
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        return (await response.Content.ReadFromJsonAsync<OffsetPageResponse<FeedbackResponse>>(TestContext.Current.CancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync<OffsetPageResponse<FeedbackSummaryResponse>>(TestContext.Current.CancellationToken))!;
     }
 
     private async Task<User> AddAdminAsync(string identityId, string username)
