@@ -119,4 +119,38 @@ public sealed class GetReportsQueryValidatorTests
 
         result.ShouldHaveValidationErrorFor(q => q.Reason).Only();
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("needle")]
+    public void Validate_WithBlankOrShortSearch_HasNoErrors(string? text)
+    {
+        GetReportsQuery query = ValidQuery with { Q = text };
+
+        TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
+
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Validate_WithSearchAtTheLimitAfterTrimming_HasNoErrors()
+    {
+        GetReportsQuery query = ValidQuery with { Q = $"  {new string('q', GetReportsQuery.SearchMaxLength)}  " };
+
+        TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
+
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Validate_WithSearchOverTheLimitAfterTrimming_HasSearchError()
+    {
+        GetReportsQuery query = ValidQuery with { Q = new string('q', GetReportsQuery.SearchMaxLength + 1) };
+
+        TestValidationResult<GetReportsQuery> result = _validator.TestValidate(query);
+
+        result.ShouldHaveValidationErrorFor(q => q.Q).WithErrorCode("TooLong").Only();
+    }
 }

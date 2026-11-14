@@ -21,7 +21,7 @@ internal sealed class GetReportsQueryHandler(
             ? parsedTargetType
             : null;
         ReportReason? reason = ReportEnums.TryParse(query.Reason, out ReportReason parsedReason) ? parsedReason : null;
-        ReportQueueFilter filter = new(targetType, reason);
+        ReportQueueFilter filter = new(targetType, reason, ReportSearches.Create(query.Q, GetReportsQuery.MaxSearchWords));
         long skip = (long)(query.Page - 1) * query.PageSize;
 
         int totalCount = await reportRepository.CountQueueAsync(filter, cancellationToken);

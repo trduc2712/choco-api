@@ -22,5 +22,11 @@ internal sealed class GetReportsQueryValidator : AbstractValidator<GetReportsQue
             .Must(reason => ReportEnums.TryParse<ReportReason>(reason, out _))
             .When(query => query.Reason is not null)
             .WithMessage("'{PropertyName}' must be one of: Spam, Harassment, HateSpeech, Violence, Other.");
+
+        RuleFor(query => query.Q)
+            .Must(text => text!.Trim().Length <= GetReportsQuery.SearchMaxLength)
+            .When(query => query.Q is not null)
+            .WithErrorCode("TooLong")
+            .WithMessage($"'{{PropertyName}}' must be {GetReportsQuery.SearchMaxLength} characters or fewer after trimming.");
     }
 }
