@@ -86,6 +86,29 @@ public sealed class AdminRolesController : ApiController
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
     }
 
+    /// <summary>Previews how replacing a role's permissions would affect its holders.</summary>
+    /// <remarks>Requires the permission to update roles. The caller cannot hold this role and must hold its current and proposed permissions. The preview leaves the role unchanged.</remarks>
+    /// <param name="id" example="00000000-0000-0000-0000-000000000001">The role's id.</param>
+    /// <param name="permissions" example="reports.handle">Repeat this query parameter for each proposed permission. Omit it to preview removing every permission.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The affected holder count and the added and removed permissions.</response>
+    /// <response code="400">The id is empty or a permission is not in the catalog.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller may not update this role or lacks a current or proposed permission.</response>
+    /// <response code="404">No role has this id.</response>
+    [HttpGet("{id:guid}/impact")]
+    [ProducesResponseType(typeof(RoleImpactResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetImpact(Guid id, [FromQuery] string[]? permissions, CancellationToken cancellationToken)
+    {
+        Result<RoleImpactResponse> result = await Sender.Send(new GetRoleImpactQuery(id, permissions ?? []), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
     /// <summary>Deletes a role.</summary>
     /// <remarks>Only a caller with the permission to delete roles may call it. Everyone who holds the role loses it. The default role and roles the system created cannot be deleted. The caller must hold every permission of the role and cannot delete a role assigned to the caller. A deleted role is no longer found, so deleting it again returns 404.</remarks>
     /// <param name="id" example="00000000-0000-0000-0000-000000000001">The role's id.</param>

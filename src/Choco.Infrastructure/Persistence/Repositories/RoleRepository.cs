@@ -80,6 +80,35 @@ internal sealed class RoleRepository : Repository<Role>, IRoleRepository
             .ToListAsync(cancellationToken);
     }
 
+    public Task<int> CountHoldersForReadAsync(Role role, CancellationToken cancellationToken = default)
+    {
+        return Holders(role).CountAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<string, int>> CountHoldersKeepingPermissionsForReadAsync(
+        Role role, IReadOnlyCollection<string> permissions, CancellationToken cancellationToken = default)
+    {
+        var retained = from holder in Holders(role)
+                       from otherRole in DbSet
+                       where otherRole.Id != role.Id &&
+                           (otherRole.IsDefault || holder.Roles.Any(assignment => assignment.RoleId == otherRole.Id))
+                       from permission in otherRole.Permissions
+                       where permissions.Contains(permission)
+                       select new { holder.Id, Permission = permission };
+
+        return await retained.Distinct()
+            .GroupBy(pair => pair.Permission)
+            .Select(group => new { Code = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.Code, item => item.Count, StringComparer.Ordinal, cancellationToken);
+    }
+
+    private IQueryable<User> Holders(Role role)
+    {
+        return DbContext.Set<User>()
+            .AsNoTracking()
+            .Where(user => role.IsDefault || user.Roles.Any(assignment => assignment.RoleId == role.Id));
+    }
+
     public Task<Role?> GetBySystemKeyAsync(string systemKey, CancellationToken cancellationToken = default)
     {
         return DbSet.FirstOrDefaultAsync(role => role.SystemKey == systemKey, cancellationToken);

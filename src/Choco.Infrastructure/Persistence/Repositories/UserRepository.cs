@@ -143,6 +143,14 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
             .FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
     }
 
+    public Task<User?> GetByIdWithRolesForReadAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return DbSet
+            .AsNoTracking()
+            .Include(user => user.Roles)
+            .FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
+    }
+
     public Task<User?> GetByIdWithRolesAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return DbSet

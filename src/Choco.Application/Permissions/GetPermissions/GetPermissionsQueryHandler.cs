@@ -13,7 +13,7 @@ internal sealed class GetPermissionsQueryHandler
     {
         IReadOnlyList<PermissionResponse> response = Permission.All
             .Order(StringComparer.Ordinal)
-            .Select(code => new PermissionResponse(code))
+            .Select(code => new PermissionResponse(code, Permission.Group(code), Permission.Sensitive.Contains(code)))
             .ToList();
 
         return Task.FromResult(Result<IReadOnlyList<PermissionResponse>>.Success(response));
