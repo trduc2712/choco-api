@@ -12,7 +12,9 @@ namespace Choco.Contract.Reports;
 /// <param name="Outcome">What was done when the report was resolved: Dismissed, ContentRemoved or UserSuspended. Null while the report is open.</param>
 /// <param name="Resolver">The user who resolved the report. Null while the report is open.</param>
 /// <param name="ResolvedAt">When the report was resolved, in UTC. Null while the report is open.</param>
-/// <example>{"id":"00000000-0000-0000-0000-000000000001","targetType":"Post","targetId":"00000000-0000-0000-0000-000000000002","reason":"Spam","details":"details","reporter":{"id":"00000000-0000-0000-0000-000000000003","username":"username"},"createdAt":"2026-01-01T00:00:00+00:00","status":"Resolved","outcome":"ContentRemoved","resolver":{"id":"00000000-0000-0000-0000-000000000004","username":"username-2"},"resolvedAt":"2026-01-02T00:00:00+00:00"}</example>
+/// <param name="Post">The reported post: its whole text and its author. Null when the target is a user or the post was deleted. The author's username is kept when their account was deleted, as in the queue.</param>
+/// <param name="User">The reported user: their username, display name and whether they are suspended. Null when the target is a post or the account was deleted.</param>
+/// <example>{"id":"00000000-0000-0000-0000-000000000001","targetType":"Post","targetId":"00000000-0000-0000-0000-000000000002","reason":"Spam","details":"details","reporter":{"id":"00000000-0000-0000-0000-000000000003","username":"username"},"createdAt":"2026-01-01T00:00:00+00:00","status":"Resolved","outcome":"ContentRemoved","resolver":{"id":"00000000-0000-0000-0000-000000000004","username":"username-2"},"resolvedAt":"2026-01-02T00:00:00+00:00","post":{"content":"content","author":{"id":"00000000-0000-0000-0000-000000000005","username":"username-3"}},"user":null}</example>
 public sealed record AdminReportResponse(
     Guid Id,
     string TargetType,
@@ -24,4 +26,6 @@ public sealed record AdminReportResponse(
     string Status,
     string? Outcome,
     ReportUserResponse? Resolver,
-    DateTimeOffset? ResolvedAt);
+    DateTimeOffset? ResolvedAt,
+    ReportedPostResponse? Post,
+    ReportedUserResponse? User);

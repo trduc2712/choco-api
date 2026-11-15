@@ -1,6 +1,6 @@
 namespace Choco.Contract.Reports;
 
-/// <summary>The user that open reports are about.</summary>
+/// <summary>The user that reports are about.</summary>
 /// <param name="Username">The user's handle.</param>
 /// <param name="DisplayName">The name shown to other people.</param>
 /// <param name="IsSuspended">Whether an administrator already suspended the user.</param>

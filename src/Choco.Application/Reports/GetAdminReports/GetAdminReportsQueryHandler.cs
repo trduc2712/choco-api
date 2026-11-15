@@ -1,6 +1,8 @@
 using Choco.Application.Abstractions.Messaging;
+using Choco.Application.Content;
 using Choco.Contract.Abstractions;
 using Choco.Contract.Reports;
+using Choco.Domain.Posts;
 using Choco.Domain.Reports;
 using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
@@ -9,6 +11,7 @@ namespace Choco.Application.Reports.GetAdminReports;
 
 internal sealed class GetAdminReportsQueryHandler(
     IReportRepository reportRepository,
+    IPostRepository postRepository,
     IUserRepository userRepository)
     : IQueryHandler<GetAdminReportsQuery, OffsetPageResponse<AdminReportResponse>>
 {
@@ -31,15 +34,28 @@ internal sealed class GetAdminReportsQueryHandler(
             ? []
             : await reportRepository.ListForReadAsync(filter, (int)skip, query.PageSize, cancellationToken);
 
-        List<Guid> userIds = reports
-            .SelectMany(report => new[] { report.ReporterId, report.ResolvedById })
+        List<Guid> postIds = reports
+            .Select(report => report.TargetPostId)
             .OfType<Guid>()
             .Distinct()
             .ToList();
-        Dictionary<Guid, string> usernames = userIds.Count == 0
+        List<Post> posts = postIds.Count == 0
+            ? []
+            : (await postRepository.ListByIdsForReadAsync(postIds, cancellationToken)).ToList();
+        Dictionary<Guid, Post> postsById = posts.ToDictionary(post => post.Id);
+
+        List<Guid> userIds = reports
+            .SelectMany(report => new[] { report.ReporterId, report.ResolvedById, report.TargetUserId })
+            .OfType<Guid>()
+            .Distinct()
+            .ToList();
+        Dictionary<Guid, User> users = userIds.Count == 0
             ? []
             : (await userRepository.ListByIdsForReadAsync(userIds, cancellationToken))
-                .ToDictionary(user => user.Id, user => user.Username);
+                .ToDictionary(user => user.Id);
+
+        Dictionary<Guid, string> authorNames = await ContentAuthors.LoadUsernamesAsync(
+            userRepository, posts.Select(post => post.AuthorId), cancellationToken);
 
         List<AdminReportResponse> items = reports
             .Select(report => new AdminReportResponse(
@@ -48,20 +64,37 @@ internal sealed class GetAdminReportsQueryHandler(
                 (report.TargetPostId ?? report.TargetUserId)!.Value,
                 report.Reason.ToString(),
                 report.Details,
-                ToUser(report.ReporterId, usernames)!,
+                ToUser(report.ReporterId, users)!,
                 report.CreatedAt,
                 report.Status.ToString(),
                 report.Outcome?.ToString(),
-                ToUser(report.ResolvedById, usernames),
-                report.ResolvedAt))
+                ToUser(report.ResolvedById, users),
+                report.ResolvedAt,
+                ToPost(report.TargetPostId, postsById, authorNames),
+                ToTargetUser(report.TargetUserId, users)))
             .ToList();
 
         return Result<OffsetPageResponse<AdminReportResponse>>.Success(
             new OffsetPageResponse<AdminReportResponse>(items, query.Page, query.PageSize, totalCount));
     }
 
-    private static ReportUserResponse? ToUser(Guid? userId, Dictionary<Guid, string> usernames)
+    private static ReportUserResponse? ToUser(Guid? userId, Dictionary<Guid, User> users)
     {
-        return userId is { } id ? new ReportUserResponse(id, usernames.GetValueOrDefault(id)) : null;
+        return userId is { } id ? new ReportUserResponse(id, users.GetValueOrDefault(id)?.Username) : null;
+    }
+
+    private static ReportedPostResponse? ToPost(
+        Guid? postId, Dictionary<Guid, Post> posts, Dictionary<Guid, string> authorNames)
+    {
+        return postId is { } id && posts.TryGetValue(id, out Post? post)
+            ? new ReportedPostResponse(post.Content, ContentAuthors.ToResponse(post.AuthorId, authorNames))
+            : null;
+    }
+
+    private static ReportedUserResponse? ToTargetUser(Guid? userId, Dictionary<Guid, User> users)
+    {
+        return userId is { } id && users.TryGetValue(id, out User? user)
+            ? new ReportedUserResponse(user.Username, user.DisplayName, user.IsSuspended)
+            : null;
     }
 }

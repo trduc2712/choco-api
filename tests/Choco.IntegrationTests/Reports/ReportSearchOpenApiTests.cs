@@ -35,4 +35,23 @@ public sealed class ReportSearchOpenApiTests : IClassFixture<VersioningApiFactor
         operation.GetProperty("responses").EnumerateObject().Select(status => status.Name)
             .Should().Contain(["200", "400", "401", "403"]);
     }
+
+    [Fact]
+    public async Task OpenApi_DescribesAndExemplifiesTheTargetSummaryOfEachReport()
+    {
+        using HttpResponseMessage response = await _client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using JsonDocument document = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        JsonElement schema = document.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("AdminReportResponse");
+
+        JsonElement properties = schema.GetProperty("properties");
+        properties.GetProperty("post").GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        properties.GetProperty("user").GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        JsonElement example = schema.GetProperty("example");
+        example.GetProperty("post").GetProperty("content").GetString().Should().Be("content");
+        example.TryGetProperty("user", out _).Should().BeTrue();
+    }
 }
