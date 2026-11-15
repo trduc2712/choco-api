@@ -21,6 +21,7 @@ public sealed class AuditLogEntry : BaseEntity
     public AuditTargetType TargetType { get; private set; }
     public Guid TargetId { get; private set; }
     public Guid? AffectedUserId { get; private set; }
+    public string[] AffectedUserRoles { get; private set; } = [];
     public string? Detail { get; private set; }
     public AuditChange[] Changes { get; private set; } = [];
     public string? TraceId { get; private set; }
@@ -44,7 +45,8 @@ public sealed class AuditLogEntry : BaseEntity
         string? traceId,
         string? userAgent,
         IPAddress? ipAddress,
-        AuditChange[] changes)
+        AuditChange[] changes,
+        string[] affectedUserRoles)
         : base(id)
     {
         OccurredAt = occurredAt;
@@ -56,6 +58,7 @@ public sealed class AuditLogEntry : BaseEntity
         TargetType = targetType;
         TargetId = targetId;
         AffectedUserId = affectedUserId;
+        AffectedUserRoles = affectedUserRoles;
         Detail = detail;
         Changes = changes;
         TraceId = traceId;
@@ -77,9 +80,15 @@ public sealed class AuditLogEntry : BaseEntity
         string? traceId,
         string? userAgent,
         IPAddress? ipAddress,
-        IReadOnlyList<AuditChange>? changes = null)
+        IReadOnlyList<AuditChange>? changes = null,
+        IEnumerable<string>? affectedUserRoles = null)
     {
         ArgumentNullException.ThrowIfNull(actorRoles);
+
+        if (affectedUserId is null && affectedUserRoles?.Any() == true)
+        {
+            throw new ArgumentException("Roles need an affected user.", nameof(affectedUserRoles));
+        }
 
         if (actorType == AuditActorType.User && (actorId is null || actorId == Guid.Empty))
         {
@@ -121,7 +130,8 @@ public sealed class AuditLogEntry : BaseEntity
             traceId,
             Truncate(userAgent, UserAgentMaxLength),
             ipAddress,
-            changes is null ? [] : [.. changes]);
+            changes is null ? [] : [.. changes],
+            affectedUserRoles is null ? [] : [.. affectedUserRoles]);
     }
 
     private static string? Truncate(string? value, int maxLength)

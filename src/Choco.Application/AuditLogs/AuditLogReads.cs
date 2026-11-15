@@ -1,0 +1,33 @@
+using Choco.Application.Abstractions.Auditing;
+using Choco.Application.Abstractions.Authentication;
+using Choco.Contract.AuditLogs;
+using Choco.Domain.AuditLogs;
+using Choco.SharedKernel.Results;
+
+namespace Choco.Application.AuditLogs;
+
+internal static class AuditLogReads
+{
+    public static async Task<AuditDescription> DescribeAsync(ICurrentUser currentUser, CancellationToken cancellationToken)
+    {
+        Result<Guid> readerId = await currentUser.GetIdAsync(cancellationToken);
+
+        return new AuditDescription(AuditAction.AuditLogRead, AuditTargetType.AuditLog, readerId.Value);
+    }
+
+    public static async Task<IReadOnlyList<AuditDescription>> DescribeUnlessRecentAsync(
+        ICurrentUser currentUser,
+        IAuditLogRepository auditLogRepository,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        Result<Guid> readerId = await currentUser.GetIdAsync(cancellationToken);
+        DateTimeOffset since = timeProvider.GetUtcNow() - TimeSpan.FromMinutes(GetAuditLogsQuery.RecordedReadWindowMinutes);
+        AuditLogFilter recentReads = new(
+            readerId.Value, AuditAction.AuditLogRead, null, null, null, since, null);
+
+        int recorded = await auditLogRepository.CountForReadAsync(recentReads, cancellationToken);
+
+        return recorded > 0 ? [] : [await DescribeAsync(currentUser, cancellationToken)];
+    }
+}

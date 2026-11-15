@@ -64,6 +64,10 @@ internal sealed class AuditLogEntryConfiguration : IEntityTypeConfiguration<Audi
         builder.Property(entry => entry.AffectedUserId)
             .HasComment("User whose data or account the action changed, when it is not the actor, for example the author of a removed post.");
 
+        builder.Property(entry => entry.AffectedUserRoles)
+            .HasDefaultValueSql("'{}'::text[]")
+            .HasComment("Names of the roles the affected user held right after the action; empty when there is no affected user or the row is older than this column.");
+
         builder.Property(entry => entry.Detail)
             .HasMaxLength(AuditLogEntry.DetailMaxLength)
             .HasComment("Short note that qualifies the action, such as a role name or a new status. Never holds post or comment content.");

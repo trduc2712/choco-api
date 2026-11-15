@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Choco.Contract.AuditLogs;
 
 /// <summary>
@@ -16,7 +18,10 @@ namespace Choco.Contract.AuditLogs;
 /// <param name="Detail">A short note that qualifies the action, such as a role name or a new status; null when there is none.</param>
 /// <param name="Changes">Fields changed by the action. Empty when no changes were recorded.</param>
 /// <param name="TraceId">The trace id of the request that caused the action, or null when it is unknown.</param>
-/// <example>{"id":"00000000-0000-0000-0000-000000000001","occurredAt":"2026-01-01T00:00:00+00:00","actorType":"User","actor":{"id":"00000000-0000-0000-0000-000000000002","username":"username"},"actorRoles":["Administrator","Member"],"clientId":"https://example.com","action":"PostDeleted","targetType":"Post","targetId":"00000000-0000-0000-0000-000000000003","affectedUser":{"id":"00000000-0000-0000-0000-000000000004","username":"username-2"},"detail":null,"changes":[],"traceId":"4bf92f3577b34da6a3ce929d0e0e4736"}</example>
+/// <param name="AffectedUserRoles">The names of the roles the affected user held right after the action. Empty when there is no affected user or the entry is older than this field.</param>
+/// <param name="TargetSummary">The current state of the target. Only in the single-entry response; left out when the target no longer exists or its type has no summary (Request, AuditLog).</param>
+/// <param name="TargetHistory">The other entries about the same target. Only in the single-entry response.</param>
+/// <example>{"id":"00000000-0000-0000-0000-000000000001","occurredAt":"2026-01-01T00:00:00+00:00","actorType":"User","actor":{"id":"00000000-0000-0000-0000-000000000002","username":"username"},"actorRoles":["Administrator","Member"],"clientId":"https://example.com","action":"PostDeleted","targetType":"Post","targetId":"00000000-0000-0000-0000-000000000003","affectedUser":{"id":"00000000-0000-0000-0000-000000000004","username":"username-2"},"detail":null,"changes":[],"traceId":"4bf92f3577b34da6a3ce929d0e0e4736","affectedUserRoles":["Member"]}</example>
 public sealed record AuditLogResponse(
     Guid Id,
     DateTimeOffset OccurredAt,
@@ -30,4 +35,7 @@ public sealed record AuditLogResponse(
     AuditLogUserResponse? AffectedUser,
     string? Detail,
     string? TraceId,
-    IReadOnlyList<AuditChangeResponse> Changes);
+    IReadOnlyList<AuditChangeResponse> Changes,
+    IReadOnlyList<string> AffectedUserRoles,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AuditTargetSummaryResponse? TargetSummary = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AuditTargetHistoryResponse? TargetHistory = null);

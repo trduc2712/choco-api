@@ -39,30 +39,9 @@ internal sealed class GetAuditLogsQueryHandler(
             : await userRepository.ListByIdsIncludingDeletedForReadAsync(userIds, cancellationToken);
         Dictionary<Guid, string> usernames = users.ToDictionary(user => user.Id, user => user.Username);
 
-        List<AuditLogResponse> items = page
-            .Select(entry => new AuditLogResponse(
-                entry.Id,
-                entry.OccurredAt,
-                entry.ActorType.ToString(),
-                ToUser(entry.ActorId, usernames),
-                entry.ActorRoles,
-                entry.ClientId,
-                entry.Action.ToString(),
-                entry.TargetType.ToString(),
-                entry.TargetId,
-                ToUser(entry.AffectedUserId, usernames),
-                entry.Detail,
-                entry.TraceId,
-                entry.Changes.Select(change => new AuditChangeResponse(
-                    change.Field, change.Before, change.After, change.Added, change.Removed)).ToArray()))
-            .ToList();
+        List<AuditLogResponse> items = page.Select(entry => entry.ToResponse(usernames)).ToList();
 
         return Result<OffsetPageResponse<AuditLogResponse>>.Success(
             new OffsetPageResponse<AuditLogResponse>(items, query.Page, query.PageSize, totalCount));
-    }
-
-    private static AuditLogUserResponse? ToUser(Guid? userId, Dictionary<Guid, string> usernames)
-    {
-        return userId is { } id ? new AuditLogUserResponse(id, usernames.GetValueOrDefault(id)) : null;
     }
 }

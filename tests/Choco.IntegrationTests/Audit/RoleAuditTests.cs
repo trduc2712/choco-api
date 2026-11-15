@@ -23,6 +23,23 @@ public sealed class RoleAuditTests(ChocoApiFactory factory) : AuditTestsBase(fac
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, administrator.Id, AuditAction.RoleAssigned, AuditTargetType.User, member.Id, member.Id, "Role: Administrator");
+        entry.Changes.Should().BeEquivalentTo(new[] { new AuditChange("roles", Added: ["Administrator"]) });
+        entry.AffectedUserRoles.Should().Equal("Administrator", "Member");
+    }
+
+    [Fact]
+    public async Task AssignRoleTheUserAlreadyHolds_RecordsNoChange()
+    {
+        Guid administratorRoleId = await GetAdministratorRoleIdAsync();
+        await AddUserAsync("identity-id", "username", administratorRoleId);
+        User other = await AddUserAsync("identity-id-2", "username-2", administratorRoleId);
+        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/users/{other.Id}/roles/{administratorRoleId}");
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
+        entry.Changes.Should().BeEmpty();
     }
 
     [Fact]
@@ -114,6 +131,8 @@ public sealed class RoleAuditTests(ChocoApiFactory factory) : AuditTestsBase(fac
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, administrator.Id, AuditAction.RoleRevoked, AuditTargetType.User, other.Id, other.Id, "Role: Administrator");
+        entry.Changes.Should().BeEquivalentTo(new[] { new AuditChange("roles", Removed: ["Administrator"]) });
+        entry.AffectedUserRoles.Should().Equal("Member");
     }
 
     [Fact]

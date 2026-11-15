@@ -41,7 +41,7 @@ internal sealed class AccessDeniedAuditBehavior<TRequest, TResponse>(
         IReadOnlyCollection<string> actorRoles =
             await roleRepository.GetPlatformRoleNamesForReadAsync(actorId.Value, cancellationToken);
 
-        auditLogRepository.Add(entryBuilder.Create(
+        auditLogRepository.Add(await entryBuilder.CreateAsync(
             AuditActorType.User,
             actorId.Value,
             actorRoles,
@@ -49,7 +49,8 @@ internal sealed class AccessDeniedAuditBehavior<TRequest, TResponse>(
                 AuditAction.AccessDenied,
                 AuditTargetType.Request,
                 actorId.Value,
-                Detail: $"Request: {typeof(TRequest).Name}")));
+                Detail: $"Request: {typeof(TRequest).Name}"),
+            cancellationToken));
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

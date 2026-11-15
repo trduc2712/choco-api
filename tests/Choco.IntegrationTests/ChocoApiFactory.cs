@@ -2,6 +2,7 @@ using Choco.Application.Abstractions.Authentication;
 using Choco.Infrastructure.Persistence;
 using Choco.Infrastructure.Persistence.Seeding;
 using Choco.IntegrationTests.Authentication;
+using Choco.IntegrationTests.Persistence;
 using Choco.IntegrationTests.Webhooks;
 using Choco.Presentation.Authorization;
 
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -45,6 +47,8 @@ public class ChocoApiFactory : WebApplicationFactory<Program>, IAsyncLifetime, I
 
     public FakeTimeProvider TimeProvider { get; } = new(StartTime);
 
+    public DbCommandCounter DbCommands { get; } = new();
+
     public ITestOutputHelper? OutputHelper { get; set; }
 
     internal StubHttpMessageHandler IdentityProvider { get; } = new();
@@ -66,6 +70,7 @@ public class ChocoApiFactory : WebApplicationFactory<Program>, IAsyncLifetime, I
             services.Remove(services.Single(descriptor =>
                 descriptor.ImplementationType == typeof(AdministratorBootstrapHostedService)));
             services.Replace(ServiceDescriptor.Singleton<TimeProvider>(TimeProvider));
+            services.ConfigureDbContext<ChocoDbContext>(options => options.AddInterceptors(DbCommands));
             services.AddHttpClient(nameof(IIdentityProvider))
                 .ConfigurePrimaryHttpMessageHandler(() => IdentityProvider);
             services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>

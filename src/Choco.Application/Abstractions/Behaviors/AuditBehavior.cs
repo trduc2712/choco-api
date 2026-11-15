@@ -82,8 +82,8 @@ internal sealed class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
 
             foreach (AuditDescription description in descriptions)
             {
-                AuditLogEntry entry = _entryBuilder.Create(
-                    isSystem ? AuditActorType.System : AuditActorType.User, actorId, actorRoles, description);
+                AuditLogEntry entry = await _entryBuilder.CreateAsync(
+                    isSystem ? AuditActorType.System : AuditActorType.User, actorId, actorRoles, description, cancellationToken);
 
                 _auditLogRepository.Add(entry);
             }
