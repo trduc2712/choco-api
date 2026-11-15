@@ -60,6 +60,26 @@ internal sealed class RoleRepository : Repository<Role>, IRoleRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<RoleHolderSummary>> ListHolderSummariesForReadAsync(
+        IReadOnlyCollection<Guid> roleIds, CancellationToken cancellationToken = default)
+    {
+        IQueryable<User> users = DbContext.Set<User>().AsNoTracking();
+
+        return await DbSet.AsNoTracking()
+            .Where(role => roleIds.Contains(role.Id))
+            .Select(role => new RoleHolderSummary(
+                role.Id,
+                users.Count(user => role.IsDefault || user.Roles.Any(assignment => assignment.RoleId == role.Id)),
+                (from user in users
+                 from assignment in user.Roles
+                 where !role.IsDefault && assignment.RoleId == role.Id
+                 orderby assignment.AssignedAt descending, user.Id
+                 select new RoleHolder(user.Id, user.Username, user.DisplayName, user.AvatarUrl))
+                .Take(3)
+                .ToList()))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<Role?> GetBySystemKeyAsync(string systemKey, CancellationToken cancellationToken = default)
     {
         return DbSet.FirstOrDefaultAsync(role => role.SystemKey == systemKey, cancellationToken);

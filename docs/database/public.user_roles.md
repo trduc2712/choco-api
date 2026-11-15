@@ -69,10 +69,14 @@ erDiagram
   varchar_64_ username
 }
 "public.roles" {
+  varchar_16_ color
   timestamp_with_time_zone created_at
+  varchar_200_ description
+  varchar_16_ icon
   uuid id
   boolean is_default
   timestamp_with_time_zone modified_at
+  uuid modified_by
   varchar_64_ name
   varchar_64___ permissions
   varchar_64_ system_key

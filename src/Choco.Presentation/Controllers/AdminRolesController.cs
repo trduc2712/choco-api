@@ -23,7 +23,7 @@ public sealed class AdminRolesController : ApiController
     /// <summary>Lists every role with the permissions it holds.</summary>
     /// <remarks>Only a caller with the permission to read roles may call it. Roles come ordered by name, and each role's permissions are in alphabetical order. The response is not paged. Use a role's id to assign or revoke it on a user.</remarks>
     /// <param name="cancellationToken">Cancels the request.</param>
-    /// <response code="200">Every role, with its id, key, name, whether it is the default role and its permissions.</response>
+    /// <response code="200">Every role with its identity, appearance, permissions, holder summary and last change.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     /// <response code="403">The caller may not read roles.</response>
     [HttpGet]
@@ -39,10 +39,10 @@ public sealed class AdminRolesController : ApiController
 
     /// <summary>Creates a role.</summary>
     /// <remarks>Only a caller with the permission to create roles may call it, and only with permissions the caller holds. The new role is not the default role and has no system key. Leading and trailing whitespace is removed from the name. Sending the same body twice fails the second time, because role names are unique ignoring case. The new role has no holders until it is assigned to a user.</remarks>
-    /// <param name="command">The role's name and the permissions it grants.</param>
+    /// <param name="command">The role's name, appearance and the permissions it grants.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="201">The role was created; the Location header points to it.</response>
-    /// <response code="400">The name is missing, blank or too long, or a permission is not in the catalog; errors lists the field.</response>
+    /// <response code="400">A required field is missing or invalid, the description is too long, or a permission is outside the catalog.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     /// <response code="403">The caller may not create roles, or lists a permission the caller does not hold. It is also returned when the caller's account is suspended.</response>
     /// <response code="409">Another role already has this name, ignoring case.</response>
@@ -61,13 +61,13 @@ public sealed class AdminRolesController : ApiController
             : HandleFailure(result);
     }
 
-    /// <summary>Changes the name and permissions of a role.</summary>
-    /// <remarks>Only a caller with the permission to update roles may call it. It replaces both the name and the whole set of permissions, so sending the same body again changes nothing. System roles and the default role can be changed too; their key stays. The caller must hold every permission the role has now and every permission in the body, and cannot change a role assigned to the caller. The change applies to the role's holders on their next request. Leading and trailing whitespace is removed from the name.</remarks>
+    /// <summary>Updates a role's name, appearance and permissions.</summary>
+    /// <remarks>Only a caller with the permission to update roles may call it. It replaces the role's name, appearance and entire permission set. System roles and the default role can be changed too; their key stays. The caller must hold every permission the role has now and every permission in the body, and cannot change a role assigned to the caller. The change applies to the role's holders on their next request. Leading and trailing whitespace is removed from the name.</remarks>
     /// <param name="id" example="00000000-0000-0000-0000-000000000001">The role's id.</param>
-    /// <param name="command">The new name and permissions.</param>
+    /// <param name="command">The updated role name, appearance and permissions.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
-    /// <response code="200">The role with its new name and permissions.</response>
-    /// <response code="400">The id is empty, the name is missing, blank or too long, or a permission is not in the catalog; errors lists the field.</response>
+    /// <response code="200">The updated role.</response>
+    /// <response code="400">The id is empty, a role field is invalid, a permission is outside the catalog.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     /// <response code="403">The caller may not update roles, holds the role, or lacks a permission of the role or of the body. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No role has this id.</response>
@@ -114,7 +114,7 @@ public sealed class AdminRolesController : ApiController
     /// <remarks>Only a caller with the permission to read roles may call it. The role's permissions are in alphabetical order.</remarks>
     /// <param name="id" example="00000000-0000-0000-0000-000000000001">The role's id.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
-    /// <response code="200">The role, with its id, key, name, whether it is the default role and its permissions.</response>
+    /// <response code="200">The role with its identity, appearance, permissions, holder summary and last change.</response>
     /// <response code="400">The id is empty.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     /// <response code="403">The caller may not read roles.</response>

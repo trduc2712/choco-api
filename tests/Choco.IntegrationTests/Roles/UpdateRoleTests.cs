@@ -102,6 +102,11 @@ public sealed class UpdateRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         body.GetProperty("id").GetGuid().Should().Be(target.Id);
+        body.GetProperty("description").GetString().Should().Be("Role Description");
+        body.GetProperty("color").GetString().Should().Be("teal");
+        body.GetProperty("modifiedBy").GetProperty("username").GetString().Should().Be("username");
+        body.GetProperty("modifiedAt").GetDateTimeOffset().Should().Be(ChocoApiFactory.StartTime);
+        body.GetProperty("icon").GetString().Should().Be("key");
         body.GetProperty("name").GetString().Should().Be("Renamed");
         body.GetProperty("permissions").EnumerateArray().Select(permission => permission.GetString()).Should().Equal(Permission.DeleteAnyPost);
         Role stored = await GetRoleAsync(target.Id);
@@ -279,14 +284,21 @@ public sealed class UpdateRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         Role target = await AddRoleAsync("Target");
         await AddCallerAsync(Permission.UpdateRoles);
 
-        using HttpResponseMessage response = await SendAsync(target.Id, new { name = "Target" });
+        using HttpResponseMessage response = await SendAsync(target.Id, new { name = "Target", color = "teal", icon = "key" });
 
         await ShouldBeValidationProblemAsync(response, "Permissions");
     }
 
     private static string PathOf(Guid id) => $"/api/v1/admin/roles/{id}";
 
-    private static object Body(string name, params string[] permissions) => new { name, permissions };
+    private static object Body(string name, params string[] permissions) => new
+    {
+        name,
+        permissions,
+        description = "  Role Description  ",
+        color = "teal",
+        icon = "key"
+    };
 
     private static HttpRequestMessage CreateRequest(HttpMethod method, string path, string identityId, object? body = null)
     {

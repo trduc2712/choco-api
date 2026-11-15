@@ -54,7 +54,7 @@ internal sealed class DeleteRoleCommandHandler(
             return Result<RoleResponse>.Failure(deletable.Error);
         }
 
-        RoleResponse deleted = role.ToResponse();
+        RoleResponse deleted = await roleRepository.ToResponseAsync(userRepository, role, cancellationToken);
 
         roleRepository.Remove(role);
 
