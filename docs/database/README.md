@@ -60,6 +60,7 @@ erDiagram
   text__ actor_roles
   varchar_32_ actor_type
   uuid affected_user_id
+  text__ affected_user_roles
   jsonb changes
   varchar_256_ client_id
   varchar_200_ detail
