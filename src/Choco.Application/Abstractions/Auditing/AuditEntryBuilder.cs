@@ -1,19 +1,28 @@
 using Choco.Application.Abstractions.Requests;
 using Choco.Domain.AuditLogs;
+using Choco.Domain.Roles;
 
 namespace Choco.Application.Abstractions.Auditing;
 
-internal sealed class AuditEntryBuilder(IRequestContext requestContext, TimeProvider timeProvider)
+internal sealed class AuditEntryBuilder(
+    IRequestContext requestContext,
+    IRoleRepository roleRepository,
+    TimeProvider timeProvider)
 {
-    public AuditLogEntry Create(
+    public async Task<AuditLogEntry> CreateAsync(
         AuditActorType actorType,
         Guid? actorId,
         IReadOnlyCollection<string> actorRoles,
-        AuditDescription description)
+        AuditDescription description,
+        CancellationToken cancellationToken)
     {
         Guid? affectedUserId = description.AffectedUserId == actorId
             ? null
             : description.AffectedUserId;
+
+        IReadOnlyCollection<string> affectedUserRoles = affectedUserId is { } userId
+            ? await roleRepository.GetPlatformRoleNamesForReadAsync(userId, cancellationToken)
+            : [];
 
         return AuditLogEntry.Create(
             timeProvider.GetUtcNow(),
@@ -29,6 +38,7 @@ internal sealed class AuditEntryBuilder(IRequestContext requestContext, TimeProv
             requestContext.TraceId,
             requestContext.UserAgent,
             requestContext.IpAddress,
-            description.Changes);
+            description.Changes,
+            affectedUserRoles);
     }
 }

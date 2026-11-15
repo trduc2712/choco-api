@@ -60,4 +60,26 @@ public sealed class AdminAuditLogsController : ApiController
 
         return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
     }
+
+    /// <summary>Gets one audit log entry with the context of its target.</summary>
+    /// <remarks>Only a caller with the permission to read the audit log may call it. The entry has the same properties as in the list, plus three that only this endpoint returns. targetSummary is the target's state now, read at the time of this request, not when the action happened: a deleted post, comment or user still has a summary with isDeleted true, and a target that no longer exists, or a Request or AuditLog target, has none. An excerpt of a post, comment, feedback message or report, and a user's display name and avatar, are included only when the caller also holds the permission that reads that kind of object; the rest of the summary comes without it. targetHistory counts every entry about the same target and lists up to 5 of them around this one, this one included, oldest first, each with the value a field took in it when there is one, such as a feedback status. Each change carries previousChangedAt, when the same field of the same target last changed before this entry, unless it never did. The read is recorded as AuditLogRead in the same way as a read of the list, sharing its 5-minute window.</remarks>
+    /// <param name="id" example="00000000-0000-0000-0000-000000000001">The entry's id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The entry with its target's summary and history.</response>
+    /// <response code="400">The id is invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller may not read the audit log.</response>
+    /// <response code="404">No entry has this id.</response>
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(AuditLogResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken = default)
+    {
+        Result<AuditLogResponse> result = await Sender.Send(new GetAuditLogQuery(id), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
 }

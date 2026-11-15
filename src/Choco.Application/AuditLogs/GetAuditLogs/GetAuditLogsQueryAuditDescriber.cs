@@ -13,28 +13,19 @@ internal sealed class GetAuditLogsQueryAuditDescriber(
     TimeProvider timeProvider)
     : IAuditDescriber<GetAuditLogsQuery, Result<OffsetPageResponse<AuditLogResponse>>>
 {
-    public async Task<AuditDescription> DescribeAsync(
+    public Task<AuditDescription> DescribeAsync(
         GetAuditLogsQuery request,
         Result<OffsetPageResponse<AuditLogResponse>> response,
         CancellationToken cancellationToken)
     {
-        Result<Guid> readerId = await currentUser.GetIdAsync(cancellationToken);
-
-        return new AuditDescription(AuditAction.AuditLogRead, AuditTargetType.AuditLog, readerId.Value);
+        return AuditLogReads.DescribeAsync(currentUser, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<AuditDescription>> DescribeAllAsync(
+    public Task<IReadOnlyList<AuditDescription>> DescribeAllAsync(
         GetAuditLogsQuery request,
         Result<OffsetPageResponse<AuditLogResponse>> response,
         CancellationToken cancellationToken)
     {
-        Result<Guid> readerId = await currentUser.GetIdAsync(cancellationToken);
-        DateTimeOffset since = timeProvider.GetUtcNow() - TimeSpan.FromMinutes(GetAuditLogsQuery.RecordedReadWindowMinutes);
-        AuditLogFilter recentReads = new(
-            readerId.Value, AuditAction.AuditLogRead, null, null, null, since, null);
-
-        int recorded = await auditLogRepository.CountForReadAsync(recentReads, cancellationToken);
-
-        return recorded > 0 ? [] : [await DescribeAsync(request, response, cancellationToken)];
+        return AuditLogReads.DescribeUnlessRecentAsync(currentUser, auditLogRepository, timeProvider, cancellationToken);
     }
 }

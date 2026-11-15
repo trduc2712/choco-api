@@ -62,6 +62,14 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .HasColumnName("affected_user_id")
                         .HasComment("User whose data or account the action changed, when it is not the actor, for example the author of a removed post.");
 
+                    b.PrimitiveCollection<string[]>("AffectedUserRoles")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasColumnName("affected_user_roles")
+                        .HasDefaultValueSql("'{}'::text[]")
+                        .HasComment("Names of the roles the affected user held right after the action; empty when there is no affected user or the row is older than this column.");
+
                     b.Property<string>("Changes")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
