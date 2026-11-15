@@ -86,6 +86,8 @@ public sealed class AdminReportsTests : IClassFixture<ChocoApiFactory>, IAsyncLi
         item.Outcome.Should().BeNull();
         item.Resolver.Should().BeNull();
         item.ResolvedAt.Should().BeNull();
+        item.Post.Should().Be(new ReportedPostResponse("content", new ContentAuthorResponse(author.Id, "author")));
+        item.User.Should().BeNull();
     }
 
     [Fact]
@@ -109,6 +111,8 @@ public sealed class AdminReportsTests : IClassFixture<ChocoApiFactory>, IAsyncLi
         item.Outcome.Should().Be("UserSuspended");
         item.Resolver.Should().Be(new ReportUserResponse(admin.Id, "admin"));
         item.ResolvedAt.Should().Be(_factory.TimeProvider.GetUtcNow());
+        item.User.Should().Be(new ReportedUserResponse("target", "target", false));
+        item.Post.Should().BeNull();
     }
 
     [Fact]
@@ -212,7 +216,7 @@ public sealed class AdminReportsTests : IClassFixture<ChocoApiFactory>, IAsyncLi
     }
 
     [Fact]
-    public async Task ReportsAboutADeletedPost_AreStillListed()
+    public async Task ReportsAboutADeletedPost_AreStillListedWithoutASummary()
     {
         await AddAdminAsync("identity-id", "admin");
         User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "reporter");
@@ -226,7 +230,98 @@ public sealed class AdminReportsTests : IClassFixture<ChocoApiFactory>, IAsyncLi
             return await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
 
-        (await GetIdsAsync(Path)).Should().Equal(report.Id);
+        OffsetPageResponse<AdminReportResponse> page = await GetPageAsync($"{Path}?targetType=Post&reason=Spam");
+
+        AdminReportResponse item = page.Items.Should().ContainSingle().Subject;
+        item.Id.Should().Be(report.Id);
+        item.Post.Should().BeNull();
+        item.User.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ReportsAboutADeletedUser_AreStillListedWithoutASummary()
+    {
+        await AddAdminAsync("identity-id", "admin");
+        User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "reporter");
+        User target = await NotificationTestData.AddUserAsync(_factory, "identity-id-3", "target");
+        Report report = await AddReportAsync(
+            Report.CreateForUser(reporter.Id, target.Id, ReportReason.Harassment, null, _factory.TimeProvider.GetUtcNow()).Value);
+        await DeleteUserAsync(target.Id);
+
+        OffsetPageResponse<AdminReportResponse> page = await GetPageAsync($"{Path}?targetType=User&reason=Harassment");
+
+        AdminReportResponse item = page.Items.Should().ContainSingle().Subject;
+        item.Id.Should().Be(report.Id);
+        item.TargetId.Should().Be(target.Id);
+        item.User.Should().BeNull();
+        item.Post.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task PostWhoseAuthorWasDeleted_StillNamesTheAuthorLikeTheQueue()
+    {
+        await AddAdminAsync("identity-id", "admin");
+        User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "reporter");
+        User author = await NotificationTestData.AddUserAsync(_factory, "identity-id-3", "author");
+        Post post = await NotificationTestData.AddPostAsync(_factory, author);
+        await AddReportAsync(
+            Report.CreateForPost(reporter.Id, post.Id, author.Id, ReportReason.Spam, null, _factory.TimeProvider.GetUtcNow()).Value);
+        await DeleteUserAsync(author.Id);
+
+        OffsetPageResponse<AdminReportResponse> page = await GetPageAsync(Path);
+
+        AdminReportResponse item = page.Items.Should().ContainSingle().Subject;
+        item.Post.Should().Be(new ReportedPostResponse("content", new ContentAuthorResponse(author.Id, "author")));
+    }
+
+    [Fact]
+    public async Task SuspendedUser_IsSummarizedAsSuspended()
+    {
+        User admin = await AddAdminAsync("identity-id", "admin");
+        User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "reporter");
+        User target = await NotificationTestData.AddUserAsync(_factory, "identity-id-3", "target");
+        await AddReportAsync(
+            Report.CreateForUser(reporter.Id, target.Id, ReportReason.Spam, null, _factory.TimeProvider.GetUtcNow()).Value);
+        await _factory.ExecuteDbContextAsync(async db =>
+        {
+            User user = await db.Set<User>().SingleAsync(u => u.Id == target.Id, TestContext.Current.CancellationToken);
+            user.Suspend("reason", admin.Id, _factory.TimeProvider.GetUtcNow());
+            return await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+
+        OffsetPageResponse<AdminReportResponse> page = await GetPageAsync(Path);
+
+        page.Items.Should().ContainSingle().Which.User.Should().Be(new ReportedUserResponse("target", "target", true));
+    }
+
+    [Fact]
+    public async Task EveryReportOfAPage_CarriesTheSummaryOfItsTarget()
+    {
+        await AddAdminAsync("identity-id", "admin");
+        User reporter = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "reporter");
+        Dictionary<Guid, ReportedPostResponse> expectedPosts = [];
+        Dictionary<Guid, ReportedUserResponse> expectedUsers = [];
+        for (int index = 0; index < 3; index++)
+        {
+            User author = await NotificationTestData.AddUserAsync(_factory, $"author-identity-id-{index}", $"author-{index}");
+            Post post = await NotificationTestData.AddPostAsync(_factory, author, $"content-{index}");
+            Report postReport = await AddReportAsync(
+                Report.CreateForPost(reporter.Id, post.Id, author.Id, ReportReason.Spam, null, _factory.TimeProvider.GetUtcNow()).Value);
+            expectedPosts[postReport.Id] = new ReportedPostResponse($"content-{index}", new ContentAuthorResponse(author.Id, $"author-{index}"));
+            User target = await NotificationTestData.AddUserAsync(_factory, $"target-identity-id-{index}", $"target-{index}");
+            Report userReport = await AddReportAsync(
+                Report.CreateForUser(reporter.Id, target.Id, ReportReason.Spam, null, _factory.TimeProvider.GetUtcNow()).Value);
+            expectedUsers[userReport.Id] = new ReportedUserResponse($"target-{index}", $"target-{index}", false);
+            _factory.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        }
+
+        OffsetPageResponse<AdminReportResponse> page = await GetPageAsync(Path);
+
+        page.Items.Should().HaveCount(6);
+        page.Items.Where(item => item.TargetType == "Post")
+            .Should().OnlyContain(item => item.User == null && item.Post == expectedPosts[item.Id]);
+        page.Items.Where(item => item.TargetType == "User")
+            .Should().OnlyContain(item => item.Post == null && item.User == expectedUsers[item.Id]);
     }
 
     [Theory]
