@@ -39,6 +39,7 @@ internal sealed class AuditEntryBuilder(
             requestContext.UserAgent,
             requestContext.IpAddress,
             description.Changes,
-            affectedUserRoles);
+            affectedUserRoles,
+            description.Reason);
     }
 }

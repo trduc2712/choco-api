@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using Choco.Domain.AuditLogs;
 using Choco.Domain.Roles;
 using Choco.Domain.Users;
 using Choco.IntegrationTests.Authentication;
@@ -185,6 +186,124 @@ public sealed class DeleteRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         (await FindRoleAsync(callerRole.Id)).Should().NotBeNull();
     }
 
+    [Fact]
+    public async Task ReassignmentToSameRole_ReturnsBadRequestAndKeepsSourceRole()
+    {
+        Role source = await AddRoleAsync("Source Role");
+        await AddCallerAsync(Permission.DeleteRoles, Permission.AssignRoles);
+
+        using HttpResponseMessage response = await SendAsync(source.Id, new { reassignTo = source.Id });
+
+        await ShouldBeProblemAsync(response, HttpStatusCode.BadRequest, "Role.ReassignToSelf");
+        (await FindRoleAsync(source.Id)).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ReassignmentToDefaultRole_ReturnsBadRequestAndKeepsSourceRole()
+    {
+        Role source = await AddRoleAsync("Source Role");
+        Guid defaultRoleId = await GetRoleIdAsync(SystemRoles.Member);
+        await AddCallerAsync(Permission.DeleteRoles, Permission.AssignRoles);
+
+        using HttpResponseMessage response = await SendAsync(source.Id, new { reassignTo = defaultRoleId });
+
+        await ShouldBeProblemAsync(response, HttpStatusCode.BadRequest, "Role.DefaultNotAssignable");
+        (await FindRoleAsync(source.Id)).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ReassignmentToUnknownRole_ReturnsNotFoundAndKeepsSourceRole()
+    {
+        Role source = await AddRoleAsync("Source Role");
+        await AddCallerAsync(Permission.DeleteRoles, Permission.AssignRoles);
+
+        using HttpResponseMessage response = await SendAsync(source.Id, new { reassignTo = UnknownId });
+
+        await ShouldBeProblemAsync(response, HttpStatusCode.NotFound, "Role.NotFound");
+        (await FindRoleAsync(source.Id)).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ReassignmentToCallerWithoutAssignPermission_ReturnsForbiddenAndKeepsSourceRole()
+    {
+        Role source = await AddRoleAsync("Source Role");
+        Role replacement = await AddRoleAsync("Replacement Role");
+        await AddCallerAsync(Permission.DeleteRoles);
+
+        using HttpResponseMessage response = await SendAsync(source.Id, new { reassignTo = replacement.Id });
+
+        await ShouldBeProblemAsync(response, HttpStatusCode.Forbidden, "Permission.Denied");
+        (await FindRoleAsync(source.Id)).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ReassignmentToCallerWithoutReplacementPermission_ReturnsForbiddenAndKeepsSourceRole()
+    {
+        Role source = await AddRoleAsync("Source Role");
+        Role replacement = await AddRoleAsync("Replacement Role", Permission.HandleReports);
+        await AddCallerAsync(Permission.DeleteRoles, Permission.AssignRoles);
+
+        using HttpResponseMessage response = await SendAsync(source.Id, new { reassignTo = replacement.Id });
+
+        await ShouldBeProblemAsync(response, HttpStatusCode.Forbidden, "Permission.Denied");
+        (await FindRoleAsync(source.Id)).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ReplacementRole_ReassignsHoldersAndAuditsEachAssignment()
+    {
+        Role source = await AddRoleAsync("Source Role");
+        Role replacement = await AddRoleAsync("Replacement Role");
+        await AddCallerAsync(Permission.DeleteRoles, Permission.AssignRoles);
+        User first = User.Create("identity-id-2", "username-2", "Display Name 2", null);
+        User second = User.Create("identity-id-3", "username-3", "Display Name 3", null);
+        first.AssignRole(source.Id, null, ChocoApiFactory.StartTime);
+        second.AssignRole(source.Id, null, ChocoApiFactory.StartTime);
+        second.AssignRole(replacement.Id, null, ChocoApiFactory.StartTime);
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.AddRange(first, second);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+
+        using HttpResponseMessage response = await SendAsync(source.Id, new { reassignTo = replacement.Id });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await FindRoleAsync(source.Id)).Should().BeNull();
+        var holders = await _factory.ExecuteDbContextAsync(dbContext => dbContext.Set<User>()
+            .Where(user => user.Id == first.Id || user.Id == second.Id)
+            .Select(user => new { user.Id, RoleIds = user.Roles.Select(role => role.RoleId).ToList() })
+            .ToListAsync(TestContext.Current.CancellationToken));
+        holders.Should().HaveCount(2).And.OnlyContain(holder => holder.RoleIds.Count == 1 && holder.RoleIds[0] == replacement.Id);
+        List<AuditLogEntry> assignments = await _factory.ExecuteDbContextAsync(dbContext => dbContext.Set<AuditLogEntry>()
+            .Where(entry => entry.Action == AuditAction.RoleAssigned)
+            .ToListAsync(TestContext.Current.CancellationToken));
+        assignments.Should().HaveCount(2);
+        AuditLogEntry assignment = assignments.Single(entry => entry.TargetId == first.Id);
+        assignment.TargetId.Should().Be(first.Id);
+        assignment.AffectedUserId.Should().Be(first.Id);
+        assignment.Changes.Should().BeEquivalentTo(new[] { new AuditChange("roles", Added: [replacement.Name]) });
+        AuditLogEntry existingAssignment = assignments.Single(entry => entry.TargetId == second.Id);
+        existingAssignment.AffectedUserId.Should().Be(second.Id);
+        existingAssignment.Changes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ReasonAboveLimit_ReturnsValidationErrorAndKeepsTheRole()
+    {
+        Role target = await AddRoleAsync("Role Name");
+        await AddCallerAsync(Permission.DeleteRoles);
+        string reason = new('r', AuditLogEntry.ReasonMaxLength + 1);
+
+        using HttpResponseMessage response = await SendAsync(target.Id, new { reason });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        ValidationProblemDetails problem =
+            (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be("reason");
+        (await FindRoleAsync(target.Id)).Should().NotBeNull();
+    }
+
     private static string PathOf(Guid id) => $"/api/v1/admin/roles/{id}";
 
     private static HttpRequestMessage CreateRequest(HttpMethod method, string path, string identityId)
@@ -203,9 +322,13 @@ public sealed class DeleteRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         problem.Extensions["code"].Should().BeOfType<JsonElement>().Which.GetString().Should().Be(code);
     }
 
-    private async Task<HttpResponseMessage> SendAsync(Guid id)
+    private async Task<HttpResponseMessage> SendAsync(Guid id, object? body = null)
     {
         using HttpRequestMessage request = CreateRequest(HttpMethod.Delete, PathOf(id), "identity-id");
+        if (body is not null)
+        {
+            request.Content = JsonContent.Create(body);
+        }
 
         return await _client.SendAsync(request, TestContext.Current.CancellationToken);
     }

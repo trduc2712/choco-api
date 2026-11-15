@@ -15,6 +15,7 @@ internal sealed class UpdateRoleCommandAuditDescriber(AuditChanges auditChanges)
             AuditTargetType.Role,
             response.Value.Id,
             Detail: $"Role: {response.Value.Name}",
-            Changes: auditChanges.Get(response)));
+            Changes: auditChanges.Get(response),
+            Reason: request.Reason));
     }
 }

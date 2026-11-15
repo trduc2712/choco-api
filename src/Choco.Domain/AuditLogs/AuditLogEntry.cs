@@ -9,6 +9,7 @@ public sealed class AuditLogEntry : BaseEntity
     public const int EnumMaxLength = 32;
     public const int ClientIdMaxLength = 256;
     public const int DetailMaxLength = 200;
+    public const int ReasonMaxLength = 500;
     public const int TraceIdMaxLength = 32;
     public const int UserAgentMaxLength = 512;
 
@@ -23,6 +24,7 @@ public sealed class AuditLogEntry : BaseEntity
     public Guid? AffectedUserId { get; private set; }
     public string[] AffectedUserRoles { get; private set; } = [];
     public string? Detail { get; private set; }
+    public string? Reason { get; private set; }
     public AuditChange[] Changes { get; private set; } = [];
     public string? TraceId { get; private set; }
     public string? UserAgent { get; private set; }
@@ -46,7 +48,8 @@ public sealed class AuditLogEntry : BaseEntity
         string? userAgent,
         IPAddress? ipAddress,
         AuditChange[] changes,
-        string[] affectedUserRoles)
+        string[] affectedUserRoles,
+        string? reason)
         : base(id)
     {
         OccurredAt = occurredAt;
@@ -60,6 +63,7 @@ public sealed class AuditLogEntry : BaseEntity
         AffectedUserId = affectedUserId;
         AffectedUserRoles = affectedUserRoles;
         Detail = detail;
+        Reason = reason;
         Changes = changes;
         TraceId = traceId;
         UserAgent = userAgent;
@@ -81,7 +85,8 @@ public sealed class AuditLogEntry : BaseEntity
         string? userAgent,
         IPAddress? ipAddress,
         IReadOnlyList<AuditChange>? changes = null,
-        IEnumerable<string>? affectedUserRoles = null)
+        IEnumerable<string>? affectedUserRoles = null,
+        string? reason = null)
     {
         ArgumentNullException.ThrowIfNull(actorRoles);
 
@@ -110,6 +115,8 @@ public sealed class AuditLogEntry : BaseEntity
             ArgumentOutOfRangeException.ThrowIfGreaterThan(detail.Length, DetailMaxLength, nameof(detail));
         }
 
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(reason?.Length ?? 0, ReasonMaxLength, nameof(reason));
+
         if (traceId is not null)
         {
             ArgumentOutOfRangeException.ThrowIfGreaterThan(traceId.Length, TraceIdMaxLength, nameof(traceId));
@@ -131,7 +138,8 @@ public sealed class AuditLogEntry : BaseEntity
             Truncate(userAgent, UserAgentMaxLength),
             ipAddress,
             changes is null ? [] : [.. changes],
-            affectedUserRoles is null ? [] : [.. affectedUserRoles]);
+            affectedUserRoles is null ? [] : [.. affectedUserRoles],
+            reason);
     }
 
     private static string? Truncate(string? value, int maxLength)

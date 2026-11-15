@@ -68,6 +68,10 @@ internal sealed class AuditLogEntryConfiguration : IEntityTypeConfiguration<Audi
             .HasDefaultValueSql("'{}'::text[]")
             .HasComment("Names of the roles the affected user held right after the action; empty when there is no affected user or the row is older than this column.");
 
+        builder.Property(entry => entry.Reason)
+            .HasMaxLength(AuditLogEntry.ReasonMaxLength)
+            .HasComment("Optional reason given by the actor for changing or deleting a role.");
+
         builder.Property(entry => entry.Detail)
             .HasMaxLength(AuditLogEntry.DetailMaxLength)
             .HasComment("Short note that qualifies the action, such as a role name or a new status. Never holds post or comment content.");

@@ -1,4 +1,5 @@
 using Choco.Contract.Roles;
+using Choco.Domain.AuditLogs;
 using Choco.Domain.Roles;
 
 using FluentValidation;
@@ -10,6 +11,7 @@ internal sealed class UpdateRoleCommandValidator : AbstractValidator<UpdateRoleC
     public UpdateRoleCommandValidator()
     {
         RuleFor(command => command.Id).NotEmpty();
+        RuleFor(command => command.Reason).MaximumLength(AuditLogEntry.ReasonMaxLength);
 
         RuleFor(command => command.Name)
             .Cascade(CascadeMode.Stop)

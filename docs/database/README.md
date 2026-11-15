@@ -4,14 +4,14 @@
 
 | Name                                                  | Columns | Comment                                                                                                                            | Type       |
 | ----------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| [public.audit_logs](public.audit_logs.md)             | 16      | Append-only record of who did what to which object. One row per successful action of a user or the system; rows are never changed. | BASE TABLE |
+| [public.audit_logs](public.audit_logs.md)             | 17      | Append-only record of who did what to which object. One row per successful action of a user or the system; rows are never changed. | BASE TABLE |
 | [public.comments](public.comments.md)                 | 8       | Comments that users write on posts.                                                                                                | BASE TABLE |
 | [public.feedback_entries](public.feedback_entries.md) | 14      | Bug reports and suggestions about the app that signed-in users send, waiting for or finished with an administrator's triage.       | BASE TABLE |
 | [public.notifications](public.notifications.md)       | 8       | Things that happened to a user, such as a new follower, shown to that user.                                                        | BASE TABLE |
 | [public.post_likes](public.post_likes.md)             | 4       | Active likes that users give to posts.                                                                                             | BASE TABLE |
 | [public.posts](public.posts.md)                       | 7       | Text posts that users publish.                                                                                                     | BASE TABLE |
 | [public.reports](public.reports.md)                   | 12      | Reports from users about a post or another user, waiting for or finished with a moderator's decision.                              | BASE TABLE |
-| [public.roles](public.roles.md)                       | 7       | Named sets of permissions that users can hold. Roles and their permissions can change while the system runs.                       | BASE TABLE |
+| [public.roles](public.roles.md)                       | 11      | Named sets of permissions that users can hold. Roles and their permissions can change while the system runs.                       | BASE TABLE |
 | [public.user_blocks](public.user_blocks.md)           | 4       | Active blocks between users.                                                                                                       | BASE TABLE |
 | [public.user_follows](public.user_follows.md)         | 4       | Active follow relationships between users.                                                                                         | BASE TABLE |
 | [public.user_roles](public.user_roles.md)             | 5       | Roles assigned to users, besides the default role that every signed-in user has.                                                   | BASE TABLE |
@@ -67,6 +67,7 @@ erDiagram
   uuid id
   inet ip_address
   timestamp_with_time_zone occurred_at
+  varchar_500_ reason
   uuid target_id
   varchar_32_ target_type
   varchar_32_ trace_id
@@ -138,10 +139,14 @@ erDiagram
   uuid target_user_id FK
 }
 "public.roles" {
+  varchar_16_ color
   timestamp_with_time_zone created_at
+  varchar_200_ description
+  varchar_16_ icon
   uuid id
   boolean is_default
   timestamp_with_time_zone modified_at
+  uuid modified_by
   varchar_64_ name
   varchar_64___ permissions
   varchar_64_ system_key

@@ -8,6 +8,7 @@ using MediatR;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Choco.Presentation.Controllers;
 
@@ -62,12 +63,12 @@ public sealed class AdminRolesController : ApiController
     }
 
     /// <summary>Updates a role's name, appearance and permissions.</summary>
-    /// <remarks>Only a caller with the permission to update roles may call it. It replaces the role's name, appearance and entire permission set. System roles and the default role can be changed too; their key stays. The caller must hold every permission the role has now and every permission in the body, and cannot change a role assigned to the caller. The change applies to the role's holders on their next request. Leading and trailing whitespace is removed from the name.</remarks>
+    /// <remarks>Only a caller with the permission to update roles may call it. It replaces the role's name, appearance and entire permission set. An optional reason is recorded in the audit log. System roles and the default role can be changed too; their key stays. The caller must hold every permission the role has now and every permission in the body, and cannot change a role assigned to the caller. The change applies to the role's holders on their next request. Leading and trailing whitespace is removed from the name.</remarks>
     /// <param name="id" example="00000000-0000-0000-0000-000000000001">The role's id.</param>
-    /// <param name="command">The updated role name, appearance and permissions.</param>
+    /// <param name="command">The updated role name, appearance and permissions, with an optional audit reason.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="200">The updated role.</response>
-    /// <response code="400">The id is empty, a role field is invalid, a permission is outside the catalog.</response>
+    /// <response code="400">The id is empty, a role field is invalid, a permission is outside the catalog, or the audit reason is too long.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     /// <response code="403">The caller may not update roles, holds the role, or lacks a permission of the role or of the body. It is also returned when the caller's account is suspended.</response>
     /// <response code="404">No role has this id.</response>
@@ -110,14 +111,15 @@ public sealed class AdminRolesController : ApiController
     }
 
     /// <summary>Deletes a role.</summary>
-    /// <remarks>Only a caller with the permission to delete roles may call it. Everyone who holds the role loses it. The default role and roles the system created cannot be deleted. The caller must hold every permission of the role and cannot delete a role assigned to the caller. A deleted role is no longer found, so deleting it again returns 404.</remarks>
+    /// <remarks>Only a caller with the permission to delete roles may call it. Everyone who holds the role loses it. If the optional body names a replacement role, its holders receive that role in the same transaction. The caller also needs the permission to assign roles and must hold every permission granted by the replacement. The default role and roles the system created cannot be deleted. The caller must hold every permission of the role and cannot delete a role assigned to the caller. A deleted role is no longer found, so deleting it again returns 404.</remarks>
     /// <param name="id" example="00000000-0000-0000-0000-000000000001">The role's id.</param>
+    /// <param name="command">Optional replacement role and audit reason.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <response code="204">The role was deleted.</response>
-    /// <response code="400">The id is empty.</response>
+    /// <response code="400">The id is empty, the audit reason is too long, or the replacement is the deleted role or the default role.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     /// <response code="403">The caller may not delete roles, holds the role, or lacks a permission of the role. It is also returned when the caller's account is suspended.</response>
-    /// <response code="404">No role has this id.</response>
+    /// <response code="404">The role to delete or the replacement does not exist.</response>
     /// <response code="409">The role is the default role or was created by the system.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -126,9 +128,12 @@ public sealed class AdminRolesController : ApiController
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(
+        Guid id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] DeleteRoleCommand? command,
+        CancellationToken cancellationToken)
     {
-        Result<RoleResponse> result = await Sender.Send(new DeleteRoleCommand(id), cancellationToken);
+        Result<RoleResponse> result = await Sender.Send((command ?? new DeleteRoleCommand(id)) with { Id = id }, cancellationToken);
 
         return result.IsSuccess ? NoContent() : HandleFailure(result);
     }

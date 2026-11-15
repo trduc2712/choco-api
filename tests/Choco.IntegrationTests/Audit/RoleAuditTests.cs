@@ -72,7 +72,7 @@ public sealed class RoleAuditTests(ChocoApiFactory factory) : AuditTestsBase(fac
             dbContext.Add(target);
             return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
-        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/admin/roles/{target.Id}", new { name = "Senior Reviewer", permissions = new[] { "reports.handle" }, color = "gray", icon = "shield" });
+        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/admin/roles/{target.Id}", new { name = "Senior Reviewer", permissions = new[] { "reports.handle" }, color = "gray", icon = "shield", reason = "Update Reason" });
 
         using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -90,6 +90,7 @@ public sealed class RoleAuditTests(ChocoApiFactory factory) : AuditTestsBase(fac
         auditResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement auditBody = await auditResponse.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         JsonElement auditItem = auditBody.GetProperty("items").EnumerateArray().Single();
+        auditItem.GetProperty("reason").GetString().Should().Be("Update Reason");
         JsonElement changes = auditItem.GetProperty("changes");
         changes[0].GetProperty("before").GetString().Should().Be("Reviewer");
         changes[1].GetProperty("removed").EnumerateArray().Single().GetString().Should().Be("audit-log.read");
@@ -105,18 +106,25 @@ public sealed class RoleAuditTests(ChocoApiFactory factory) : AuditTestsBase(fac
             dbContext.Add(target);
             return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
-        using HttpRequestMessage request = Request(HttpMethod.Delete, $"/api/v1/admin/roles/{target.Id}");
+        using HttpRequestMessage request = Request(HttpMethod.Delete, $"/api/v1/admin/roles/{target.Id}", new { reason = "Delete Reason" });
 
         using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
         ShouldBeEntry(entry, administrator.Id, AuditAction.RoleDeleted, AuditTargetType.Role, target.Id, detail: "Role: Reviewer");
+        entry.Reason.Should().Be("Delete Reason");
         entry.Changes.Should().BeEquivalentTo(new[]
         {
             new AuditChange("name", Before: "Reviewer"),
             new AuditChange("permissions", Added: [], Removed: ["audit-log.read"])
         });
+
+        using HttpRequestMessage read = Request(HttpMethod.Get, $"/api/v1/admin/audit-logs/{entry.Id}");
+        using HttpResponseMessage auditResponse = await Client.SendAsync(read, TestContext.Current.CancellationToken);
+        auditResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement auditBody = await auditResponse.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        auditBody.GetProperty("reason").GetString().Should().Be("Delete Reason");
     }
 
     [Fact]

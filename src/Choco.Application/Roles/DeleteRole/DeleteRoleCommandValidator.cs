@@ -1,4 +1,5 @@
 using Choco.Contract.Roles;
+using Choco.Domain.AuditLogs;
 
 using FluentValidation;
 
@@ -9,5 +10,6 @@ internal sealed class DeleteRoleCommandValidator : AbstractValidator<DeleteRoleC
     public DeleteRoleCommandValidator()
     {
         RuleFor(command => command.Id).NotEmpty();
+        RuleFor(command => command.Reason).MaximumLength(AuditLogEntry.ReasonMaxLength);
     }
 }

@@ -1,5 +1,6 @@
 using Choco.Application.Roles.UpdateRole;
 using Choco.Contract.Roles;
+using Choco.Domain.AuditLogs;
 using Choco.Domain.Roles;
 
 using FluentValidation.TestHelper;
@@ -12,6 +13,22 @@ public sealed class UpdateRoleCommandValidatorTests
         new(new Guid("00000000-0000-0000-0000-000000000001"), "Name", [Permission.ReadAuditLog], null, RoleColors.Teal, RoleIcons.Shield);
 
     private readonly UpdateRoleCommandValidator _validator = new();
+
+    [Fact]
+    public void Validate_ReasonAtLimit_Passes()
+    {
+        UpdateRoleCommand command = ValidCommand with { Reason = new string('r', AuditLogEntry.ReasonMaxLength) };
+
+        _validator.TestValidate(command).ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Validate_ReasonAboveLimit_Fails()
+    {
+        UpdateRoleCommand command = ValidCommand with { Reason = new string('r', AuditLogEntry.ReasonMaxLength + 1) };
+
+        _validator.TestValidate(command).ShouldHaveValidationErrorFor(item => item.Reason).Only();
+    }
 
     [Fact]
     public void Validate_DescriptionAtTrimmedLimit_Passes()
