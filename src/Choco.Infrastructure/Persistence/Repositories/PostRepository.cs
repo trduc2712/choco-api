@@ -127,8 +127,7 @@ internal sealed class PostRepository : Repository<Post>, IPostRepository
 
         IQueryable<Post> posts = DbSet
             .AsNoTracking()
-            .Where(post => post.AuthorId != viewerId
-                && users.Any(user => user.Id == post.AuthorId)
+            .Where(post => users.Any(user => user.Id == post.AuthorId)
                 && !hidden.Contains(post.AuthorId));
 
         if (after is { } position)

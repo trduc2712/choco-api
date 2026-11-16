@@ -70,22 +70,23 @@ public sealed class GetRecommendedFeedTests : IClassFixture<ChocoApiFactory>, IA
     }
 
     [Fact]
-    public async Task NobodyElseHasPosted_GetsEmptyPage()
+    public async Task NobodyElseHasPosted_GetsOwnPosts()
     {
         User caller = await AddUserAsync("identity-id", "username");
-        await AddPostAsync(caller, "content-1");
+        Post own = await AddPostAsync(caller, "content-1");
         using HttpRequestMessage request = CreateRequest(FeedPath);
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         PageBody body = (await response.Content.ReadFromJsonAsync<PageBody>(TestContext.Current.CancellationToken))!;
-        body.Items.Should().BeEmpty();
+        body.Items.Should().Equal(
+            new PostBody(own.Id, caller.Id, new AuthorBody("username", "Display Name", null), "content-1", 0, false, 0, own.CreatedAt, own.CreatedAt));
         body.NextCursor.Should().BeNull();
     }
 
     [Fact]
-    public async Task ReturnsOtherUsersPostsNewestFirstIncludingFollowedAccounts()
+    public async Task ReturnsAllPostsNewestFirstIncludingOwnAndFollowedAccounts()
     {
         User caller = await AddUserAsync("identity-id", "username");
         User followedAuthor = await AddUserAsync("identity-id-2", "username-2");
@@ -95,7 +96,7 @@ public sealed class GetRecommendedFeedTests : IClassFixture<ChocoApiFactory>, IA
         Post older = await AddPostAsync(followedAuthor, "content-1");
         Post deleted = await AddPostAsync(otherAuthor, "content-2");
         Post newer = await AddPostAsync(otherAuthor, "content-3");
-        await AddPostAsync(caller, "content-4");
+        Post own = await AddPostAsync(caller, "content-4");
         await AddPostAsync(deletedAuthor, "content-5");
         await DeletePostAsync(deleted.Id);
         await DeleteUserAsync(deletedAuthor.Id);
@@ -106,6 +107,7 @@ public sealed class GetRecommendedFeedTests : IClassFixture<ChocoApiFactory>, IA
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         PageBody body = (await response.Content.ReadFromJsonAsync<PageBody>(TestContext.Current.CancellationToken))!;
         body.Items.Should().Equal(
+            new PostBody(own.Id, caller.Id, new AuthorBody("username", "Display Name", null), "content-4", 0, false, 0, own.CreatedAt, own.CreatedAt),
             new PostBody(newer.Id, otherAuthor.Id, new AuthorBody("username-3", "Display Name", null), "content-3", 0, false, 0, newer.CreatedAt, newer.CreatedAt),
             new PostBody(older.Id, followedAuthor.Id, new AuthorBody("username-2", "Display Name", null), "content-1", 0, false, 0, older.CreatedAt, older.CreatedAt));
         body.NextCursor.Should().BeNull();

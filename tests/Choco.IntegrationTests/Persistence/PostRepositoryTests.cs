@@ -128,7 +128,7 @@ public sealed class PostRepositoryTests : IClassFixture<ChocoApiFactory>, IAsync
     }
 
     [Fact]
-    public async Task Recommended_ReturnsOthersPostsNewestFirst()
+    public async Task Recommended_ReturnsAllLivePostsNewestFirst()
     {
         User viewer = await AddUserAsync("identity-id", "username");
         User followedAuthor = await AddUserAsync("identity-id-2", "username-2");
@@ -138,25 +138,25 @@ public sealed class PostRepositoryTests : IClassFixture<ChocoApiFactory>, IAsync
         Post first = await AddPostAsync(followedAuthor, "content-1");
         Post deleted = await AddPostAsync(otherAuthor, "content-2");
         Post second = await AddPostAsync(otherAuthor, "content-3");
-        await AddPostAsync(viewer, "content-4");
+        Post own = await AddPostAsync(viewer, "content-4");
         await AddPostAsync(deletedAuthor, "content-5");
         await DeletePostAsync(deleted.Id);
         await DeleteUserAsync(deletedAuthor.Id);
 
         IReadOnlyList<Post> posts = await ListRecommendedAsync(viewer.Id, null, 10);
 
-        posts.Select(post => post.Id).Should().Equal(second.Id, first.Id);
+        posts.Select(post => post.Id).Should().Equal(own.Id, second.Id, first.Id);
     }
 
     [Fact]
-    public async Task Recommended_WithOnlyOwnPosts_ReturnsNothing()
+    public async Task Recommended_WithOnlyOwnPosts_ReturnsThem()
     {
         User viewer = await AddUserAsync("identity-id", "username");
-        await AddPostAsync(viewer, "content-1");
+        Post own = await AddPostAsync(viewer, "content-1");
 
         IReadOnlyList<Post> posts = await ListRecommendedAsync(viewer.Id, null, 10);
 
-        posts.Should().BeEmpty();
+        posts.Select(post => post.Id).Should().Equal(own.Id);
     }
 
     [Fact]
