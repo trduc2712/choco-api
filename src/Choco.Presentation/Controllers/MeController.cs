@@ -213,8 +213,8 @@ public sealed class MeController : ApiController
     /// Lists posts from across the platform, newest first.
     /// </summary>
     /// <remarks>
-    /// Any signed-in user may call it. The caller's own posts, deleted posts and posts by deleted accounts are not listed.
-    /// Posts by accounts the caller follows are listed too.
+    /// Any signed-in user may call it. Deleted posts and posts by deleted accounts are not listed.
+    /// The caller's own posts and posts by accounts the caller follows are listed too.
     /// To get the next page, pass the nextCursor of the previous page as cursor; it is null on the last page.
     /// The cursor is opaque: pass it back unchanged.
     /// </remarks>
