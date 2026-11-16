@@ -23,7 +23,7 @@ public sealed class AdminPermissionsController : ApiController
     /// <summary>Lists every permission a role can hold.</summary>
     /// <remarks>Only a caller with the permission to read roles may call it. The list is fixed by the application, so it changes only with a new release. Permissions come in alphabetical order by code and the response is not paged.</remarks>
     /// <param name="cancellationToken">Cancels the request.</param>
-    /// <response code="200">Every permission, with its code.</response>
+    /// <response code="200">Every permission, with its code, group and sensitivity flag.</response>
     /// <response code="401">The session is invalid or the caller's account is deleted.</response>
     /// <response code="403">The caller may not read roles.</response>
     [HttpGet]

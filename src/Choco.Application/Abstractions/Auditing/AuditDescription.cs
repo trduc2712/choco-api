@@ -8,4 +8,5 @@ public sealed record AuditDescription(
     Guid TargetId,
     Guid? AffectedUserId = null,
     string? Detail = null,
-    IReadOnlyList<AuditChange>? Changes = null);
+    IReadOnlyList<AuditChange>? Changes = null,
+    string? Reason = null);

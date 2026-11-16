@@ -1,11 +1,12 @@
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Roles;
 using Choco.Domain.Roles;
+using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
 
 namespace Choco.Application.Roles.GetRoleById;
 
-internal sealed class GetRoleByIdQueryHandler(IRoleRepository roleRepository)
+internal sealed class GetRoleByIdQueryHandler(IRoleRepository roleRepository, IUserRepository userRepository)
     : IQueryHandler<GetRoleByIdQuery, RoleResponse>
 {
     public async Task<Result<RoleResponse>> Handle(GetRoleByIdQuery query, CancellationToken cancellationToken)
@@ -17,6 +18,6 @@ internal sealed class GetRoleByIdQueryHandler(IRoleRepository roleRepository)
             return Result<RoleResponse>.Failure(RoleErrors.NotFound);
         }
 
-        return Result<RoleResponse>.Success(role.ToResponse());
+        return Result<RoleResponse>.Success(await roleRepository.ToResponseAsync(userRepository, role, cancellationToken));
     }
 }

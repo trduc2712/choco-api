@@ -55,11 +55,11 @@ internal sealed class UpdateRoleCommandHandler(
         }
 
         RoleResponse before = role.ToResponse();
-        role.Update(command.Name, command.Permissions);
+        role.Update(command.Name, command.Permissions, command.Description, command.Color, command.Icon, callerIdResult.Value);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        RoleResponse after = role.ToResponse();
+        RoleResponse after = await roleRepository.ToResponseAsync(userRepository, role, cancellationToken);
         return auditChanges.Record(Result<RoleResponse>.Success(after), RoleAuditChanges.Between(before, after));
     }
 }

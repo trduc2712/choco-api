@@ -102,6 +102,7 @@ public sealed class GetRoleByIdTests : IClassFixture<ChocoApiFactory>, IAsyncLif
         Role reader = await AddRoleAsync("reader-key", "Reader", [Permission.ReadRoles]);
         await AddUserAsync("identity-id", "username", reader.Id);
         Role role = await AddRoleAsync("custom-key", "Custom Role", [Permission.HandleReports, Permission.DeleteAnyPost]);
+        User holder = await AddUserAsync("identity-id-2", "username-2", role.Id);
         using HttpRequestMessage request = CreateRequest(role.Id);
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -111,6 +112,10 @@ public sealed class GetRoleByIdTests : IClassFixture<ChocoApiFactory>, IAsyncLif
         body.GetProperty("id").GetGuid().Should().Be(role.Id);
         body.GetProperty("systemKey").GetString().Should().Be("custom-key");
         body.GetProperty("name").GetString().Should().Be("Custom Role");
+        body.GetProperty("holderCount").GetInt32().Should().Be(1);
+        JsonElement topHolder = body.GetProperty("topHolders").EnumerateArray().Should().ContainSingle().Subject;
+        topHolder.GetProperty("id").GetGuid().Should().Be(holder.Id);
+        topHolder.GetProperty("username").GetString().Should().Be("username-2");
         body.GetProperty("isDefault").GetBoolean().Should().BeFalse();
         body.GetProperty("permissions").EnumerateArray().Select(permission => permission.GetString())
             .Should().Equal(Permission.DeleteAnyPost, Permission.HandleReports);
@@ -153,7 +158,7 @@ public sealed class GetRoleByIdTests : IClassFixture<ChocoApiFactory>, IAsyncLif
         return reader.Id;
     }
 
-    private async Task AddUserAsync(string identityId, string username, Guid? roleId = null)
+    private async Task<User> AddUserAsync(string identityId, string username, Guid? roleId = null)
     {
         User user = User.Create(identityId, username, "Display Name", null);
 
@@ -167,6 +172,8 @@ public sealed class GetRoleByIdTests : IClassFixture<ChocoApiFactory>, IAsyncLif
             dbContext.Add(user);
             return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
+
+        return user;
     }
 
     private async Task<Role> AddRoleAsync(string systemKey, string name, string[] permissions)

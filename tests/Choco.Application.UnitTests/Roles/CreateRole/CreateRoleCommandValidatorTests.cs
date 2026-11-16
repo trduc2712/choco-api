@@ -8,9 +8,47 @@ namespace Choco.Application.UnitTests.Roles.CreateRole;
 
 public sealed class CreateRoleCommandValidatorTests
 {
-    private static readonly CreateRoleCommand ValidCommand = new("Name", [Permission.ReadAuditLog]);
+    private static readonly CreateRoleCommand ValidCommand = new("Name", [Permission.ReadAuditLog], null, RoleColors.Teal, RoleIcons.Shield);
 
     private readonly CreateRoleCommandValidator _validator = new();
+
+    [Fact]
+    public void Validate_DescriptionAtTrimmedLimit_Passes()
+    {
+        CreateRoleCommand command = ValidCommand with { Description = $"  {new string('d', Role.DescriptionMaxLength)}  " };
+
+        _validator.TestValidate(command).ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Validate_DescriptionAboveTrimmedLimit_Fails()
+    {
+        CreateRoleCommand command = ValidCommand with { Description = new string('d', Role.DescriptionMaxLength + 1) };
+
+        _validator.TestValidate(command).ShouldHaveValidationErrorFor(item => item.Description).Only();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("unknown-color")]
+    public void Validate_UnsupportedColor_Fails(string? color)
+    {
+        CreateRoleCommand command = ValidCommand with { Color = color! };
+
+        _validator.TestValidate(command).ShouldHaveValidationErrorFor(item => item.Color).Only();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("unknown-icon")]
+    public void Validate_UnsupportedIcon_Fails(string? icon)
+    {
+        CreateRoleCommand command = ValidCommand with { Icon = icon! };
+
+        _validator.TestValidate(command).ShouldHaveValidationErrorFor(item => item.Icon).Only();
+    }
 
     [Fact]
     public void Validate_WithValidCommand_HasNoErrors()

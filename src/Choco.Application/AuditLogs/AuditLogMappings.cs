@@ -36,7 +36,8 @@ internal static class AuditLogMappings
                     : null)).ToArray(),
             entry.AffectedUserRoles,
             targetSummary,
-            targetHistory);
+            targetHistory,
+            entry.Reason);
     }
 
     public static AuditLogUserResponse? ToUser(Guid? userId, IReadOnlyDictionary<Guid, string> usernames)

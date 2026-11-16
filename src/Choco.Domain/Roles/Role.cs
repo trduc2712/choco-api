@@ -7,25 +7,35 @@ public sealed class Role : AggregateRoot, IAuditable
 {
     public const int NameMaxLength = 64;
     public const int SystemKeyMaxLength = 64;
+    public const int DescriptionMaxLength = 200;
+    public const int AppearanceKeyMaxLength = 16;
 
     private readonly List<string> _permissions = [];
 
     public string Name { get; private set; } = null!;
+    public string? Description { get; private set; }
+    public string Color { get; private set; } = null!;
+    public string Icon { get; private set; } = null!;
     public string? SystemKey { get; private set; }
     public bool IsDefault { get; private set; }
     public IReadOnlyCollection<string> Permissions => _permissions.AsReadOnly();
 
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset ModifiedAt { get; private set; }
+    public Guid? ModifiedBy { get; private set; }
 
     private Role() { }
 
-    private Role(Guid id, string name, string? systemKey, bool isDefault, IEnumerable<string> permissions)
+    private Role(
+        Guid id, string name, string? systemKey, bool isDefault, IEnumerable<string> permissions,
+        string? description, string color, string icon, Guid? modifiedBy)
         : base(id)
     {
         Name = name;
         SystemKey = systemKey;
         IsDefault = isDefault;
+        ModifiedBy = modifiedBy;
+        ApplyAppearance(description, color, icon);
         _permissions.AddRange(permissions);
     }
 
@@ -44,22 +54,35 @@ public sealed class Role : AggregateRoot, IAuditable
             definition.Name,
             definition.Key,
             definition.IsDefault,
-            definition.Permissions.Distinct(StringComparer.Ordinal));
+            definition.Permissions.Distinct(StringComparer.Ordinal),
+            definition.Description,
+            definition.Color,
+            definition.Icon,
+            null);
     }
 
-    public static Role Create(string name, IEnumerable<string> permissions)
+    public static Role Create(
+        string name, IEnumerable<string> permissions,
+        string? description = null, string color = RoleColors.Gray, string icon = RoleIcons.Shield, Guid? modifiedBy = null)
     {
         string trimmedName = Normalize(name, permissions);
 
-        return new Role(Guid.NewGuid(), trimmedName, null, false, permissions.Distinct(StringComparer.Ordinal));
+        return new Role(
+            Guid.NewGuid(), trimmedName, null, false, permissions.Distinct(StringComparer.Ordinal), description, color, icon, modifiedBy);
     }
 
-    public void Update(string name, IEnumerable<string> permissions)
+    public void Update(string name, IEnumerable<string> permissions) =>
+        Update(name, permissions, Description, Color, Icon, ModifiedBy);
+
+    public void Update(
+        string name, IEnumerable<string> permissions, string? description, string color, string icon, Guid? modifiedBy)
     {
         string trimmedName = Normalize(name, permissions);
         List<string> distinctPermissions = permissions.Distinct(StringComparer.Ordinal).ToList();
 
+        ApplyAppearance(description, color, icon);
         Name = trimmedName;
+        ModifiedBy = modifiedBy;
         _permissions.Clear();
         _permissions.AddRange(distinctPermissions);
     }
@@ -98,6 +121,26 @@ public sealed class Role : AggregateRoot, IAuditable
         ArgumentNullException.ThrowIfNull(permissions);
 
         return _permissions.All(permissions.Contains);
+    }
+
+    private void ApplyAppearance(string? description, string color, string icon)
+    {
+        string? trimmedDescription = description?.Trim();
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(trimmedDescription?.Length ?? 0, DescriptionMaxLength, nameof(description));
+
+        if (!RoleColors.All.Contains(color))
+        {
+            throw new ArgumentException("Unknown role color.", nameof(color));
+        }
+
+        if (!RoleIcons.All.Contains(icon))
+        {
+            throw new ArgumentException("Unknown role icon.", nameof(icon));
+        }
+
+        Description = string.IsNullOrEmpty(trimmedDescription) ? null : trimmedDescription;
+        Color = color;
+        Icon = icon;
     }
 
     private static string Normalize(string name, IEnumerable<string> permissions)

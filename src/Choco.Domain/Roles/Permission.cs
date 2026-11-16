@@ -36,4 +36,26 @@ public static class Permission
         ReadAnyContent,
         SuspendUsers
     };
+
+    public static readonly IReadOnlySet<string> Sensitive = new HashSet<string>(StringComparer.Ordinal)
+    {
+        AssignRoles,
+        CreateRoles,
+        UpdateRoles,
+        DeleteRoles,
+        DeleteAnyPost,
+        DeleteAnyComment,
+        SuspendUsers
+    };
+
+    public static string Group(string code) => code switch
+    {
+        AssignRoles or ReadRoles or CreateRoles or UpdateRoles or DeleteRoles => "roles",
+        DeleteAnyPost or DeleteAnyComment or ReadAnyContent => "content",
+        HandleReports => "reports",
+        ReadAnyFeedback or ChangeFeedbackStatus => "feedback",
+        ReadAnyUser or SuspendUsers => "users",
+        ReadAuditLog => "audit-log",
+        _ => throw new ArgumentException("Unknown permission code.", nameof(code))
+    };
 }

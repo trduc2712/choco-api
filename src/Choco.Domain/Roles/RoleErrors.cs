@@ -9,6 +9,9 @@ public static class RoleErrors
     public static readonly Error DefaultNotAssignable = Error.Validation(
         "Role.DefaultNotAssignable", "The default role belongs to every signed-in user and cannot be assigned or revoked.");
 
+    public static readonly Error ReassignToSelf = Error.Validation(
+        "Role.ReassignToSelf", "The replacement role must differ from the role being deleted.");
+
     public static readonly Error NameTaken = Error.Conflict(
         "Role.NameTaken", "A role with this name already exists.");
 

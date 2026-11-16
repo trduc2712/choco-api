@@ -109,6 +109,12 @@ public sealed class CreateRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         Guid id = body.GetProperty("id").GetGuid();
+        body.GetProperty("description").GetString().Should().Be("Role Description");
+        body.GetProperty("color").GetString().Should().Be("teal");
+        body.GetProperty("holderCount").GetInt32().Should().Be(0);
+        body.GetProperty("modifiedAt").GetDateTimeOffset().Should().Be(ChocoApiFactory.StartTime);
+        body.GetProperty("modifiedBy").GetProperty("username").GetString().Should().Be("username");
+        body.GetProperty("icon").GetString().Should().Be("key");
         body.GetProperty("name").GetString().Should().Be("Reviewer");
         body.GetProperty("systemKey").ValueKind.Should().Be(JsonValueKind.Null);
         body.GetProperty("isDefault").GetBoolean().Should().BeFalse();
@@ -117,6 +123,7 @@ public sealed class CreateRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         response.Headers.Location!.AbsolutePath.Should().Be($"{Path}/{id}");
         Role stored = (await FindRolesNamedAsync("Reviewer")).Should().ContainSingle().Subject;
         stored.Id.Should().Be(id);
+        body.GetProperty("modifiedBy").GetProperty("id").GetGuid().Should().Be(stored.ModifiedBy!.Value);
         stored.SystemKey.Should().BeNull();
         stored.IsDefault.Should().BeFalse();
         stored.Permissions.Should().BeEquivalentTo([Permission.DeleteAnyPost, Permission.HandleReports]);
@@ -234,7 +241,7 @@ public sealed class CreateRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
     public async Task MissingPermissionList_ReturnsBadRequest()
     {
         await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
-        using HttpRequestMessage request = CreateRequest(new { name = "Reviewer" });
+        using HttpRequestMessage request = CreateRequest(new { name = "Reviewer", color = "teal", icon = "key" });
 
         using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -252,7 +259,30 @@ public sealed class CreateRoleTests : IClassFixture<ChocoApiFactory>, IAsyncLife
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
-    private static object Body(string name, params string[] permissions) => new { name, permissions };
+    [Theory]
+    [InlineData("unknown-color", "shield", "color")]
+    [InlineData("gray", "unknown-icon", "icon")]
+    public async Task UnsupportedAppearanceKey_ReturnsValidationError(string color, string icon, string field)
+    {
+        await AddUserAsync("identity-id", "username", await GetAdministratorRoleIdAsync());
+        using HttpRequestMessage request = CreateRequest(new { name = "Role Name", permissions = Array.Empty<string>(), color, icon });
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        ValidationProblemDetails problem =
+            (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken))!;
+        problem.Errors.Keys.Should().ContainSingle().Which.Should().Be(field);
+    }
+
+    private static object Body(string name, params string[] permissions) => new
+    {
+        name,
+        permissions,
+        description = "  Role Description  ",
+        color = "teal",
+        icon = "key"
+    };
 
     private static HttpRequestMessage CreateRequest(object body)
     {

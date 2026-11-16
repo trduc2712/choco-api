@@ -21,6 +21,23 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
             .HasMaxLength(Role.NameMaxLength)
             .HasComment("Name shown to people; can be changed.");
 
+        builder.Property(role => role.Description)
+            .HasMaxLength(Role.DescriptionMaxLength)
+            .HasComment("Optional description of what the role is for.");
+
+        builder.Property(role => role.Color)
+            .HasMaxLength(Role.AppearanceKeyMaxLength)
+            .HasDefaultValue(RoleColors.Gray)
+            .HasComment("Color key for displaying the role.");
+
+        builder.Property(role => role.Icon)
+            .HasMaxLength(Role.AppearanceKeyMaxLength)
+            .HasDefaultValue(RoleIcons.Shield)
+            .HasComment("Icon key for displaying the role.");
+
+        builder.Property(role => role.ModifiedBy)
+            .HasComment("User who most recently created or updated the role; null when no user was recorded.");
+
         builder.Property(role => role.SystemKey)
             .HasMaxLength(Role.SystemKeyMaxLength)
             .HasComment("Fixed key of a role the system creates itself, such as admin; null for roles created by people.");

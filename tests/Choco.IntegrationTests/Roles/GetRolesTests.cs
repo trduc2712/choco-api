@@ -101,6 +101,13 @@ public sealed class GetRolesTests : IClassFixture<ChocoApiFactory>, IAsyncLifeti
         Guid adminRoleId = await GetRoleIdAsync(SystemRoles.Admin);
         Guid memberRoleId = await GetRoleIdAsync(SystemRoles.Member);
         await AddUserAsync("identity-id", "username", adminRoleId);
+        User deleted = await AddUserAsync("identity-id-2", "username-2", adminRoleId);
+        await _factory.ExecuteDbContextAsync(async dbContext =>
+        {
+            User user = await dbContext.Set<User>().SingleAsync(item => item.Id == deleted.Id, TestContext.Current.CancellationToken);
+            dbContext.Remove(user);
+            return await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
 
         JsonElement[] roles = (await GetJsonAsync()).EnumerateArray().ToArray();
 
@@ -116,6 +123,16 @@ public sealed class GetRolesTests : IClassFixture<ChocoApiFactory>, IAsyncLifeti
         member.GetProperty("systemKey").GetString().Should().Be(SystemRoles.Member);
         member.GetProperty("isDefault").GetBoolean().Should().BeTrue();
         member.GetProperty("permissions").GetArrayLength().Should().Be(0);
+        member.GetProperty("holderCount").GetInt32().Should().Be(1);
+        member.GetProperty("topHolders").GetArrayLength().Should().Be(0);
+        member.GetProperty("color").GetString().Should().Be("gray");
+        member.GetProperty("icon").GetString().Should().Be("user");
+        admin.GetProperty("holderCount").GetInt32().Should().Be(1);
+        admin.GetProperty("modifiedBy").ValueKind.Should().Be(JsonValueKind.Null);
+        JsonElement adminHolder = admin.GetProperty("topHolders").EnumerateArray().Should().ContainSingle().Subject;
+        adminHolder.GetProperty("username").GetString().Should().Be("username");
+        adminHolder.GetProperty("displayName").GetString().Should().Be("Display Name");
+        adminHolder.GetProperty("avatarUrl").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     [Fact]
@@ -132,6 +149,62 @@ public sealed class GetRolesTests : IClassFixture<ChocoApiFactory>, IAsyncLifeti
         custom.GetProperty("systemKey").GetString().Should().Be("custom-key");
         custom.GetProperty("permissions").EnumerateArray().Select(permission => permission.GetString())
             .Should().Equal(Permission.DeleteAnyPost, Permission.HandleReports);
+    }
+
+    [Fact]
+    public async Task MoreRoles_DoNotIncreaseDatabaseQueries()
+    {
+        Guid adminRoleId = await GetRoleIdAsync(SystemRoles.Admin);
+        await AddUserAsync("identity-id", "username", adminRoleId);
+        await AddRoleAsync("role-key-1", "Role Name 1", []);
+        await GetJsonAsync();
+        _factory.DbCommands.Reset();
+
+        await GetJsonAsync();
+
+        int oneExtraRoleQueries = _factory.DbCommands.Count;
+        await AddRoleAsync("role-key-2", "Role Name 2", []);
+        await AddRoleAsync("role-key-3", "Role Name 3", []);
+        await AddRoleAsync("role-key-4", "Role Name 4", []);
+        await AddRoleAsync("role-key-5", "Role Name 5", []);
+        _factory.DbCommands.Reset();
+
+        await GetJsonAsync();
+
+        oneExtraRoleQueries.Should().BePositive();
+        _factory.DbCommands.Count.Should().Be(oneExtraRoleQueries);
+    }
+
+    [Fact]
+    public async Task MoreThanThreeHolders_ReturnsTheNewestThreeWithTheirProfiles()
+    {
+        Guid adminRoleId = await GetRoleIdAsync(SystemRoles.Admin);
+        await AddUserAsync("identity-id", "username", adminRoleId);
+        Role role = await AddRoleAsync("role-key", "Role Name", []);
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            User[] assignedUsers = Enumerable.Range(1, 4).Select(index =>
+            {
+                User user = User.Create($"holder-identity-id-{index}", $"holder-username-{index}",
+                    $"Holder Display Name {index}", $"https://example.com/avatar-{index}.png");
+                user.AssignRole(role.Id, null, ChocoApiFactory.StartTime.AddMinutes(index));
+
+                return user;
+            }).ToArray();
+            dbContext.AddRange(assignedUsers);
+
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+
+        JsonElement roles = await GetJsonAsync();
+
+        JsonElement summary = roles.EnumerateArray().Single(item => item.GetProperty("id").GetGuid() == role.Id);
+        summary.GetProperty("holderCount").GetInt32().Should().Be(4);
+        JsonElement[] holders = summary.GetProperty("topHolders").EnumerateArray().ToArray();
+        holders.Select(holder => holder.GetProperty("username").GetString())
+            .Should().Equal("holder-username-4", "holder-username-3", "holder-username-2");
+        holders[0].GetProperty("displayName").GetString().Should().Be("Holder Display Name 4");
+        holders[0].GetProperty("avatarUrl").GetString().Should().Be("https://example.com/avatar-4.png");
     }
 
     private HttpRequestMessage CreateRequest()

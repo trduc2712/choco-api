@@ -21,7 +21,8 @@ namespace Choco.Contract.AuditLogs;
 /// <param name="AffectedUserRoles">The names of the roles the affected user held right after the action. Empty when there is no affected user or the entry is older than this field.</param>
 /// <param name="TargetSummary">The current state of the target. Only in the single-entry response; left out when the target no longer exists or its type has no summary (Request, AuditLog).</param>
 /// <param name="TargetHistory">The other entries about the same target. Only in the single-entry response.</param>
-/// <example>{"id":"00000000-0000-0000-0000-000000000001","occurredAt":"2026-01-01T00:00:00+00:00","actorType":"User","actor":{"id":"00000000-0000-0000-0000-000000000002","username":"username"},"actorRoles":["Administrator","Member"],"clientId":"https://example.com","action":"PostDeleted","targetType":"Post","targetId":"00000000-0000-0000-0000-000000000003","affectedUser":{"id":"00000000-0000-0000-0000-000000000004","username":"username-2"},"detail":null,"changes":[],"traceId":"4bf92f3577b34da6a3ce929d0e0e4736","affectedUserRoles":["Member"]}</example>
+/// <param name="Reason">The reason supplied when updating or deleting a role, or null.</param>
+/// <example>{"id":"00000000-0000-0000-0000-000000000001","occurredAt":"2026-01-01T00:00:00+00:00","actorType":"User","actor":{"id":"00000000-0000-0000-0000-000000000002","username":"username"},"actorRoles":["Administrator","Member"],"clientId":"https://example.com","action":"RoleUpdated","targetType":"Role","targetId":"00000000-0000-0000-0000-000000000003","affectedUser":null,"detail":"Role: Role Name","changes":[],"traceId":"4bf92f3577b34da6a3ce929d0e0e4736","affectedUserRoles":[],"reason":"Role change reason"}</example>
 public sealed record AuditLogResponse(
     Guid Id,
     DateTimeOffset OccurredAt,
@@ -38,4 +39,5 @@ public sealed record AuditLogResponse(
     IReadOnlyList<AuditChangeResponse> Changes,
     IReadOnlyList<string> AffectedUserRoles,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AuditTargetSummaryResponse? TargetSummary = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AuditTargetHistoryResponse? TargetHistory = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AuditTargetHistoryResponse? TargetHistory = null,
+    string? Reason = null);

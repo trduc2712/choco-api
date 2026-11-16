@@ -114,6 +114,36 @@ public sealed class GetPermissionsTests : IClassFixture<ChocoApiFactory>, IAsync
             .Should().Equal(Permission.All.Order(StringComparer.Ordinal));
     }
 
+    [Theory]
+    [InlineData("roles.assign", "roles", true)]
+    [InlineData("roles.read", "roles", false)]
+    [InlineData("roles.create", "roles", true)]
+    [InlineData("roles.update", "roles", true)]
+    [InlineData("roles.delete", "roles", true)]
+    [InlineData("posts.delete-any", "content", true)]
+    [InlineData("comments.delete-any", "content", true)]
+    [InlineData("content.read-any", "content", false)]
+    [InlineData("reports.handle", "reports", false)]
+    [InlineData("feedback.read-any", "feedback", false)]
+    [InlineData("feedback.change-status", "feedback", false)]
+    [InlineData("audit-log.read", "audit-log", false)]
+    [InlineData("users.read-any", "users", false)]
+    [InlineData("users.suspend", "users", true)]
+    public async Task CatalogPermission_ReturnsGroupAndSensitivity(string code, string group, bool isSensitive)
+    {
+        Role reader = await AddRoleAsync("reader-key", "Reader Role", Permission.ReadRoles);
+        await AddUserAsync("identity-id", "username", reader.Id);
+        using HttpRequestMessage request = CreateRequest();
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        JsonElement permission = body.EnumerateArray().Single(item => item.GetProperty("code").GetString() == code);
+        permission.GetProperty("group").GetString().Should().Be(group);
+        permission.GetProperty("isSensitive").GetBoolean().Should().Be(isSensitive);
+    }
+
     private static HttpRequestMessage CreateRequest()
     {
         HttpRequestMessage request = new(HttpMethod.Get, Path);

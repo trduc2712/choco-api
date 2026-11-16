@@ -12,7 +12,8 @@ internal sealed class DeleteRoleCommandHandler(
     ICurrentUser currentUser,
     IUserRepository userRepository,
     IRoleRepository roleRepository,
-    IUnitOfWork unitOfWork) : ICommandHandler<DeleteRoleCommand, RoleResponse>
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider) : ICommandHandler<DeleteRoleCommand, RoleResponse>
 {
     public async Task<Result<RoleResponse>> Handle(DeleteRoleCommand command, CancellationToken cancellationToken)
     {
@@ -54,7 +55,45 @@ internal sealed class DeleteRoleCommandHandler(
             return Result<RoleResponse>.Failure(deletable.Error);
         }
 
-        RoleResponse deleted = role.ToResponse();
+        RoleResponse deleted = await roleRepository.ToResponseAsync(userRepository, role, cancellationToken);
+
+        if (command.ReassignTo is { } targetId)
+        {
+            if (targetId == role.Id)
+            {
+                return Result<RoleResponse>.Failure(RoleErrors.ReassignToSelf);
+            }
+
+            if (!callerPermissions.Contains(Permission.AssignRoles))
+            {
+                return Result<RoleResponse>.Failure(PermissionErrors.Denied);
+            }
+
+            Role? target = await roleRepository.GetByIdAsync(targetId, cancellationToken);
+
+            if (target is null)
+            {
+                return Result<RoleResponse>.Failure(RoleErrors.NotFound);
+            }
+
+            if (target.IsDefault)
+            {
+                return Result<RoleResponse>.Failure(RoleErrors.DefaultNotAssignable);
+            }
+
+            if (!target.IsCoveredBy(callerPermissions))
+            {
+                return Result<RoleResponse>.Failure(PermissionErrors.Denied);
+            }
+
+            IReadOnlyList<User> holders = await userRepository.ListWithRoleAsync(role.Id, cancellationToken);
+            DateTimeOffset assignedAt = timeProvider.GetUtcNow();
+
+            foreach (User holder in holders)
+            {
+                holder.AssignRole(targetId, callerIdResult.Value, assignedAt);
+            }
+        }
 
         roleRepository.Remove(role);
 

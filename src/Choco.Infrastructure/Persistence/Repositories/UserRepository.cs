@@ -143,6 +143,14 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
             .FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
     }
 
+    public Task<User?> GetByIdWithRolesForReadAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return DbSet
+            .AsNoTracking()
+            .Include(user => user.Roles)
+            .FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
+    }
+
     public Task<User?> GetByIdWithRolesAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return DbSet
@@ -195,6 +203,14 @@ internal sealed class UserRepository : Repository<User>, IUserRepository
         }
 
         return users;
+    }
+
+    public async Task<IReadOnlyList<User>> ListWithRoleAsync(Guid roleId, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Where(user => user.Roles.Any(assignment => assignment.RoleId == roleId))
+            .Include(user => user.Roles)
+            .ToListAsync(cancellationToken);
     }
 
     public Task<int> CountActiveWithRoleAsync(Guid roleId, CancellationToken cancellationToken = default)
