@@ -60,6 +60,27 @@ jobs:
           path: artifacts/test-results
           if-no-files-found: ignore
 
+  coverage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - run: bash ./build.sh Coverage --no-logo
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage-report
+          path: artifacts/coverage/report
+          if-no-files-found: ignore
+
   database-docs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
