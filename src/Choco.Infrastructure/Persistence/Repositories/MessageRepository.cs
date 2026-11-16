@@ -37,4 +37,28 @@ internal sealed class MessageRepository : IMessageRepository
                 && (conversation.FirstUserId == userId || conversation.SecondUserId == userId)))
             .SingleOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Message>> ListForReadAsync(
+        Guid conversationId, long? beforeSequence, long? afterSequence, int count, CancellationToken cancellationToken)
+    {
+        IQueryable<Message> messages = _dbContext.Set<Message>().AsNoTracking()
+            .Where(message => message.ConversationId == conversationId);
+
+        if (afterSequence is long after)
+        {
+            return await messages.Where(message => message.Sequence > after)
+                .OrderBy(message => message.Sequence)
+                .Take(count)
+                .ToListAsync(cancellationToken);
+        }
+
+        if (beforeSequence is long before)
+        {
+            messages = messages.Where(message => message.Sequence < before);
+        }
+
+        return await messages.OrderByDescending(message => message.Sequence)
+            .Take(count)
+            .ToListAsync(cancellationToken);
+    }
 }

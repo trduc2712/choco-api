@@ -1,5 +1,6 @@
 using Choco.Application.Abstractions.Auditing;
 using Choco.Contract.Abstractions.Messaging;
+using Choco.Contract.Messages;
 using Choco.Contract.Notifications;
 
 using ApplicationAssemblyReference = Choco.Application.AssemblyReference;
@@ -11,6 +12,7 @@ public class AuditDescriberTests
 {
     private static readonly IReadOnlyDictionary<Type, string> Exclusions = new Dictionary<Type, string>
     {
+        [typeof(MarkConversationReadCommand)] = "Changes only the caller's own read state.",
         [typeof(MarkNotificationReadCommand)] = "Changes only the caller's own notification state.",
         [typeof(MarkAllNotificationsReadCommand)] = "Changes only the caller's own notification state."
     };

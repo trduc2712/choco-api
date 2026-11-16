@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Choco.Application.Abstractions.Authentication;
 using Choco.Contract.Abstractions;
 using Choco.Contract.Feedback;
+using Choco.Contract.Messages;
 using Choco.Contract.Notifications;
 using Choco.Contract.Posts;
 using Choco.Contract.Users;
@@ -31,6 +32,102 @@ public sealed class MeController : ApiController
     public MeController(ISender sender, ICurrentUser currentUser) : base(sender)
     {
         _currentUser = currentUser;
+    }
+
+    /// <summary>Lists the caller's conversations by most recent activity.</summary>
+    /// <remarks>Any signed-in user may call it. Conversations with deleted accounts are omitted. A blocked conversation stays visible, and isBlockedByMe indicates whether the caller blocked the other user. Pass nextCursor as cursor to continue.</remarks>
+    /// <param name="cursor" example="NjM5MDI4MjI0MDAwMDAwMDAwXzAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAx">The previous page's nextCursor. Omit for the first page.</param>
+    /// <param name="limit" example="20">The page size from 1 to 50. Defaults to 20.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">A page of conversations, newest first.</response>
+    /// <response code="400">The cursor or page size is invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    [HttpGet("conversations")]
+    [ProducesResponseType(typeof(PageResponse<ConversationResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetConversations(
+        string? cursor = null,
+        int limit = GetConversationsQuery.DefaultLimit,
+        CancellationToken cancellationToken = default)
+    {
+        Result<PageResponse<ConversationResponse>> result = await Sender.Send(
+            new GetConversationsQuery(cursor, limit), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
+    /// <summary>Finds the caller's conversation with another user.</summary>
+    /// <remarks>Any signed-in user may call it. A blocked conversation stays visible, and isBlockedByMe indicates whether the caller blocked the other user.</remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000002">The other user's identifier.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">The caller's conversation with that user.</response>
+    /// <response code="400">The user identifier is invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">There is no conversation with that user, or their account was deleted.</response>
+    [HttpGet("conversations/by-user/{userId}")]
+    [ProducesResponseType(typeof(ConversationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetConversationByUser(Guid userId, CancellationToken cancellationToken)
+    {
+        Result<ConversationResponse> result = await Sender.Send(new GetConversationByUserQuery(userId), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
+    /// <summary>Lists a conversation's messages or catches up after a sequence.</summary>
+    /// <remarks>Either participant may call it. History runs newest first. To catch up, supply afterSequence for the first page to get later messages oldest first. To continue either mode, pass nextCursor as cursor and omit afterSequence.</remarks>
+    /// <param name="conversationId" example="00000000-0000-0000-0000-000000000001">The conversation identifier.</param>
+    /// <param name="cursor" example="YjEy">The previous page's nextCursor. Omit for the first page or with afterSequence.</param>
+    /// <param name="afterSequence" example="12">The last sequence the client has, zero or greater. Omit for history or with cursor.</param>
+    /// <param name="limit" example="20">The page size from 1 to 50. Defaults to 20.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="200">A page of messages in sequence order for the selected mode.</response>
+    /// <response code="400">An input is invalid, or both cursor and afterSequence were supplied.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="404">The conversation does not exist or the caller is not a participant.</response>
+    [HttpGet("conversations/{conversationId}/messages")]
+    [ProducesResponseType(typeof(PageResponse<MessageResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetConversationMessages(
+        Guid conversationId,
+        string? cursor = null,
+        long? afterSequence = null,
+        int limit = GetConversationsQuery.DefaultLimit,
+        CancellationToken cancellationToken = default)
+    {
+        Result<PageResponse<MessageResponse>> result = await Sender.Send(
+            new GetConversationMessagesQuery(conversationId, cursor, afterSequence, limit), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
+    }
+
+    /// <summary>Marks a conversation as read through the supplied sequence.</summary>
+    /// <remarks>Either participant may call it unless suspended. The caller's read position only moves forward and is capped at the newest message. Repeating the same request is safe.</remarks>
+    /// <param name="conversationId" example="00000000-0000-0000-0000-000000000001">The conversation identifier.</param>
+    /// <param name="command">The last sequence the caller read.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="204">The read position was saved or was already at or past the requested sequence.</response>
+    /// <response code="400">The conversation identifier or sequence is invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller is suspended.</response>
+    /// <response code="404">The conversation does not exist or the caller is not a participant.</response>
+    [HttpPut("conversations/{conversationId}/read")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MarkConversationRead(
+        Guid conversationId, [FromBody] MarkConversationReadCommand command, CancellationToken cancellationToken)
+    {
+        Result result = await Sender.Send(command with { ConversationId = conversationId }, cancellationToken);
+
+        return result.IsSuccess ? NoContent() : HandleFailure(result);
     }
 
     /// <summary>Gets the caller's basic profile.</summary>

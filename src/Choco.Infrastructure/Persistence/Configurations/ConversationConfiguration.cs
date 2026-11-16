@@ -36,7 +36,8 @@ internal sealed class ConversationConfiguration : IEntityTypeConfiguration<Conve
             .HasComment("When the newest message was sent, or when the conversation was created if it has none.");
 
         builder.HasIndex(conversation => new { conversation.FirstUserId, conversation.SecondUserId }).IsUnique();
-        builder.HasIndex(conversation => conversation.SecondUserId);
+        builder.HasIndex(conversation => new { conversation.FirstUserId, conversation.LastActivityAt, conversation.Id });
+        builder.HasIndex(conversation => new { conversation.SecondUserId, conversation.LastActivityAt, conversation.Id });
 
         builder.HasOne<User>()
             .WithMany()

@@ -33,11 +33,12 @@ Direct conversations between two users.
 
 ## Indexes
 
-| Name                                          | Definition                                                                                                                            |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| ix_conversations_first_user_id_second_user_id | CREATE UNIQUE INDEX ix_conversations_first_user_id_second_user_id ON public.conversations USING btree (first_user_id, second_user_id) |
-| ix_conversations_second_user_id               | CREATE INDEX ix_conversations_second_user_id ON public.conversations USING btree (second_user_id)                                     |
-| pk_conversations                              | CREATE UNIQUE INDEX pk_conversations ON public.conversations USING btree (id)                                                         |
+| Name                                                | Definition                                                                                                                                  |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| ix_conversations_first_user_id_last_activity_at_id  | CREATE INDEX ix_conversations_first_user_id_last_activity_at_id ON public.conversations USING btree (first_user_id, last_activity_at, id)   |
+| ix_conversations_first_user_id_second_user_id       | CREATE UNIQUE INDEX ix_conversations_first_user_id_second_user_id ON public.conversations USING btree (first_user_id, second_user_id)       |
+| ix_conversations_second_user_id_last_activity_at_id | CREATE INDEX ix_conversations_second_user_id_last_activity_at_id ON public.conversations USING btree (second_user_id, last_activity_at, id) |
+| pk_conversations                                    | CREATE UNIQUE INDEX pk_conversations ON public.conversations USING btree (id)                                                               |
 
 ## Relations
 

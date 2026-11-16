@@ -251,12 +251,15 @@ namespace Choco.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_conversations");
 
-                    b.HasIndex("SecondUserId")
-                        .HasDatabaseName("ix_conversations_second_user_id");
-
                     b.HasIndex("FirstUserId", "SecondUserId")
                         .IsUnique()
                         .HasDatabaseName("ix_conversations_first_user_id_second_user_id");
+
+                    b.HasIndex("FirstUserId", "LastActivityAt", "Id")
+                        .HasDatabaseName("ix_conversations_first_user_id_last_activity_at_id");
+
+                    b.HasIndex("SecondUserId", "LastActivityAt", "Id")
+                        .HasDatabaseName("ix_conversations_second_user_id_last_activity_at_id");
 
                     b.ToTable("conversations", null, t =>
                         {
