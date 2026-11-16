@@ -6,7 +6,9 @@
 | ----------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | [public.audit_logs](public.audit_logs.md)             | 17      | Append-only record of who did what to which object. One row per successful action of a user or the system; rows are never changed. | BASE TABLE |
 | [public.comments](public.comments.md)                 | 8       | Comments that users write on posts.                                                                                                | BASE TABLE |
+| [public.conversations](public.conversations.md)       | 7       | Direct conversations between two users.                                                                                            | BASE TABLE |
 | [public.feedback_entries](public.feedback_entries.md) | 14      | Bug reports and suggestions about the app that signed-in users send, waiting for or finished with an administrator's triage.       | BASE TABLE |
+| [public.messages](public.messages.md)                 | 7       | Text messages that users send in direct conversations.                                                                             | BASE TABLE |
 | [public.notifications](public.notifications.md)       | 8       | Things that happened to a user, such as a new follower, shown to that user.                                                        | BASE TABLE |
 | [public.post_likes](public.post_likes.md)             | 4       | Active likes that users give to posts.                                                                                             | BASE TABLE |
 | [public.posts](public.posts.md)                       | 7       | Text posts that users publish.                                                                                                     | BASE TABLE |
@@ -33,7 +35,11 @@ erDiagram
 
 "public.comments" }o--|| "public.users" : "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.comments" }o--|| "public.posts" : "FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE RESTRICT"
+"public.conversations" }o--|| "public.users" : "FOREIGN KEY (first_user_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.conversations" }o--|| "public.users" : "FOREIGN KEY (second_user_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.feedback_entries" }o--|| "public.users" : "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.messages" }o--|| "public.users" : "FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.messages" }o--|| "public.conversations" : "FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE RESTRICT"
 "public.notifications" }o--|| "public.users" : "FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.notifications" }o--|| "public.users" : "FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.notifications" }o--o| "public.posts" : "FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE RESTRICT"
@@ -83,6 +89,15 @@ erDiagram
   timestamp_with_time_zone modified_at
   uuid post_id FK
 }
+"public.conversations" {
+  uuid first_user_id FK
+  bigint first_user_last_read_sequence
+  uuid id
+  timestamp_with_time_zone last_activity_at
+  bigint last_message_sequence
+  uuid second_user_id FK
+  bigint second_user_last_read_sequence
+}
 "public.feedback_entries" {
   uuid author_id FK
   varchar_32_ category
@@ -98,6 +113,15 @@ erDiagram
   varchar_2000_ message
   timestamp_with_time_zone modified_at
   varchar_32_ status
+}
+"public.messages" {
+  uuid client_message_id
+  varchar_2000_ content
+  uuid conversation_id FK
+  uuid id
+  uuid sender_id FK
+  timestamp_with_time_zone sent_at
+  bigint sequence
 }
 "public.notifications" {
   uuid actor_id FK
