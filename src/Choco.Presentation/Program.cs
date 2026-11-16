@@ -4,6 +4,7 @@ using Choco.Infrastructure.Health;
 using Choco.Presentation;
 using Choco.Presentation.Health;
 using Choco.Presentation.Logging;
+using Choco.Presentation.Messages;
 using Choco.Presentation.Notifications;
 using Choco.Presentation.OpenApi;
 
@@ -33,6 +34,7 @@ app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<NotificationsHub>(NotificationsHub.Path);
+app.MapHub<MessagesHub>(MessagesHub.Path);
 HealthCheckOptions liveness = new() { Predicate = _ => false };
 app.MapHealthChecks("/health", liveness).WithHttpLogging(HttpLoggingFields.None);
 app.MapHealthChecks("/health/live", liveness).WithHttpLogging(HttpLoggingFields.None);

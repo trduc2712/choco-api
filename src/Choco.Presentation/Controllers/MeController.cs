@@ -78,7 +78,12 @@ public sealed class MeController : ApiController
     }
 
     /// <summary>Lists a conversation's messages or catches up after a sequence.</summary>
-    /// <remarks>Either participant may call it. History runs newest first. To catch up, supply afterSequence for the first page to get later messages oldest first. To continue either mode, pass nextCursor as cursor and omit afterSequence.</remarks>
+    /// <remarks>
+    /// Either participant may call it. History runs newest first.
+    /// New messages arrive as messageReceived on the SignalR hub at /hubs/messages, which accepts the session token in access_token. Events are not replayed.
+    /// After a reconnect or a gap in sequence, call this endpoint with afterSequence set to the last contiguous sequence the client has to get later messages oldest first.
+    /// To continue either mode, pass nextCursor as cursor and omit afterSequence.
+    /// </remarks>
     /// <param name="conversationId" example="00000000-0000-0000-0000-000000000001">The conversation identifier.</param>
     /// <param name="cursor" example="YjEy">The previous page's nextCursor. Omit for the first page or with afterSequence.</param>
     /// <param name="afterSequence" example="12">The last sequence the client has, zero or greater. Omit for history or with cursor.</param>
