@@ -45,6 +45,7 @@ public sealed class SuspendedUserTests : IClassFixture<ChocoApiFactory>, IAsyncL
         { "PUT", "/api/v1/me/profile/bio", """{"bio":"bio"}""" },
         { "DELETE", "/api/v1/me/profile/avatar", null },
         { "PUT", $"/api/v1/me/notifications/{Id}/read", null },
+        { "PUT", $"/api/v1/me/conversations/{Id}/read", """{"sequence":1}""" },
         { "PUT", "/api/v1/me/notifications/read", null },
         { "POST", "/api/v1/feedback", Feedback }
     };
