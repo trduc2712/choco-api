@@ -4,11 +4,13 @@ using System.Security.Claims;
 using Asp.Versioning;
 
 using Choco.Application.Abstractions.Authentication;
+using Choco.Application.Abstractions.Messages;
 using Choco.Application.Abstractions.Notifications;
 using Choco.Application.Abstractions.Requests;
 using Choco.Presentation.Authentication;
 using Choco.Presentation.Authorization;
 using Choco.Presentation.Logging;
+using Choco.Presentation.Messages;
 using Choco.Presentation.Notifications;
 using Choco.Presentation.OpenApi;
 using Choco.Presentation.Options;
@@ -116,7 +118,8 @@ public static class DependencyInjection
                         string? accessToken = context.Request.Query["access_token"];
 
                         if (!string.IsNullOrEmpty(accessToken)
-                            && context.HttpContext.Request.Path.StartsWithSegments(NotificationsHub.Path))
+                            && (context.Request.Path.StartsWithSegments(NotificationsHub.Path)
+                                || context.Request.Path.StartsWithSegments(MessagesHub.Path)))
                         {
                             context.Token = accessToken;
                         }
@@ -147,6 +150,7 @@ public static class DependencyInjection
         services.AddSignalR();
         services.AddSingleton<IUserIdProvider, IdentityUserIdProvider>();
         services.AddSingleton<INotificationRealtimePublisher, NotificationRealtimePublisher>();
+        services.AddSingleton<IMessageRealtimePublisher, MessageRealtimePublisher>();
 
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext, UserContext>();

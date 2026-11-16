@@ -1,4 +1,5 @@
 using Choco.Application.Abstractions.Authentication;
+using Choco.Application.Abstractions.Messages;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Messages;
 using Choco.Domain.Conversations;
@@ -7,16 +8,21 @@ using Choco.Domain.UserBlocks;
 using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
 
+using Microsoft.Extensions.Logging;
+
 namespace Choco.Application.Messages.SendMessage;
 
 internal sealed class SendMessageCommandHandler(
     ICurrentUser currentUser,
+    IUserContext userContext,
     IUserRepository userRepository,
     IUserBlockRepository blockRepository,
     IConversationRepository conversationRepository,
     IMessageRepository messageRepository,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider) : ICommandHandler<SendMessageCommand, MessageResponse>
+    TimeProvider timeProvider,
+    IMessageRealtimePublisher realtimePublisher,
+    ILogger<SendMessageCommandHandler> logger) : ICommandHandler<SendMessageCommand, MessageResponse>
 {
     public async Task<Result<MessageResponse>> Handle(SendMessageCommand command, CancellationToken cancellationToken)
     {
@@ -45,7 +51,7 @@ internal sealed class SendMessageCommandHandler(
             return Result<MessageResponse>.Failure(UserBlockErrors.Blocked);
         }
 
-        Message message = await unitOfWork.InTransactionAsync(async () =>
+        MessageResponse message = await unitOfWork.InTransactionAsync(async () =>
         {
             await conversationRepository.AddIfMissingAsync(candidate.Value, cancellationToken);
 
@@ -57,7 +63,7 @@ internal sealed class SendMessageCommandHandler(
                 conversation.Id, caller.Value, command.ClientMessageId, cancellationToken);
             if (saved is not null)
             {
-                return saved;
+                return saved.ToResponse();
             }
 
             Message sent = conversation.SendMessage(caller.Value, command.ClientMessageId, command.Content, now);
@@ -65,9 +71,23 @@ internal sealed class SendMessageCommandHandler(
 
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
-            return sent;
+            MessageResponse response = sent.ToResponse();
+            await unitOfWork.AfterCommitAsync(async afterCommitToken =>
+            {
+                try
+                {
+                    await realtimePublisher.PublishAsync(
+                        userContext.IdentityId, recipient.IdentityId, response, afterCommitToken);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    logger.LogWarning(exception, "Failed to deliver message {MessageId} in real time.", response.Id);
+                }
+            }, cancellationToken);
+
+            return response;
         }, cancellationToken);
 
-        return Result<MessageResponse>.Success(message.ToResponse());
+        return Result<MessageResponse>.Success(message);
     }
 }

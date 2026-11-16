@@ -373,7 +373,14 @@ public sealed class UsersController : ApiController
     }
 
     /// <summary>Sends a text message to another user.</summary>
-    /// <remarks>Any signed-in user with an active account may message any other user. The first message between two users starts their direct conversation; later messages join it. Each message gets the next sequence number of its conversation, and the sender's own messages never count as unread for them. Leading and trailing whitespace is removed from the content. Sending again with the same clientMessageId saves nothing new and returns the message already saved, so a client can retry a send safely; a new message needs a new clientMessageId. A caller may send 30 messages per minute. Over the limit, the response is 429 and its Retry-After header says how many seconds to wait. The Location header points to the message.</remarks>
+    /// <remarks>
+    /// Any signed-in user with an active account may message any other user. The first message between two users starts their direct conversation; later messages join it.
+    /// Each message gets the next sequence number of its conversation, and the sender's own messages never count as unread for them. Leading and trailing whitespace is removed from the content.
+    /// Sending again with the same clientMessageId returns the message already saved. A new message needs a new clientMessageId.
+    /// Connected participants receive new messages as messageReceived on the SignalR hub at /hubs/messages. Send the session token in access_token. Events are not replayed.
+    /// After a reconnect or a gap in sequence, call GET /api/v1/me/conversations/{conversationId}/messages with afterSequence set to the last contiguous sequence the client has.
+    /// A caller may send 30 messages per minute. Over the limit, the response is 429 and its Retry-After header says how many seconds to wait. The Location header points to the message.
+    /// </remarks>
     /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The recipient's id.</param>
     /// <param name="command">The client's id for the send and the text.</param>
     /// <param name="cancellationToken">Cancels the request.</param>
