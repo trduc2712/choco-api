@@ -9,5 +9,6 @@ public enum AuditTargetType
     Feedback,
     Role,
     Request,
-    AuditLog
+    AuditLog,
+    Message
 }

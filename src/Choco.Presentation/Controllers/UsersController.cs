@@ -1,10 +1,12 @@
 using Asp.Versioning;
 
 using Choco.Contract.Abstractions;
+using Choco.Contract.Messages;
 using Choco.Contract.Posts;
 using Choco.Contract.Reports;
 using Choco.Contract.Users;
 using Choco.Presentation.Abstractions;
+using Choco.Presentation.RateLimiting;
 using Choco.SharedKernel.Results;
 
 using MediatR;
@@ -368,5 +370,38 @@ public sealed class UsersController : ApiController
         Result result = await Sender.Send(new UnblockUserCommand(userId), cancellationToken);
 
         return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
+
+    /// <summary>Sends a text message to another user.</summary>
+    /// <remarks>Any signed-in user with an active account may message any other user. The first message between two users starts their direct conversation; later messages join it. Each message gets the next sequence number of its conversation, and the sender's own messages never count as unread for them. Leading and trailing whitespace is removed from the content. Sending again with the same clientMessageId saves nothing new and returns the message already saved, so a client can retry a send safely; a new message needs a new clientMessageId. A caller may send 30 messages per minute. Over the limit, the response is 429 and its Retry-After header says how many seconds to wait. The Location header points to the message.</remarks>
+    /// <param name="userId" example="00000000-0000-0000-0000-000000000001">The recipient's id.</param>
+    /// <param name="command">The client's id for the send and the text.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="201">The message is saved, now or by an earlier send with the same clientMessageId.</response>
+    /// <response code="400">The content is missing, blank or too long, the clientMessageId or the user id is empty, or the caller tried to message their own account; errors lists the field when one is invalid.</response>
+    /// <response code="401">The session is invalid or the caller's account is deleted.</response>
+    /// <response code="403">The caller blocked the recipient, or the recipient blocked the caller. It is also returned when the caller's account is suspended; the response then carries the reason.</response>
+    /// <response code="404">The recipient does not exist or is deleted.</response>
+    /// <response code="429">The caller sent too many messages; wait the number of seconds in the Retry-After header.</response>
+    [HttpPost("{userId:guid}/messages")]
+    [DirectMessageSendLimit]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> SendMessage(
+        Guid userId, [FromBody] SendMessageCommand command, CancellationToken cancellationToken)
+    {
+        Result<MessageResponse> result = await Sender.Send(command with { RecipientId = userId }, cancellationToken);
+
+        return result.IsSuccess
+            ? CreatedAtAction(
+                nameof(MessagesController.GetById),
+                "Messages",
+                new { version = RouteData.Values["version"], id = result.Value.Id },
+                result.Value)
+            : HandleFailure(result);
     }
 }

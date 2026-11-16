@@ -21,4 +21,7 @@ internal sealed class RateLimitingOptions
 
     [Range(1, int.MaxValue, ErrorMessage = $"'{SectionName}:{nameof(FeedbackPerDay)}' must be at least 1.")]
     public int FeedbackPerDay { get; set; } = 20;
+
+    [Range(1, int.MaxValue, ErrorMessage = $"'{SectionName}:{nameof(DirectMessagesPerMinute)}' must be at least 1.")]
+    public int DirectMessagesPerMinute { get; set; } = 30;
 }

@@ -130,6 +130,7 @@ public class ChocoApiFactory : WebApplicationFactory<Program>, IAsyncLifetime, I
                 ["Database:ConnectionString"] = connectionString,
                 ["RateLimiting:FeedbackPerHour"] = "1000",
                 ["RateLimiting:FeedbackPerDay"] = "1000",
+                ["RateLimiting:DirectMessagesPerMinute"] = "1000",
                 ["Clerk:Authority"] = TestJwt.Issuer,
                 ["Clerk:AuthorizedParties:0"] = TestJwt.AuthorizedParty,
                 ["Clerk:WebhookSigningSecret"] = ClerkWebhookSigner.SigningSecret,

@@ -32,5 +32,6 @@ public enum AuditAction
     FeedbackSent,
     UserCreated,
     AccessDenied,
-    AuditLogRead
+    AuditLogRead,
+    MessageSent
 }
