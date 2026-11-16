@@ -22,7 +22,7 @@ Append-only record of who did what to which object. One row per successful actio
 | occurred_at         | timestamp with time zone |              | false    |          |         | When the action happened, taken from the API clock.                                                                                          |
 | reason              | varchar(500)             |              | true     |          |         | Optional reason given by the actor for changing or deleting a role.                                                                          |
 | target_id           | uuid                     |              | false    |          |         | Id of the object the action was done to; the table it points to depends on target_type.                                                      |
-| target_type         | varchar(32)              |              | false    |          |         | Kind of object the action was done to: Post, Comment, User, Report, Feedback, Role, Request or AuditLog.                                     |
+| target_type         | varchar(32)              |              | false    |          |         | Kind of object the action was done to: Post, Comment, User, Report, Feedback, Role, Request, AuditLog or Message.                            |
 | trace_id            | varchar(32)              |              | true     |          |         | Trace id of the request that caused the action, to find its application log lines.                                                           |
 | user_agent          | varchar(512)             |              | true     |          |         | User agent the client sent with the request, cut to the column length.                                                                       |
 

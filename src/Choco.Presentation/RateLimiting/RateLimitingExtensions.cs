@@ -43,22 +43,27 @@ internal static class RateLimitingExtensions
                             QueueLimit = 0
                         });
                     }),
-                    CreateFeedbackSubmissionLimiter(rateLimiting.Value.FeedbackPerHour, TimeSpan.FromHours(1)),
-                    CreateFeedbackSubmissionLimiter(rateLimiting.Value.FeedbackPerDay, TimeSpan.FromDays(1)));
+                    CreateEndpointLimiter<FeedbackSubmissionLimitAttribute>(
+                        rateLimiting.Value.FeedbackPerHour, TimeSpan.FromHours(1)),
+                    CreateEndpointLimiter<FeedbackSubmissionLimitAttribute>(
+                        rateLimiting.Value.FeedbackPerDay, TimeSpan.FromDays(1)),
+                    CreateEndpointLimiter<DirectMessageSendLimitAttribute>(
+                        rateLimiting.Value.DirectMessagesPerMinute, TimeSpan.FromMinutes(1)));
                 options.OnRejected = WriteRejectionAsync;
             });
 
         return services;
     }
 
-    private static PartitionedRateLimiter<HttpContext> CreateFeedbackSubmissionLimiter(int permitLimit, TimeSpan window)
+    private static PartitionedRateLimiter<HttpContext> CreateEndpointLimiter<TAttribute>(int permitLimit, TimeSpan window)
+        where TAttribute : Attribute
     {
         return PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         {
             string? identityId = httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub);
 
             if (identityId is null
-                || httpContext.GetEndpoint()?.Metadata.GetMetadata<FeedbackSubmissionLimitAttribute>() is null)
+                || httpContext.GetEndpoint()?.Metadata.GetMetadata<TAttribute>() is null)
             {
                 return RateLimitPartition.GetNoLimiter(string.Empty);
             }

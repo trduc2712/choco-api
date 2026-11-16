@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 
 using Choco.Contract.Feedback;
+using Choco.Contract.Messages;
 using Choco.Domain.AuditLogs;
 using Choco.Domain.Posts;
 using Choco.Domain.Users;
@@ -83,6 +84,42 @@ public sealed class SocialAuditTests(ChocoApiFactory factory) : AuditTestsBase(f
     {
         await AddUserAsync("identity-id", "username");
         using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/users/{Guid.NewGuid()}/follow");
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await ReadEntriesAsync()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SendMessage_RecordsMessageSentWithTheConversationIdAndNoContent()
+    {
+        User recipient = await AddUserAsync("identity-id-2", "username-2");
+        User sender = await AddUserAsync("identity-id", "username");
+        using HttpRequestMessage request = Request(
+            HttpMethod.Post,
+            $"/api/v1/users/{recipient.Id}/messages",
+            new { clientMessageId = new Guid("4b6f2c1a-8d3e-4f5a-9b7c-1e2d3f4a5b6c"), content = "content" });
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        MessageResponse sent = (await response.Content.ReadFromJsonAsync<MessageResponse>(TestContext.Current.CancellationToken))!;
+        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
+        ShouldBeEntry(
+            entry, sender.Id, AuditAction.MessageSent, AuditTargetType.Message, sent.Id, null,
+            $"ConversationId: {sent.ConversationId}");
+        entry.Changes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SendMessage_WhenTheRecipientDoesNotExist_RecordsNoEntry()
+    {
+        await AddUserAsync("identity-id", "username");
+        using HttpRequestMessage request = Request(
+            HttpMethod.Post,
+            $"/api/v1/users/{Guid.NewGuid()}/messages",
+            new { clientMessageId = new Guid("4b6f2c1a-8d3e-4f5a-9b7c-1e2d3f4a5b6c"), content = "content" });
 
         using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
 

@@ -40,6 +40,7 @@ public sealed class SuspendedUserTests : IClassFixture<ChocoApiFactory>, IAsyncL
         { "PUT", $"/api/v1/users/{Id}/block", null },
         { "DELETE", $"/api/v1/users/{Id}/block", null },
         { "POST", $"/api/v1/users/{Id}/reports", """{"reason":"Harassment","details":"details"}""" },
+        { "POST", $"/api/v1/users/{Id}/messages", """{"clientMessageId":"00000000-0000-0000-0000-000000000004","content":"content"}""" },
         { "PUT", "/api/v1/me/profile", """{"username":"username","firstName":"First Name"}""" },
         { "PUT", "/api/v1/me/profile/bio", """{"bio":"bio"}""" },
         { "DELETE", "/api/v1/me/profile/avatar", null },

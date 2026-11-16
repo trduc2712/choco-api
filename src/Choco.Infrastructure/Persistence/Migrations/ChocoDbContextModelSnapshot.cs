@@ -116,7 +116,7 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("target_type")
-                        .HasComment("Kind of object the action was done to: Post, Comment, User, Report, Feedback, Role, Request or AuditLog.");
+                        .HasComment("Kind of object the action was done to: Post, Comment, User, Report, Feedback, Role, Request, AuditLog or Message.");
 
                     b.Property<string>("TraceId")
                         .HasMaxLength(32)
