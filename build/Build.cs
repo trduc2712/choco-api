@@ -5,6 +5,8 @@ using Nuke.Common.IO;
 using Nuke.Common.Tooling;
 using Nuke.Common.Tools.DotNet;
 
+using Serilog;
+
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
 
 [PlainHelp]
@@ -32,6 +34,7 @@ class Build : NukeBuild
     AbsolutePath InfrastructureProject => RootDirectory / "src" / "Choco.Infrastructure";
     AbsolutePath MigrationsDirectory => InfrastructureProject / "Persistence" / "Migrations";
     AbsolutePath TestResultsDirectory => RootDirectory / "artifacts" / "test-results";
+    AbsolutePath CoverageDirectory => RootDirectory / "artifacts" / "coverage";
     AbsolutePath MigrationBundleFile => RootDirectory / "artifacts" / "efbundle";
 
     Target Restore => _ => _
@@ -76,6 +79,42 @@ class Build : NukeBuild
             Assert.True(
                 output.Any(x => Regex.IsMatch(x.Text, @"succeeded: [1-9]")),
                 $"No tests matched the filter: {filter}");
+        });
+
+    Target Coverage => _ => _
+        .Description("Run unit and integration tests with line and branch coverage; report at artifacts/coverage")
+        .DependsOn(Compile)
+        .Executes(() =>
+        {
+            var projects = new[] { TestKind.Unit, TestKind.Integration }
+                .SelectMany(kind => RootDirectory.GlobFiles($"tests/*.{kind}Tests/*.csproj"))
+                .ToList();
+            Assert.NotEmpty(projects, "No unit or integration test projects found");
+
+            var rawDirectory = CoverageDirectory / "raw";
+            rawDirectory.CreateOrCleanDirectory();
+            foreach (var project in projects)
+            {
+                var name = project.NameWithoutExtension;
+                DotNet(
+                    $"test --project {project} --configuration {Configuration} --no-build " +
+                    $"--coverage --coverage-output-format cobertura --coverage-output {rawDirectory / name}.cobertura.xml");
+            }
+
+            var reportDirectory = CoverageDirectory / "report";
+            reportDirectory.CreateOrCleanDirectory();
+            var reportArguments =
+                $"\"-reports:{rawDirectory}/*.cobertura.xml\" \"-targetdir:{reportDirectory}\" " +
+                "\"-reporttypes:Html;MarkdownSummaryGithub;TextSummary\" " +
+                "\"-assemblyfilters:-*Tests*\" " +
+                "\"-filefilters:-*/Migrations/*;-*/Program.cs;-*.g.cs;-*.Generated.cs\"";
+            DotNet($"tool run reportgenerator -- {reportArguments:nq}", RootDirectory);
+
+            Log.Information(File.ReadAllText(reportDirectory / "Summary.txt"));
+
+            var githubSummary = Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY");
+            if (githubSummary is not null)
+                File.AppendAllText(githubSummary, File.ReadAllText(reportDirectory / "SummaryGithub.md"));
         });
 
     Target Format => _ => _

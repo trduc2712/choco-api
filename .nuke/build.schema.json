@@ -34,6 +34,7 @@
       "enum": [
         "Check",
         "Compile",
+        "Coverage",
         "DbDocs",
         "DbDocsCheck",
         "DbDown",
