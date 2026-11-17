@@ -48,11 +48,18 @@ internal sealed class PostResponseReader(
             postIds, viewerId, cancellationToken);
         IReadOnlyDictionary<Guid, int> commentCounts = await commentRepository.CountByPostsForReadAsync(
             postIds, cancellationToken);
+        IReadOnlyDictionary<Guid, Comment> topComments = await commentRepository.GetTopRootsByPostsForReadAsync(
+            postIds, viewerId, cancellationToken);
+        Comment? topComment = topComments.GetValueOrDefault(post.Id);
+        IReadOnlyList<User> commenters = topComment is null
+            ? []
+            : await userRepository.ListByIdsForReadAsync([topComment.AuthorId], cancellationToken);
 
         return post.ToResponse(
             author,
             likes.GetValueOrDefault(post.Id, PostLikeSummary.None),
-            commentCounts.GetValueOrDefault(post.Id));
+            commentCounts.GetValueOrDefault(post.Id),
+            topComment.ToTopCommentResponse(commenters.ToDictionary(user => user.Id)));
     }
 
     private async Task<PageResponse<PostResponse>> ToPageAsync(
@@ -62,17 +69,27 @@ internal sealed class PostResponseReader(
         if (page.Count == 0)
         {
             return PostPages.ToPage(
-                posts, [], new Dictionary<Guid, PostLikeSummary>(), new Dictionary<Guid, int>(), limit);
+                posts,
+                [],
+                new Dictionary<Guid, PostLikeSummary>(),
+                new Dictionary<Guid, int>(),
+                new Dictionary<Guid, Comment>(),
+                limit);
         }
 
-        Guid[] authorIds = page.Select(post => post.AuthorId).Distinct().ToArray();
         Guid[] postIds = page.Select(post => post.Id).ToArray();
-        IReadOnlyList<User> authors = await userRepository.ListByIdsForReadAsync(authorIds, cancellationToken);
+        IReadOnlyDictionary<Guid, Comment> topComments = await commentRepository.GetTopRootsByPostsForReadAsync(
+            postIds, viewerId, cancellationToken);
+        Guid[] userIds = page.Select(post => post.AuthorId)
+            .Concat(topComments.Values.Select(comment => comment.AuthorId))
+            .Distinct()
+            .ToArray();
+        IReadOnlyList<User> users = await userRepository.ListByIdsForReadAsync(userIds, cancellationToken);
         IReadOnlyDictionary<Guid, PostLikeSummary> likes = await likeRepository.GetSummariesForReadAsync(
             postIds, viewerId, cancellationToken);
         IReadOnlyDictionary<Guid, int> commentCounts = await commentRepository.CountByPostsForReadAsync(
             postIds, cancellationToken);
 
-        return PostPages.ToPage(posts, authors, likes, commentCounts, limit);
+        return PostPages.ToPage(posts, users, likes, commentCounts, topComments, limit);
     }
 }
