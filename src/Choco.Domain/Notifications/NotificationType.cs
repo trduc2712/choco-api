@@ -4,5 +4,6 @@ public enum NotificationType
 {
     Followed,
     PostLiked,
-    PostCommented
+    PostCommented,
+    CommentReplied
 }

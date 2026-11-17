@@ -9,17 +9,19 @@ namespace Choco.Application.Comments;
 internal static class CommentPages
 {
     public static PageResponse<CommentResponse> ToPage(
-        IReadOnlyList<Comment> comments, IReadOnlyCollection<User> authors, int limit)
+        IReadOnlyList<CommentThreadEntry> entries, IReadOnlyCollection<User> authors, int limit)
     {
         Dictionary<Guid, User> authorsById = authors.ToDictionary(author => author.Id);
-        List<Comment> page = comments.Take(limit).ToList();
-        string? nextCursor = comments.Count > limit
-            ? new PostCursor(page[^1].CreatedAt, page[^1].Id).Encode()
+        List<CommentThreadEntry> page = entries.Take(limit).ToList();
+        string? nextCursor = entries.Count > limit
+            ? new PostCursor(page[^1].Comment.CreatedAt, page[^1].Comment.Id).Encode()
             : null;
 
         List<CommentResponse> items = page
-            .Where(comment => authorsById.ContainsKey(comment.AuthorId))
-            .Select(comment => comment.ToResponse(authorsById[comment.AuthorId]))
+            .Where(entry => !entry.IsVisible || authorsById.ContainsKey(entry.Comment.AuthorId))
+            .Select(entry => entry.IsVisible
+                ? entry.Comment.ToResponse(authorsById[entry.Comment.AuthorId], entry.ReplyCount)
+                : entry.Comment.ToPlaceholder(entry.ReplyCount))
             .ToList();
 
         return new PageResponse<CommentResponse>(items, nextCursor);

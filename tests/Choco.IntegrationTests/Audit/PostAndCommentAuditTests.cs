@@ -90,6 +90,29 @@ public sealed class PostAndCommentAuditTests(ChocoApiFactory factory) : AuditTes
     }
 
     [Fact]
+    public async Task ReplyToComment_RecordsCommentCreatedWithThePostIdAndParentId()
+    {
+        User author = await AddUserAsync("identity-id", "username");
+        Post post = await AddPostAsync(author);
+        Comment parent = Comment.Create(post.Id, author.Id, "content");
+        await Factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Add(parent);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        using HttpRequestMessage request = Request(HttpMethod.Post, $"/api/v1/comments/{parent.Id}/replies", new { content = "content" });
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        CommentResponse created = (await response.Content.ReadFromJsonAsync<CommentResponse>(TestContext.Current.CancellationToken))!;
+        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
+        ShouldBeEntry(
+            entry, author.Id, AuditAction.CommentCreated, AuditTargetType.Comment, created.Id, null,
+            $"PostId: {post.Id}, ParentId: {parent.Id}");
+    }
+
+    [Fact]
     public async Task DeleteComment_ByAdministrator_RecordsTheAuthorAsAffectedUser()
     {
         User author = await AddUserAsync("identity-id-2", "username-2");

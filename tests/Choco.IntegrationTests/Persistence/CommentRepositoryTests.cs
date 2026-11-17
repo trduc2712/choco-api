@@ -155,6 +155,30 @@ public sealed class CommentRepositoryTests : IClassFixture<ChocoApiFactory>, IAs
     }
 
     [Fact]
+    public async Task Counts_CountVisibleRepliesAtEveryDepth()
+    {
+        User author = await AddUserAsync("identity-id", "username");
+        Post post = await AddPostAsync(author);
+        Comment root = Comment.Create(post.Id, author.Id, "content-1");
+        Comment reply = root.Reply(author.Id, "content-2").Value;
+        Comment nested = reply.Reply(author.Id, "content-3").Value;
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.AddRange(root, reply, nested);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Remove(dbContext.Set<Comment>().Single(comment => comment.Id == reply.Id));
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+
+        IReadOnlyDictionary<Guid, int> counts = await CountAsync([post.Id]);
+
+        counts.Should().ContainSingle().Which.Should().Be(new KeyValuePair<Guid, int>(post.Id, 2));
+    }
+
+    [Fact]
     public async Task Counts_WithoutPostIds_ReturnNothing()
     {
         User author = await AddUserAsync("identity-id", "username");
@@ -215,6 +239,9 @@ public sealed class CommentRepositoryTests : IClassFixture<ChocoApiFactory>, IAs
         using IServiceScope scope = _factory.Services.CreateScope();
         ICommentRepository repository = scope.ServiceProvider.GetRequiredService<ICommentRepository>();
 
-        return await repository.ListByPostForReadAsync(postId, new Guid("00000000-0000-0000-0000-000000000099"), after, count, TestContext.Current.CancellationToken);
+        IReadOnlyList<CommentThreadEntry> entries = await repository.ListThreadLevelForReadAsync(
+            postId, null, new Guid("00000000-0000-0000-0000-000000000099"), after, count, TestContext.Current.CancellationToken);
+
+        return entries.Select(entry => entry.Comment).ToList();
     }
 }

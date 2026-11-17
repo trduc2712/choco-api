@@ -78,34 +78,52 @@ internal sealed class CommentRepository : Repository<Comment>, ICommentRepositor
         return comments;
     }
 
-    public async Task<IReadOnlyList<Comment>> ListByPostForReadAsync(
+    public async Task<IReadOnlyList<CommentThreadEntry>> ListThreadLevelForReadAsync(
         Guid postId,
+        Guid? parentId,
         Guid viewerId,
         (DateTimeOffset CreatedAt, Guid Id)? after,
         int count,
         CancellationToken cancellationToken = default)
     {
-        IQueryable<User> users = DbContext.Set<User>();
+        IQueryable<User> users = DbContext.Set<User>().Where(user => !user.IsDeleted);
         IQueryable<Guid> hidden = DbContext.Set<UserBlock>().HiddenFrom(viewerId);
+        IQueryable<Comment> all = DbSet.IgnoreQueryFilters();
 
-        IQueryable<Comment> comments = DbSet
-            .AsNoTracking()
-            .Where(comment => comment.PostId == postId
-                && users.Any(user => user.Id == comment.AuthorId)
-                && !hidden.Contains(comment.AuthorId));
+        IQueryable<Comment> level = all.AsNoTracking().Where(comment => comment.PostId == postId);
+
+        level = parentId is { } id
+            ? level.Where(comment => comment.ParentId == id)
+            : level.Where(comment => comment.ParentId == null);
+
+        level = level.Where(comment =>
+            (!comment.IsDeleted && users.Any(user => user.Id == comment.AuthorId) && !hidden.Contains(comment.AuthorId))
+            || all.Any(child => child.ParentId == comment.Id));
 
         if (after is { } position)
         {
-            comments = comments.Where(comment => EF.Functions.GreaterThan(
+            level = level.Where(comment => EF.Functions.GreaterThan(
                 ValueTuple.Create(comment.CreatedAt, comment.Id),
                 ValueTuple.Create(position.CreatedAt, position.Id)));
         }
 
-        return await comments
+        var rows = await level
             .OrderBy(comment => comment.CreatedAt)
             .ThenBy(comment => comment.Id)
             .Take(count)
+            .Select(comment => new
+            {
+                Comment = comment,
+                IsVisible = !comment.IsDeleted
+                    && users.Any(user => user.Id == comment.AuthorId)
+                    && !hidden.Contains(comment.AuthorId),
+                ReplyCount = all.Count(child => child.ParentId == comment.Id
+                    && ((!child.IsDeleted && users.Any(user => user.Id == child.AuthorId) && !hidden.Contains(child.AuthorId))
+                        || all.Any(grandchild => grandchild.ParentId == child.Id)))
+            })
             .ToListAsync(cancellationToken);
+
+        return rows.Select(row => new CommentThreadEntry(row.Comment, row.IsVisible, row.ReplyCount)).ToList();
     }
 
     public async Task<IReadOnlyDictionary<Guid, int>> CountByPostsForReadAsync(

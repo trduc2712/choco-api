@@ -6,4 +6,5 @@ public static class CommentErrors
 {
     public static readonly Error NotFound = Error.NotFound("Comment.NotFound", "The comment was not found.");
     public static readonly Error NotAuthor = Error.Forbidden("Comment.NotAuthor", "Only the author can delete this comment.");
+    public static readonly Error MaxDepthReached = Error.Validation("Comment.MaxDepthReached", "This comment is nested too deeply to be replied to.");
 }

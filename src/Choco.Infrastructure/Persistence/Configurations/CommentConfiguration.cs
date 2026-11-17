@@ -28,11 +28,32 @@ internal sealed class CommentConfiguration : IEntityTypeConfiguration<Comment>
             .HasMaxLength(Comment.ContentMaxLength)
             .HasComment("Comment text as the author wrote it.");
 
+        builder.Property(comment => comment.ParentId)
+            .HasComment("Comment this one replies to; null for a comment written on the post itself.");
+
+        builder.Property(comment => comment.RootId)
+            .HasComment("Top-level comment of the thread this reply belongs to; null for a top-level comment.");
+
+        builder.Property(comment => comment.Depth)
+            .HasComment("How many replies deep the comment is: 0 for a top-level comment, 1 for a reply to it, and so on.");
+
         builder.HasIndex(comment => new { comment.PostId, comment.CreatedAt, comment.Id });
+
+        builder.HasIndex(comment => new { comment.ParentId, comment.CreatedAt, comment.Id });
 
         builder.HasOne<Post>()
             .WithMany()
             .HasForeignKey(comment => comment.PostId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Comment>()
+            .WithMany()
+            .HasForeignKey(comment => comment.ParentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Comment>()
+            .WithMany()
+            .HasForeignKey(comment => comment.RootId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne<User>()

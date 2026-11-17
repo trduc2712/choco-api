@@ -222,10 +222,11 @@ public sealed class PostsController : ApiController
     }
 
     /// <summary>
-    /// Lists the comments on a post, oldest first.
+    /// Lists the comments written on a post, oldest first, without their replies.
     /// </summary>
     /// <remarks>
-    /// Any signed-in user may call it. Deleted comments, comments by deleted accounts and comments by users who blocked the caller or whom the caller blocked are not listed.
+    /// Any signed-in user may call it. Each comment has its replyCount; list its replies through the comment's replies endpoint.
+    /// A comment that is deleted, was written by a deleted account, or was written by a user who blocked the caller or whom the caller blocked is listed as a placeholder when it has replies, and is not listed otherwise.
     /// A post by such a user is not found.
     /// To get the next page, pass the nextCursor of the previous page as cursor; it is null on the last page.
     /// </remarks>

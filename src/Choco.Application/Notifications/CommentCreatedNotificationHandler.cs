@@ -19,7 +19,27 @@ internal sealed class CommentCreatedNotificationHandler(
         CommentCreated created = notification.DomainEvent;
 
         Post? post = await postRepository.GetByIdForReadAsync(created.PostId, cancellationToken);
-        if (post is null || post.AuthorId == created.AuthorId)
+        if (post is null)
+        {
+            return;
+        }
+
+        Guid recipientId = post.AuthorId;
+        NotificationType type = NotificationType.PostCommented;
+
+        if (created.ParentId is { } parentId)
+        {
+            Comment? parent = await commentRepository.GetByIdForReadAsync(parentId, cancellationToken);
+            if (parent is null)
+            {
+                return;
+            }
+
+            recipientId = parent.AuthorId;
+            type = NotificationType.CommentReplied;
+        }
+
+        if (recipientId == created.AuthorId)
         {
             return;
         }
@@ -32,9 +52,9 @@ internal sealed class CommentCreatedNotificationHandler(
 
         await dispatcher.SendAsync(
             Notification.Create(
-                post.AuthorId,
+                recipientId,
                 created.AuthorId,
-                NotificationType.PostCommented,
+                type,
                 timeProvider.GetUtcNow(),
                 post.Id,
                 comment.Id),
