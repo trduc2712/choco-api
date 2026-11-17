@@ -1,6 +1,7 @@
 using Choco.Application.Abstractions.Auditing;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Contract.Users;
+using Choco.Domain.CommentReactions;
 using Choco.Domain.Primitives.Persistence;
 using Choco.Domain.Users;
 using Choco.SharedKernel.Results;
@@ -9,6 +10,7 @@ namespace Choco.Application.Users.SyncUserDeletion;
 
 internal sealed class SyncUserDeletionCommandHandler(
     IUserRepository userRepository,
+    ICommentReactionRepository reactionRepository,
     IUnitOfWork unitOfWork,
     AuditChanges auditChanges) : ICommandHandler<SyncUserDeletionCommand>
 {
@@ -22,6 +24,7 @@ internal sealed class SyncUserDeletionCommandHandler(
         }
 
         userRepository.Remove(user);
+        await reactionRepository.RemoveByUserAsync(user.Id, cancellationToken);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

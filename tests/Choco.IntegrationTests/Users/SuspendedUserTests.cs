@@ -35,6 +35,8 @@ public sealed class SuspendedUserTests : IClassFixture<ChocoApiFactory>, IAsyncL
         { "POST", $"/api/v1/posts/{Id}/comments", """{"content":"content"}""" },
         { "POST", $"/api/v1/posts/{Id}/reports", """{"reason":"Spam","details":"details"}""" },
         { "DELETE", $"/api/v1/comments/{Id}", null },
+        { "PUT", $"/api/v1/comments/{Id}/reaction", """{"type":"like"}""" },
+        { "DELETE", $"/api/v1/comments/{Id}/reaction", null },
         { "PUT", $"/api/v1/users/{Id}/follow", null },
         { "DELETE", $"/api/v1/users/{Id}/follow", null },
         { "PUT", $"/api/v1/users/{Id}/block", null },

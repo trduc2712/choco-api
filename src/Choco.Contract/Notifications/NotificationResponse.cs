@@ -2,12 +2,12 @@ namespace Choco.Contract.Notifications;
 
 /// <summary>A notification for the signed-in user.</summary>
 /// <param name="Id">The notification's id, to use when marking it read.</param>
-/// <param name="Type">What happened: Followed, PostLiked, PostCommented or CommentReplied.</param>
+/// <param name="Type">What happened: Followed, PostLiked, PostCommented, CommentReplied or CommentLiked.</param>
 /// <param name="Actor">The user whose action caused the notification.</param>
 /// <param name="PostId">The post the notification is about; null for Followed.</param>
 /// <param name="PostExcerpt">The beginning of the post's content, shortened to at most 140 characters; null for Followed or when the post was deleted.</param>
-/// <param name="CommentId">The comment the notification is about: the new comment for PostCommented, the reply for CommentReplied; null for the other types.</param>
-/// <param name="CommentExcerpt">The beginning of the comment's content, shortened to at most 140 characters; null unless the type is PostCommented or CommentReplied, or when the comment was deleted.</param>
+/// <param name="CommentId">The comment the notification is about: the new comment for PostCommented, the reply for CommentReplied, the liked comment for CommentLiked; null for the other types.</param>
+/// <param name="CommentExcerpt">The beginning of the comment's content, shortened to at most 140 characters; null unless the type is PostCommented, CommentReplied or CommentLiked, or when the comment was deleted.</param>
 /// <param name="CreatedAt">When it happened, in UTC.</param>
 /// <param name="IsRead">Whether the user has marked it read.</param>
 /// <example>{"id":"00000000-0000-0000-0000-000000000001","type":"PostCommented","actor":{"id":"00000000-0000-0000-0000-000000000002","username":"username","displayName":"Display Name","avatarUrl":"https://example.com/avatar.png"},"postId":"00000000-0000-0000-0000-000000000003","postExcerpt":"post content","commentId":"00000000-0000-0000-0000-000000000004","commentExcerpt":"comment content","createdAt":"2026-01-01T00:00:00+00:00","isRead":false}</example>

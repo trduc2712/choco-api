@@ -7,6 +7,7 @@ using Choco.Application.Abstractions.Authentication;
 using Choco.Application.Abstractions.Authorization;
 using Choco.Application.Abstractions.Storage;
 using Choco.Domain.AuditLogs;
+using Choco.Domain.CommentReactions;
 using Choco.Domain.Comments;
 using Choco.Domain.Conversations;
 using Choco.Domain.FeedbackEntries;
@@ -73,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<IPostRepository, PostRepository>();
         services.AddScoped<IPostLikeRepository, PostLikeRepository>();
         services.AddScoped<ICommentRepository, CommentRepository>();
+        services.AddScoped<ICommentReactionRepository, CommentReactionRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();

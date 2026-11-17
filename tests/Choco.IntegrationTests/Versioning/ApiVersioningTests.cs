@@ -209,7 +209,7 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
             .Should().OnlyContain(parameter => !string.IsNullOrWhiteSpace(parameter.GetProperty("description").GetString()));
         JsonElement schemas = root.GetProperty("components").GetProperty("schemas");
         schemas.GetProperty("CommentResponse").GetProperty("properties").EnumerateObject().Select(property => property.Name)
-            .Should().BeEquivalentTo("id", "postId", "parentId", "authorId", "author", "content", "replyCount", "isDeleted", "createdAt");
+            .Should().BeEquivalentTo("id", "postId", "parentId", "authorId", "author", "content", "replyCount", "likeCount", "dislikeCount", "myReaction", "isDeleted", "createdAt");
         schemas.GetProperty("CreateCommentCommand").GetProperty("example").GetProperty("content").GetString().Should().Be("content");
     }
 

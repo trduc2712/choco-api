@@ -3,6 +3,7 @@ using Choco.Application.Abstractions.Authorization;
 using Choco.Application.Abstractions.Messaging;
 using Choco.Application.Posts;
 using Choco.Contract.Comments;
+using Choco.Domain.CommentReactions;
 using Choco.Domain.Comments;
 using Choco.Domain.Posts;
 using Choco.Domain.Primitives.Persistence;
@@ -16,6 +17,7 @@ internal sealed class DeleteCommentCommandHandler(
     IPermissionChecker permissionChecker,
     VisiblePostFinder postFinder,
     ICommentRepository commentRepository,
+    ICommentReactionRepository reactionRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<DeleteCommentCommand>
 {
     public async Task<Result> Handle(DeleteCommentCommand command, CancellationToken cancellationToken)
@@ -60,6 +62,7 @@ internal sealed class DeleteCommentCommandHandler(
         }
 
         commentRepository.Remove(comment);
+        await reactionRepository.RemoveByCommentAsync(comment.Id, cancellationToken);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

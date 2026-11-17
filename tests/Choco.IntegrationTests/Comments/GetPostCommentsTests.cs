@@ -87,7 +87,7 @@ public sealed class GetPostCommentsTests : IClassFixture<ChocoApiFactory>, IAsyn
         items.Select(item => item.GetProperty("authorId").GetGuid()).Should().Equal(caller.Id, author.Id);
         items.Select(item => item.GetProperty("author").GetProperty("username").GetString()).Should().Equal("username", "username-2");
         items[0].EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
-            "id", "postId", "parentId", "authorId", "author", "content", "replyCount", "isDeleted", "createdAt");
+            "id", "postId", "parentId", "authorId", "author", "content", "replyCount", "likeCount", "dislikeCount", "myReaction", "isDeleted", "createdAt");
         items[0].GetProperty("postId").GetGuid().Should().Be(post.Id);
         items[0].GetProperty("createdAt").GetDateTimeOffset().Should().Be(first.CreatedAt);
         body.GetProperty("nextCursor").ValueKind.Should().Be(JsonValueKind.Null);

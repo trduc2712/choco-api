@@ -64,6 +64,18 @@ internal sealed class NotificationRepository : Repository<Notification>, INotifi
             cancellationToken);
     }
 
+    public Task<bool> ExistsForCommentAsync(
+        Guid recipientId, Guid actorId, NotificationType type, Guid commentId,
+        CancellationToken cancellationToken = default)
+    {
+        return DbSet.AsNoTracking().AnyAsync(
+            notification => notification.RecipientId == recipientId
+                && notification.ActorId == actorId
+                && notification.Type == type
+                && notification.CommentId == commentId,
+            cancellationToken);
+    }
+
     public Task<int> CountUnreadForReadAsync(Guid recipientId, CancellationToken cancellationToken = default)
     {
         IQueryable<User> users = DbContext.Set<User>();

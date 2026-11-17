@@ -281,6 +281,9 @@ public sealed class GetCommentRepliesTests : IClassFixture<ChocoApiFactory>, IAs
         item.GetProperty("author").ValueKind.Should().Be(JsonValueKind.Null);
         item.GetProperty("content").ValueKind.Should().Be(JsonValueKind.Null);
         item.GetProperty("replyCount").GetInt32().Should().Be(replyCount);
+        item.GetProperty("likeCount").GetInt32().Should().Be(0);
+        item.GetProperty("dislikeCount").GetInt32().Should().Be(0);
+        item.GetProperty("myReaction").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     private static async Task<JsonElement[]> ReadItemsAsync(HttpResponseMessage response)

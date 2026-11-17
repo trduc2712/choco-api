@@ -7,6 +7,8 @@ public enum AuditAction
     PostDeleted,
     CommentCreated,
     CommentDeleted,
+    CommentReacted,
+    CommentReactionRemoved,
     ProfileUpdated,
     BioUpdated,
     AvatarUploaded,
