@@ -23,4 +23,7 @@ public interface ICommentRepository : IRepository<Comment>
 
     Task<IReadOnlyDictionary<Guid, int>> CountByPostsForReadAsync(
         IReadOnlyCollection<Guid> postIds, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<Guid, Comment>> GetTopRootsByPostsForReadAsync(
+        IReadOnlyCollection<Guid> postIds, Guid viewerId, CancellationToken cancellationToken = default);
 }

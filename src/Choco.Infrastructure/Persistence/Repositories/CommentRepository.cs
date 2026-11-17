@@ -139,4 +139,34 @@ internal sealed class CommentRepository : Repository<Comment>, ICommentRepositor
 
         return rows.ToDictionary(row => row.PostId, row => row.Count);
     }
+
+    public async Task<IReadOnlyDictionary<Guid, Comment>> GetTopRootsByPostsForReadAsync(
+        IReadOnlyCollection<Guid> postIds, Guid viewerId, CancellationToken cancellationToken = default)
+    {
+        IQueryable<User> users = DbContext.Set<User>();
+        IQueryable<User> activeUsers = users.Where(user => user.SuspendedAt == null);
+        IQueryable<Guid> hidden = DbContext.Set<UserBlock>().HiddenFrom(viewerId);
+
+        List<Comment> tops = await DbSet.AsNoTracking()
+            .Where(comment => postIds.Contains(comment.PostId)
+                && comment.ParentId == null
+                && activeUsers.Any(user => user.Id == comment.AuthorId)
+                && !hidden.Contains(comment.AuthorId))
+            .Select(comment => new
+            {
+                Comment = comment,
+                ReplyCount = DbSet.Count(reply => reply.RootId == comment.Id
+                    && users.Any(user => user.Id == reply.AuthorId))
+            })
+            .GroupBy(row => row.Comment.PostId)
+            .Select(group => group
+                .OrderByDescending(row => row.ReplyCount)
+                .ThenByDescending(row => row.Comment.CreatedAt)
+                .ThenByDescending(row => row.Comment.Id)
+                .Select(row => row.Comment)
+                .First())
+            .ToListAsync(cancellationToken);
+
+        return tops.ToDictionary(comment => comment.PostId);
+    }
 }
