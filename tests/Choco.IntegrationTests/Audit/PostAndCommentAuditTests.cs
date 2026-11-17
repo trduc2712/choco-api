@@ -133,4 +133,73 @@ public sealed class PostAndCommentAuditTests(ChocoApiFactory factory) : AuditTes
         ShouldBeEntry(
             entry, administrator.Id, AuditAction.CommentDeleted, AuditTargetType.Comment, comment.Id, author.Id, $"PostId: {post.Id}");
     }
+
+    [Fact]
+    public async Task SetCommentReaction_RecordsCommentReactedWithTheTypeAndTheAuthorAsAffectedUser()
+    {
+        User author = await AddUserAsync("identity-id-2", "username-2");
+        User reactor = await AddUserAsync("identity-id", "username");
+        Comment comment = await AddCommentAsync(await AddPostAsync(author), author);
+        using HttpRequestMessage request = Request(
+            HttpMethod.Put, $"/api/v1/comments/{comment.Id}/reaction", new { type = "dislike" });
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
+        ShouldBeEntry(
+            entry, reactor.Id, AuditAction.CommentReacted, AuditTargetType.Comment, comment.Id, author.Id, "Type: dislike");
+    }
+
+    [Fact]
+    public async Task SetCommentReaction_WhenTheCommentDoesNotExist_RecordsNoEntry()
+    {
+        await AddUserAsync("identity-id", "username");
+        using HttpRequestMessage request = Request(
+            HttpMethod.Put, $"/api/v1/comments/{Guid.NewGuid()}/reaction", new { type = "like" });
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await ReadEntriesAsync()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RemoveCommentReaction_RecordsCommentReactionRemovedWithTheAuthorAsAffectedUser()
+    {
+        User author = await AddUserAsync("identity-id-2", "username-2");
+        User reactor = await AddUserAsync("identity-id", "username");
+        Comment comment = await AddCommentAsync(await AddPostAsync(author), author);
+        using HttpRequestMessage request = Request(HttpMethod.Delete, $"/api/v1/comments/{comment.Id}/reaction");
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        AuditLogEntry entry = (await ReadEntriesAsync()).Should().ContainSingle().Subject;
+        ShouldBeEntry(entry, reactor.Id, AuditAction.CommentReactionRemoved, AuditTargetType.Comment, comment.Id, author.Id);
+    }
+
+    [Fact]
+    public async Task RemoveCommentReaction_WhenTheCommentDoesNotExist_RecordsNoEntry()
+    {
+        await AddUserAsync("identity-id", "username");
+        using HttpRequestMessage request = Request(HttpMethod.Delete, $"/api/v1/comments/{Guid.NewGuid()}/reaction");
+
+        using HttpResponseMessage response = await Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await ReadEntriesAsync()).Should().BeEmpty();
+    }
+
+    private async Task<Comment> AddCommentAsync(Post post, User author)
+    {
+        Comment comment = Comment.Create(post.Id, author.Id, "content");
+        comment.ClearDomainEvents();
+        await Factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.Add(comment);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        return comment;
+    }
 }

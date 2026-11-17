@@ -50,6 +50,61 @@ public sealed class CommentsController : ApiController
     }
 
     /// <summary>
+    /// Sets the caller's reaction to a comment.
+    /// </summary>
+    /// <remarks>
+    /// Any signed-in user may call it, including on their own comment. A user has at most one reaction per comment, so sending the other type changes the reaction, and sending the same type again changes nothing.
+    /// The author of the comment is notified the first time the caller likes it, unless the caller wrote it.
+    /// </remarks>
+    /// <param name="id" example="00000000-0000-0000-0000-000000000001">The comment's id.</param>
+    /// <param name="command">The reaction to set.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="204">The caller's reaction is now the one sent.</response>
+    /// <response code="400">The type is not like or dislike, or the id is empty; errors lists the field.</response>
+    /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="403">The caller and the post's author, or the caller and the comment's author, blocked each other. It is also returned when the caller's account is suspended.</response>
+    /// <response code="404">The comment does not exist, is deleted, or was written by a deleted account, or its post is not found.</response>
+    [HttpPut("{id:guid}/reaction")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetReaction(
+        Guid id, [FromBody] SetCommentReactionCommand command, CancellationToken cancellationToken)
+    {
+        Result result = await Sender.Send(command with { CommentId = id }, cancellationToken);
+
+        return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
+
+    /// <summary>
+    /// Removes the caller's reaction from a comment.
+    /// </summary>
+    /// <remarks>
+    /// Any signed-in user may call it. It succeeds when the caller has no reaction to the comment, so calling it again changes nothing.
+    /// </remarks>
+    /// <param name="id" example="00000000-0000-0000-0000-000000000001">The comment's id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <response code="204">The caller has no reaction to the comment.</response>
+    /// <response code="400">The id is empty; errors lists the field.</response>
+    /// <response code="401">The request has no valid session token, or the caller's account is deleted.</response>
+    /// <response code="403">The caller's account is suspended.</response>
+    /// <response code="404">The comment does not exist, is deleted, or was written by a deleted account, or its post is not found.</response>
+    [HttpDelete("{id:guid}/reaction")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveReaction(Guid id, CancellationToken cancellationToken)
+    {
+        Result result = await Sender.Send(new RemoveCommentReactionCommand(id), cancellationToken);
+
+        return result.IsSuccess ? NoContent() : HandleFailure(result);
+    }
+
+    /// <summary>
     /// Replies to a comment.
     /// </summary>
     /// <remarks>

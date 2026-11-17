@@ -65,7 +65,7 @@ public sealed class ReplyToCommentTests : IClassFixture<ChocoApiFactory>, IAsync
         Comment reply = (await GetRepliesAsync(parent.Id)).Should().ContainSingle().Subject;
         response.Headers.Location.Should().Be(new Uri(_client.BaseAddress!, $"/api/v1/comments/{parent.Id}/replies"));
         body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
-            "id", "postId", "parentId", "authorId", "author", "content", "replyCount", "isDeleted", "createdAt");
+            "id", "postId", "parentId", "authorId", "author", "content", "replyCount", "likeCount", "dislikeCount", "myReaction", "isDeleted", "createdAt");
         body.GetProperty("id").GetGuid().Should().Be(reply.Id);
         body.GetProperty("postId").GetGuid().Should().Be(post.Id);
         body.GetProperty("parentId").GetGuid().Should().Be(parent.Id);
@@ -73,6 +73,9 @@ public sealed class ReplyToCommentTests : IClassFixture<ChocoApiFactory>, IAsync
         body.GetProperty("author").GetProperty("username").GetString().Should().Be("username");
         body.GetProperty("content").GetString().Should().Be("content-2");
         body.GetProperty("replyCount").GetInt32().Should().Be(0);
+        body.GetProperty("likeCount").GetInt32().Should().Be(0);
+        body.GetProperty("dislikeCount").GetInt32().Should().Be(0);
+        body.GetProperty("myReaction").ValueKind.Should().Be(JsonValueKind.Null);
         body.GetProperty("isDeleted").GetBoolean().Should().BeFalse();
         body.GetProperty("createdAt").GetDateTimeOffset().Should().Be(_factory.TimeProvider.GetUtcNow());
         reply.PostId.Should().Be(post.Id);

@@ -17,6 +17,10 @@ public interface INotificationRepository : IRepository<Notification>
         Guid recipientId, Guid actorId, NotificationType type, Guid postId,
         CancellationToken cancellationToken = default);
 
+    Task<bool> ExistsForCommentAsync(
+        Guid recipientId, Guid actorId, NotificationType type, Guid commentId,
+        CancellationToken cancellationToken = default);
+
     Task<int> CountUnreadForReadAsync(Guid recipientId, CancellationToken cancellationToken = default);
 
     Task MarkAllReadAsync(Guid recipientId, DateTimeOffset now, CancellationToken cancellationToken = default);

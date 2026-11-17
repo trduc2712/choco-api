@@ -4,8 +4,12 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using Choco.Domain.AuditLogs;
+using Choco.Domain.CommentReactions;
+using Choco.Domain.Comments;
+using Choco.Domain.Posts;
 using Choco.Domain.Users;
 using Choco.IntegrationTests.Authentication;
+using Choco.IntegrationTests.Comments;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -213,6 +217,31 @@ public sealed class ClerkUserSyncTests : IClassFixture<ChocoApiFactory>, IAsyncL
         entry.ActorType.Should().Be(AuditActorType.System);
         entry.Action.Should().Be(AuditAction.AccountDeleted);
         entry.TargetId.Should().Be(existing.Id);
+    }
+
+    [Fact]
+    public async Task UserDeleted_RemovesTheUsersCommentReactions()
+    {
+        User deleted = await AddUserAsync("identity-id", "username", Synced);
+        User other = await AddUserAsync("identity-id-2", "username-2", Synced);
+        Post post = Post.Create("content", other.Id);
+        Comment comment = Comment.Create(post.Id, other.Id, "content");
+        comment.ClearDomainEvents();
+        await _factory.ExecuteDbContextAsync(dbContext =>
+        {
+            dbContext.AddRange(post, comment);
+            return dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        await CommentReactionTestData.AddReactionsAsync(
+            _factory,
+            (comment, deleted, CommentReactionType.Like),
+            (comment, other, CommentReactionType.Dislike));
+
+        HttpStatusCode status = await SendAsync(UserDeletedPayload("identity-id"));
+
+        status.Should().Be(HttpStatusCode.OK);
+        (await CommentReactionTestData.GetReactionsAsync(_factory, comment.Id)).Should().ContainSingle()
+            .Which.UserId.Should().Be(other.Id);
     }
 
     [Fact]

@@ -3,6 +3,7 @@ using Choco.Application.Posts;
 using Choco.Contract.Abstractions;
 using Choco.Contract.Comments;
 using Choco.Contract.Posts;
+using Choco.Domain.CommentReactions;
 using Choco.Domain.Comments;
 using Choco.Domain.Users;
 
@@ -11,6 +12,7 @@ namespace Choco.Application.UnitTests.Comments;
 public sealed class CommentPagesTests
 {
     private static readonly Guid PostId = new("00000000-0000-0000-0000-000000000001");
+    private static readonly Dictionary<Guid, CommentReactionSummary> NoReactions = [];
 
     [Fact]
     public void ToPage_MapsEachCommentWithItsOwnAuthor()
@@ -21,7 +23,7 @@ public sealed class CommentPagesTests
         Comment second = Comment.Create(PostId, secondAuthor.Id, "content-2");
 
         PageResponse<CommentResponse> page = CommentPages.ToPage(
-            [Visible(first, 2), Visible(second, 0)], [secondAuthor, firstAuthor], 10);
+            [Visible(first, 2), Visible(second, 0)], [secondAuthor, firstAuthor], NoReactions, 10);
 
         page.Items.Select(item => (item.Id, item.PostId, item.ParentId, item.AuthorId, item.Content, item.ReplyCount, item.IsDeleted)).Should().Equal(
             (first.Id, PostId, (Guid?)null, (Guid?)firstAuthor.Id, "content-1", 2, false),
@@ -38,7 +40,7 @@ public sealed class CommentPagesTests
         Comment parent = Comment.Create(PostId, author.Id, "content-1");
         Comment reply = parent.Reply(author.Id, "content-2").Value;
 
-        PageResponse<CommentResponse> page = CommentPages.ToPage([Visible(reply, 0)], [author], 10);
+        PageResponse<CommentResponse> page = CommentPages.ToPage([Visible(reply, 0)], [author], NoReactions, 10);
 
         page.Items.Should().ContainSingle().Which.ParentId.Should().Be(parent.Id);
     }
@@ -48,10 +50,50 @@ public sealed class CommentPagesTests
     {
         Comment hidden = Comment.Create(PostId, new Guid("5f0c6b1e-2d4a-4c8e-9b7a-3e1f2a6d8c40"), "content");
 
-        PageResponse<CommentResponse> page = CommentPages.ToPage([new CommentThreadEntry(hidden, false, 1)], [], 10);
+        PageResponse<CommentResponse> page = CommentPages.ToPage([new CommentThreadEntry(hidden, false, 1)], [], NoReactions, 10);
 
         page.Items.Should().ContainSingle().Which.Should().Be(new CommentResponse(
-            hidden.Id, PostId, null, null, null, null, 1, true, hidden.CreatedAt));
+            hidden.Id, PostId, null, null, null, null, 1, 0, 0, null, true, hidden.CreatedAt));
+    }
+
+    [Fact]
+    public void ToPage_WithReactions_MapsEachCommentWithItsOwnCountsAndTheViewersReaction()
+    {
+        User author = User.Create("identity-id", "username", "Display Name", null);
+        Comment liked = Comment.Create(PostId, author.Id, "content-1");
+        Comment disliked = Comment.Create(PostId, author.Id, "content-2");
+        Comment unreacted = Comment.Create(PostId, author.Id, "content-3");
+        Dictionary<Guid, CommentReactionSummary> reactions = new()
+        {
+            [liked.Id] = new CommentReactionSummary(3, 1, CommentReactionType.Like),
+            [disliked.Id] = new CommentReactionSummary(2, 4, CommentReactionType.Dislike)
+        };
+
+        PageResponse<CommentResponse> page = CommentPages.ToPage(
+            [Visible(liked, 0), Visible(disliked, 0), Visible(unreacted, 0)], [author], reactions, 10);
+
+        page.Items.Select(item => (item.Id, item.LikeCount, item.DislikeCount, item.MyReaction)).Should().Equal(
+            (liked.Id, 3, 1, "like"),
+            (disliked.Id, 2, 4, "dislike"),
+            (unreacted.Id, 0, 0, (string?)null));
+    }
+
+    [Fact]
+    public void ToPage_WithHiddenCommentThatHasReactions_MapsItWithoutReactions()
+    {
+        Comment hidden = Comment.Create(PostId, new Guid("5f0c6b1e-2d4a-4c8e-9b7a-3e1f2a6d8c40"), "content");
+        Dictionary<Guid, CommentReactionSummary> reactions = new()
+        {
+            [hidden.Id] = new CommentReactionSummary(3, 1, CommentReactionType.Like)
+        };
+
+        PageResponse<CommentResponse> page = CommentPages.ToPage(
+            [new CommentThreadEntry(hidden, false, 1)], [], reactions, 10);
+
+        CommentResponse item = page.Items.Should().ContainSingle().Subject;
+        item.LikeCount.Should().Be(0);
+        item.DislikeCount.Should().Be(0);
+        item.MyReaction.Should().BeNull();
     }
 
     [Fact]
@@ -64,7 +106,7 @@ public sealed class CommentPagesTests
             Visible(Comment.Create(PostId, author.Id, "content-2"), 0)
         ];
 
-        PageResponse<CommentResponse> page = CommentPages.ToPage(entries, [author], 2);
+        PageResponse<CommentResponse> page = CommentPages.ToPage(entries, [author], NoReactions, 2);
 
         page.Items.Should().HaveCount(2);
         page.NextCursor.Should().BeNull();
@@ -82,7 +124,7 @@ public sealed class CommentPagesTests
         ];
 
         PageResponse<CommentResponse> page = CommentPages.ToPage(
-            comments.Select(comment => Visible(comment, 0)).ToList(), [author], 2);
+            comments.Select(comment => Visible(comment, 0)).ToList(), [author], NoReactions, 2);
 
         page.Items.Select(item => item.Id).Should().Equal(comments[0].Id, comments[1].Id);
         PostCursor.TryDecode(page.NextCursor, out PostCursor? cursor).Should().BeTrue();
@@ -98,7 +140,7 @@ public sealed class CommentPagesTests
         Comment extra = Comment.Create(PostId, author.Id, "content-3");
 
         PageResponse<CommentResponse> page = CommentPages.ToPage(
-            [Visible(kept, 0), Visible(orphan, 0), Visible(extra, 0)], [author], 2);
+            [Visible(kept, 0), Visible(orphan, 0), Visible(extra, 0)], [author], NoReactions, 2);
 
         page.Items.Select(item => item.Id).Should().Equal(kept.Id);
         PostCursor.TryDecode(page.NextCursor, out PostCursor? cursor).Should().BeTrue();
@@ -108,7 +150,7 @@ public sealed class CommentPagesTests
     [Fact]
     public void ToPage_WithoutComments_ReturnsEmptyPage()
     {
-        PageResponse<CommentResponse> page = CommentPages.ToPage([], [], 2);
+        PageResponse<CommentResponse> page = CommentPages.ToPage([], [], NoReactions, 2);
 
         page.Items.Should().BeEmpty();
         page.NextCursor.Should().BeNull();

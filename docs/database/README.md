@@ -2,22 +2,23 @@
 
 ## Tables
 
-| Name                                                  | Columns | Comment                                                                                                                            | Type       |
-| ----------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| [public.audit_logs](public.audit_logs.md)             | 17      | Append-only record of who did what to which object. One row per successful action of a user or the system; rows are never changed. | BASE TABLE |
-| [public.comments](public.comments.md)                 | 11      | Comments that users write on posts.                                                                                                | BASE TABLE |
-| [public.conversations](public.conversations.md)       | 7       | Direct conversations between two users.                                                                                            | BASE TABLE |
-| [public.feedback_entries](public.feedback_entries.md) | 14      | Bug reports and suggestions about the app that signed-in users send, waiting for or finished with an administrator's triage.       | BASE TABLE |
-| [public.messages](public.messages.md)                 | 7       | Text messages that users send in direct conversations.                                                                             | BASE TABLE |
-| [public.notifications](public.notifications.md)       | 8       | Things that happened to a user, such as a new follower, shown to that user.                                                        | BASE TABLE |
-| [public.post_likes](public.post_likes.md)             | 4       | Active likes that users give to posts.                                                                                             | BASE TABLE |
-| [public.posts](public.posts.md)                       | 7       | Text posts that users publish.                                                                                                     | BASE TABLE |
-| [public.reports](public.reports.md)                   | 12      | Reports from users about a post or another user, waiting for or finished with a moderator's decision.                              | BASE TABLE |
-| [public.roles](public.roles.md)                       | 11      | Named sets of permissions that users can hold. Roles and their permissions can change while the system runs.                       | BASE TABLE |
-| [public.user_blocks](public.user_blocks.md)           | 4       | Active blocks between users.                                                                                                       | BASE TABLE |
-| [public.user_follows](public.user_follows.md)         | 4       | Active follow relationships between users.                                                                                         | BASE TABLE |
-| [public.user_roles](public.user_roles.md)             | 5       | Roles assigned to users, besides the default role that every signed-in user has.                                                   | BASE TABLE |
-| [public.users](public.users.md)                       | 14      | People who use choco-api. Sign-in lives in Clerk; each row is the local copy of one Clerk user.                                    | BASE TABLE |
+| Name                                                    | Columns | Comment                                                                                                                            | Type       |
+| ------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| [public.audit_logs](public.audit_logs.md)               | 17      | Append-only record of who did what to which object. One row per successful action of a user or the system; rows are never changed. | BASE TABLE |
+| [public.comment_reactions](public.comment_reactions.md) | 5       | Likes and dislikes that users give to comments, at most one per user and comment.                                                  | BASE TABLE |
+| [public.comments](public.comments.md)                   | 11      | Comments that users write on posts.                                                                                                | BASE TABLE |
+| [public.conversations](public.conversations.md)         | 7       | Direct conversations between two users.                                                                                            | BASE TABLE |
+| [public.feedback_entries](public.feedback_entries.md)   | 14      | Bug reports and suggestions about the app that signed-in users send, waiting for or finished with an administrator's triage.       | BASE TABLE |
+| [public.messages](public.messages.md)                   | 7       | Text messages that users send in direct conversations.                                                                             | BASE TABLE |
+| [public.notifications](public.notifications.md)         | 8       | Things that happened to a user, such as a new follower, shown to that user.                                                        | BASE TABLE |
+| [public.post_likes](public.post_likes.md)               | 4       | Active likes that users give to posts.                                                                                             | BASE TABLE |
+| [public.posts](public.posts.md)                         | 7       | Text posts that users publish.                                                                                                     | BASE TABLE |
+| [public.reports](public.reports.md)                     | 12      | Reports from users about a post or another user, waiting for or finished with a moderator's decision.                              | BASE TABLE |
+| [public.roles](public.roles.md)                         | 11      | Named sets of permissions that users can hold. Roles and their permissions can change while the system runs.                       | BASE TABLE |
+| [public.user_blocks](public.user_blocks.md)             | 4       | Active blocks between users.                                                                                                       | BASE TABLE |
+| [public.user_follows](public.user_follows.md)           | 4       | Active follow relationships between users.                                                                                         | BASE TABLE |
+| [public.user_roles](public.user_roles.md)               | 5       | Roles assigned to users, besides the default role that every signed-in user has.                                                   | BASE TABLE |
+| [public.users](public.users.md)                         | 14      | People who use choco-api. Sign-in lives in Clerk; each row is the local copy of one Clerk user.                                    | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -33,6 +34,8 @@
 ```mermaid
 erDiagram
 
+"public.comment_reactions" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.comment_reactions" }o--|| "public.comments" : "FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE RESTRICT"
 "public.comments" }o--|| "public.users" : "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.comments" }o--|| "public.posts" : "FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE RESTRICT"
 "public.comments" }o--o| "public.comments" : "FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE RESTRICT"
@@ -80,6 +83,13 @@ erDiagram
   varchar_32_ target_type
   varchar_32_ trace_id
   varchar_512_ user_agent
+}
+"public.comment_reactions" {
+  uuid comment_id FK
+  uuid id
+  timestamp_with_time_zone reacted_at
+  varchar_16_ type
+  uuid user_id FK
 }
 "public.comments" {
   uuid author_id FK

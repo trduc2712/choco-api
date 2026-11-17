@@ -1,5 +1,6 @@
 using Choco.Contract.Comments;
 using Choco.Contract.Posts;
+using Choco.Domain.CommentReactions;
 using Choco.Domain.Comments;
 using Choco.Domain.Users;
 
@@ -7,8 +8,11 @@ namespace Choco.Application.Comments;
 
 internal static class CommentMappings
 {
-    public static CommentResponse ToResponse(this Comment comment, User author, int replyCount = 0)
+    public static CommentResponse ToResponse(
+        this Comment comment, User author, int replyCount = 0, CommentReactionSummary? reactions = null)
     {
+        CommentReactionSummary summary = reactions ?? CommentReactionSummary.None;
+
         return new CommentResponse(
             comment.Id,
             comment.PostId,
@@ -17,6 +21,9 @@ internal static class CommentMappings
             new PostAuthorResponse(author.Username, author.DisplayName, author.AvatarUrl),
             comment.Content,
             replyCount,
+            summary.LikeCount,
+            summary.DislikeCount,
+            summary.ViewerReaction is { } type ? CommentReactionTypes.ToWire(type) : null,
             false,
             comment.CreatedAt);
     }
@@ -31,6 +38,9 @@ internal static class CommentMappings
             null,
             null,
             replyCount,
+            0,
+            0,
+            null,
             true,
             comment.CreatedAt);
     }

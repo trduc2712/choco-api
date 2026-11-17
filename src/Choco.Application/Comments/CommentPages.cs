@@ -1,6 +1,7 @@
 using Choco.Application.Posts;
 using Choco.Contract.Abstractions;
 using Choco.Contract.Comments;
+using Choco.Domain.CommentReactions;
 using Choco.Domain.Comments;
 using Choco.Domain.Users;
 
@@ -9,7 +10,10 @@ namespace Choco.Application.Comments;
 internal static class CommentPages
 {
     public static PageResponse<CommentResponse> ToPage(
-        IReadOnlyList<CommentThreadEntry> entries, IReadOnlyCollection<User> authors, int limit)
+        IReadOnlyList<CommentThreadEntry> entries,
+        IReadOnlyCollection<User> authors,
+        IReadOnlyDictionary<Guid, CommentReactionSummary> reactions,
+        int limit)
     {
         Dictionary<Guid, User> authorsById = authors.ToDictionary(author => author.Id);
         List<CommentThreadEntry> page = entries.Take(limit).ToList();
@@ -20,7 +24,10 @@ internal static class CommentPages
         List<CommentResponse> items = page
             .Where(entry => !entry.IsVisible || authorsById.ContainsKey(entry.Comment.AuthorId))
             .Select(entry => entry.IsVisible
-                ? entry.Comment.ToResponse(authorsById[entry.Comment.AuthorId], entry.ReplyCount)
+                ? entry.Comment.ToResponse(
+                    authorsById[entry.Comment.AuthorId],
+                    entry.ReplyCount,
+                    reactions.GetValueOrDefault(entry.Comment.Id))
                 : entry.Comment.ToPlaceholder(entry.ReplyCount))
             .ToList();
 
