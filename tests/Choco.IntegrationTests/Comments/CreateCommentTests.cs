@@ -75,7 +75,7 @@ public sealed class CreateCommentTests : IClassFixture<ChocoApiFactory>, IAsyncL
         Comment comment = (await GetCommentsAsync()).Should().ContainSingle().Subject;
         response.Headers.Location.Should().Be(new Uri(_client.BaseAddress!, $"/api/v1/posts/{post.Id}/comments"));
         body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
-            "id", "postId", "authorId", "author", "content", "createdAt");
+            "id", "postId", "parentId", "authorId", "author", "content", "replyCount", "isDeleted", "createdAt");
         body.GetProperty("id").GetGuid().Should().Be(comment.Id);
         body.GetProperty("postId").GetGuid().Should().Be(post.Id);
         body.GetProperty("authorId").GetGuid().Should().Be(caller.Id);

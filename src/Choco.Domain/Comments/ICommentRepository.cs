@@ -13,8 +13,9 @@ public interface ICommentRepository : IRepository<Comment>
     Task<IReadOnlyList<Comment>> ListIncludingDeletedForReadAsync(
         CommentListFilter filter, int skip, int take, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Comment>> ListByPostForReadAsync(
+    Task<IReadOnlyList<CommentThreadEntry>> ListThreadLevelForReadAsync(
         Guid postId,
+        Guid? parentId,
         Guid viewerId,
         (DateTimeOffset CreatedAt, Guid Id)? after,
         int count,

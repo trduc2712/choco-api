@@ -87,11 +87,38 @@ public sealed class GetPostCommentsTests : IClassFixture<ChocoApiFactory>, IAsyn
         items.Select(item => item.GetProperty("authorId").GetGuid()).Should().Equal(caller.Id, author.Id);
         items.Select(item => item.GetProperty("author").GetProperty("username").GetString()).Should().Equal("username", "username-2");
         items[0].EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
-            "id", "postId", "authorId", "author", "content", "createdAt");
+            "id", "postId", "parentId", "authorId", "author", "content", "replyCount", "isDeleted", "createdAt");
         items[0].GetProperty("postId").GetGuid().Should().Be(post.Id);
         items[0].GetProperty("createdAt").GetDateTimeOffset().Should().Be(first.CreatedAt);
         body.GetProperty("nextCursor").ValueKind.Should().Be(JsonValueKind.Null);
         _factory.IdentityProvider.Requests.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListsOnlyTopLevelCommentsWithTheirReplyCountsAndDeletedOnesWithRepliesAsPlaceholders()
+    {
+        User caller = await AddUserAsync("identity-id", "username");
+        Post post = await AddPostAsync(caller);
+        Comment visible = await AddCommentAsync(post, caller, "content-1");
+        Comment deleted = await AddCommentAsync(post, caller, "content-2");
+        Comment reply = await AddReplyAsync(visible, caller, "content-3");
+        await AddReplyAsync(deleted, caller, "content-4");
+        await AddReplyAsync(reply, caller, "content-5");
+        await DeleteCommentAsync(deleted);
+        using HttpRequestMessage request = Request($"/api/v1/posts/{post.Id}/comments");
+
+        using HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        JsonElement[] items = body.GetProperty("items").EnumerateArray().ToArray();
+        items.Select(item => item.GetProperty("id").GetGuid()).Should().Equal(visible.Id, deleted.Id);
+        items.Select(item => item.GetProperty("parentId").ValueKind).Should().Equal(JsonValueKind.Null, JsonValueKind.Null);
+        items.Select(item => item.GetProperty("replyCount").GetInt32()).Should().Equal(1, 1);
+        items.Select(item => item.GetProperty("isDeleted").GetBoolean()).Should().Equal(false, true);
+        items[1].GetProperty("authorId").ValueKind.Should().Be(JsonValueKind.Null);
+        items[1].GetProperty("author").ValueKind.Should().Be(JsonValueKind.Null);
+        items[1].GetProperty("content").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     [Fact]
@@ -283,6 +310,18 @@ public sealed class GetPostCommentsTests : IClassFixture<ChocoApiFactory>, IAsyn
             return db.SaveChangesAsync(TestContext.Current.CancellationToken);
         });
         return comment;
+    }
+
+    private async Task<Comment> AddReplyAsync(Comment parent, User author, string content)
+    {
+        _factory.TimeProvider.Advance(TimeSpan.FromSeconds(1));
+        Comment reply = parent.Reply(author.Id, content).Value;
+        await _factory.ExecuteDbContextAsync(db =>
+        {
+            db.Add(reply);
+            return db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        });
+        return reply;
     }
 
     private Task<int> DeleteCommentAsync(Comment comment)

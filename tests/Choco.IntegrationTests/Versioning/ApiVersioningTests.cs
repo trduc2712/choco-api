@@ -192,6 +192,8 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
     [InlineData("/api/v1/posts/{id}/comments", "post", "201,400,401,404")]
     [InlineData("/api/v1/posts/{id}/comments", "get", "200,400,401,404")]
     [InlineData("/api/v1/comments/{id}", "delete", "204,400,401,403,404")]
+    [InlineData("/api/v1/comments/{id}/replies", "post", "201,400,401,403,404")]
+    [InlineData("/api/v1/comments/{id}/replies", "get", "200,400,401,404")]
     public async Task OpenApi_DescribesCommentOperations(string path, string method, string statuses)
     {
         using HttpResponseMessage response = await _client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
@@ -207,7 +209,7 @@ public sealed class ApiVersioningTests : IClassFixture<VersioningApiFactory>, IA
             .Should().OnlyContain(parameter => !string.IsNullOrWhiteSpace(parameter.GetProperty("description").GetString()));
         JsonElement schemas = root.GetProperty("components").GetProperty("schemas");
         schemas.GetProperty("CommentResponse").GetProperty("properties").EnumerateObject().Select(property => property.Name)
-            .Should().BeEquivalentTo("id", "postId", "authorId", "author", "content", "createdAt");
+            .Should().BeEquivalentTo("id", "postId", "parentId", "authorId", "author", "content", "replyCount", "isDeleted", "createdAt");
         schemas.GetProperty("CreateCommentCommand").GetProperty("example").GetProperty("content").GetString().Should().Be("content");
     }
 

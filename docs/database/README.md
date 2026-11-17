@@ -5,7 +5,7 @@
 | Name                                                  | Columns | Comment                                                                                                                            | Type       |
 | ----------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | [public.audit_logs](public.audit_logs.md)             | 17      | Append-only record of who did what to which object. One row per successful action of a user or the system; rows are never changed. | BASE TABLE |
-| [public.comments](public.comments.md)                 | 8       | Comments that users write on posts.                                                                                                | BASE TABLE |
+| [public.comments](public.comments.md)                 | 11      | Comments that users write on posts.                                                                                                | BASE TABLE |
 | [public.conversations](public.conversations.md)       | 7       | Direct conversations between two users.                                                                                            | BASE TABLE |
 | [public.feedback_entries](public.feedback_entries.md) | 14      | Bug reports and suggestions about the app that signed-in users send, waiting for or finished with an administrator's triage.       | BASE TABLE |
 | [public.messages](public.messages.md)                 | 7       | Text messages that users send in direct conversations.                                                                             | BASE TABLE |
@@ -35,6 +35,8 @@ erDiagram
 
 "public.comments" }o--|| "public.users" : "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.comments" }o--|| "public.posts" : "FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE RESTRICT"
+"public.comments" }o--o| "public.comments" : "FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE RESTRICT"
+"public.comments" }o--o| "public.comments" : "FOREIGN KEY (root_id) REFERENCES comments(id) ON DELETE RESTRICT"
 "public.conversations" }o--|| "public.users" : "FOREIGN KEY (first_user_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.conversations" }o--|| "public.users" : "FOREIGN KEY (second_user_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.feedback_entries" }o--|| "public.users" : "FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT"
@@ -84,10 +86,13 @@ erDiagram
   varchar_500_ content
   timestamp_with_time_zone created_at
   timestamp_with_time_zone deleted_at
+  integer depth
   uuid id
   boolean is_deleted
   timestamp_with_time_zone modified_at
+  uuid parent_id FK
   uuid post_id FK
+  uuid root_id FK
 }
 "public.conversations" {
   uuid first_user_id FK

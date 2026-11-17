@@ -92,10 +92,13 @@ erDiagram
   varchar_500_ content
   timestamp_with_time_zone created_at
   timestamp_with_time_zone deleted_at
+  integer depth
   uuid id
   boolean is_deleted
   timestamp_with_time_zone modified_at
+  uuid parent_id FK
   uuid post_id FK
+  uuid root_id FK
 }
 "public.conversations" {
   uuid first_user_id FK

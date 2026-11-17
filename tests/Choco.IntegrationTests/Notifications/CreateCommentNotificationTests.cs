@@ -96,6 +96,54 @@ public sealed class CreateCommentNotificationTests : IClassFixture<ChocoApiFacto
         (await NotificationTestData.GetNotificationsAsync(_factory, author.Id)).Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Replying_NotifiesTheParentCommentAuthorOnly()
+    {
+        User caller = await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");
+        User postAuthor = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        User parentAuthor = await NotificationTestData.AddUserAsync(_factory, "identity-id-3", "username-3");
+        Post post = await NotificationTestData.AddPostAsync(_factory, postAuthor);
+        Comment parent = await NotificationTestData.AddCommentAsync(_factory, post, parentAuthor);
+
+        using HttpResponseMessage response = await ReplyAsync(parent.Id);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        Comment reply = (await GetCommentsAsync()).Should().ContainSingle(comment => comment.ParentId == parent.Id).Subject;
+        Notification notification = (await NotificationTestData.GetNotificationsAsync(_factory, parentAuthor.Id)).Should().ContainSingle().Subject;
+        notification.ActorId.Should().Be(caller.Id);
+        notification.Type.Should().Be(NotificationType.CommentReplied);
+        notification.PostId.Should().Be(post.Id);
+        notification.CommentId.Should().Be(reply.Id);
+        notification.CreatedAt.Should().Be(_factory.TimeProvider.GetUtcNow());
+        notification.ReadAt.Should().BeNull();
+        (await NotificationTestData.GetNotificationsAsync(_factory, postAuthor.Id)).Should().BeEmpty();
+        (await NotificationTestData.GetNotificationsAsync(_factory, caller.Id)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ReplyingToOwnComment_DoesNotNotify()
+    {
+        User caller = await NotificationTestData.AddUserAsync(_factory, NotificationTestData.CallerIdentityId, "username");
+        User postAuthor = await NotificationTestData.AddUserAsync(_factory, "identity-id-2", "username-2");
+        Post post = await NotificationTestData.AddPostAsync(_factory, postAuthor);
+        Comment parent = await NotificationTestData.AddCommentAsync(_factory, post, caller);
+
+        using HttpResponseMessage response = await ReplyAsync(parent.Id);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await NotificationTestData.GetNotificationsAsync(_factory, caller.Id)).Should().BeEmpty();
+        (await NotificationTestData.GetNotificationsAsync(_factory, postAuthor.Id)).Should().BeEmpty();
+    }
+
+    private async Task<HttpResponseMessage> ReplyAsync(Guid commentId)
+    {
+        using HttpRequestMessage request = NotificationTestData.CreateRequest(
+            HttpMethod.Post, $"/api/v1/comments/{commentId}/replies");
+        request.Content = JsonContent.Create(new { content = "content" });
+
+        return await _client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
     private Task<List<Comment>> GetCommentsAsync()
     {
         return _factory.ExecuteDbContextAsync(db => db.Set<Comment>().AsNoTracking()

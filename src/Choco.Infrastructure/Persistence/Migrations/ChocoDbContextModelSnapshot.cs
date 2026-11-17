@@ -181,6 +181,11 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .HasColumnName("deleted_at")
                         .HasComment("When the row was soft-deleted; null while it is not.");
 
+                    b.Property<int>("Depth")
+                        .HasColumnType("integer")
+                        .HasColumnName("depth")
+                        .HasComment("How many replies deep the comment is: 0 for a top-level comment, 1 for a reply to it, and so on.");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted")
@@ -191,16 +196,32 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .HasColumnName("modified_at")
                         .HasComment("When the row was last changed.");
 
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_id")
+                        .HasComment("Comment this one replies to; null for a comment written on the post itself.");
+
                     b.Property<Guid>("PostId")
                         .HasColumnType("uuid")
                         .HasColumnName("post_id")
                         .HasComment("Post the comment belongs to.");
+
+                    b.Property<Guid?>("RootId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("root_id")
+                        .HasComment("Top-level comment of the thread this reply belongs to; null for a top-level comment.");
 
                     b.HasKey("Id")
                         .HasName("pk_comments");
 
                     b.HasIndex("AuthorId")
                         .HasDatabaseName("ix_comments_author_id");
+
+                    b.HasIndex("RootId")
+                        .HasDatabaseName("ix_comments_root_id");
+
+                    b.HasIndex("ParentId", "CreatedAt", "Id")
+                        .HasDatabaseName("ix_comments_parent_id_created_at_id");
 
                     b.HasIndex("PostId", "CreatedAt", "Id")
                         .HasDatabaseName("ix_comments_post_id_created_at_id");
@@ -1019,12 +1040,24 @@ namespace Choco.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_comments_user_author_id");
 
+                    b.HasOne("Choco.Domain.Comments.Comment", null)
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_comments_comments_parent_id");
+
                     b.HasOne("Choco.Domain.Posts.Post", null)
                         .WithMany()
                         .HasForeignKey("PostId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_comments_post_post_id");
+
+                    b.HasOne("Choco.Domain.Comments.Comment", null)
+                        .WithMany()
+                        .HasForeignKey("RootId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_comments_comments_root_id");
                 });
 
             modelBuilder.Entity("Choco.Domain.Conversations.Conversation", b =>
