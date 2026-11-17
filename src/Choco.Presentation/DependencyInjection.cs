@@ -34,6 +34,14 @@ namespace Choco.Presentation;
 
 public static class DependencyInjection
 {
+    // Development only: lets web checkouts on parallel worktrees use any dev-server port.
+    private const string AllowAnyLocalhostPortKey = "Development:AllowAnyLocalhostPort";
+
+    private static bool IsLocalhostOrigin(string origin) =>
+        Uri.TryCreate(origin, UriKind.Absolute, out Uri? uri)
+        && uri.Scheme is "http" or "https"
+        && uri.Host is "localhost" or "127.0.0.1" or "[::1]";
+
     public static IServiceCollection AddPresentation(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<ClerkOptions>()
@@ -41,11 +49,26 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        services.AddCors(options => options.AddDefaultPolicy(policy => policy
-            .WithOrigins(configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials()));
+        bool allowAnyLocalhostPort = configuration.GetValue<bool>(AllowAnyLocalhostPortKey);
+
+        services.AddCors(options => options.AddDefaultPolicy(policy =>
+        {
+            string[] allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
+            if (allowAnyLocalhostPort)
+            {
+                policy.SetIsOriginAllowed(origin =>
+                    allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase) || IsLocalhostOrigin(origin));
+            }
+            else
+            {
+                policy.WithOrigins(allowedOrigins);
+            }
+
+            policy.AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }));
 
         services.AddControllers()
             .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = context =>
@@ -137,7 +160,8 @@ public static class DependencyInjection
                             return Task.CompletedTask;
                         }
 
-                        if (!clerkOptions.Value.AuthorizedParties.Contains(azp, StringComparer.OrdinalIgnoreCase))
+                        if (!clerkOptions.Value.AuthorizedParties.Contains(azp, StringComparer.OrdinalIgnoreCase)
+                            && !(allowAnyLocalhostPort && IsLocalhostOrigin(azp)))
                         {
                             context.Fail($"The '{JwtRegisteredClaimNames.Azp}' claim '{azp}' is not an authorized party.");
                         }
